@@ -1,0 +1,372 @@
+---
+title: "Interactive Graph with Pyodide and Observable Plot"
+format:
+  html:
+    embed-resources: true
+---
+
+## Editable network graph powered by Pyodide, D3, and Observable Plot
+
+This Quarto document lets you edit a Python graph script and renders a networkx-style graph in the browser.
+
+The editor supports a small NetworkX-like API:
+
+- `G = nx.Graph()`
+- `G.add_node(name)`
+- `G.add_edge(u, v, weight=1)`
+- `G.nodes()`
+- `G.edges()`
+- `G.degree(node)`
+
+```{=html}
+<div id="graph-ui">
+  <div id="graph-editor">
+    <label for="python-editor"><strong>Edit Python graph code</strong></label>
+    <textarea id="python-editor" rows="14">import json
+
+G = nx.Graph()
+G.add_edge("Alice", "Bob")
+G.add_edge("Bob", "Carol")
+G.add_edge("Carol", "Dave")
+G.add_edge("Alice", "Dave")
+G.add_edge("Bob", "Eve")
+G.add_edge("Eve", "Frank")
+G.add_edge("Frank", "Carol")
+
+# Optional: inspect or modify the graph
+print("nodes:", list(G.nodes()))
+print("edges:", list(G.edges()))
+
+# The renderer uses G if graph_output is not defined.
+# You can also set graph_output manually to a JSON structure.
+</textarea>
+    <div class="button-row">
+      <button id="run-code">Run Python</button>
+      <button id="reset-code">Reset code</button>
+    </div>
+  </div>
+
+  <div id="graph-output">
+    <div id="graph-area">
+      <svg id="graph-svg" aria-label="Network graph" width="760" height="520"></svg>
+    </div>
+    <div id="chart-area">
+      <div id="degree-chart"></div>
+    </div>
+    <div id="py-output"></div>
+  </div>
+</div>
+```
+
+```{=html}
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6.2/dist/plot.umd.js"></script>
+<script type="module">
+const Plot = window.Plot;
+const d3 = window.d3;
+import {loadPyodide} from "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.mjs";
+
+let pyodide = null;
+
+function normalizeGraph(graph) {
+  const nodeMap = new Map();
+  const links = Array.isArray(graph.links) ? graph.links : [];
+
+  links.forEach(link => {
+    const source = String(link.source);
+    const target = String(link.target);
+    const weight = Number(link.weight ?? 1) || 1;
+
+    if (!nodeMap.has(source)) nodeMap.set(source, { id: source, degree: 0 });
+    if (!nodeMap.has(target)) nodeMap.set(target, { id: target, degree: 0 });
+
+    nodeMap.get(source).degree += 1;
+    nodeMap.get(target).degree += 1;
+  });
+
+  const nodes = Array.from(nodeMap.values());
+  return { nodes, links: links.map(link => ({ source: String(link.source), target: String(link.target), weight: Number(link.weight ?? 1) || 1 })) };
+}
+
+function renderDegreePlot(nodes, container) {
+  container.innerHTML = "";
+
+  if (!nodes.length) {
+    container.textContent = "No graph data available yet.";
+    return;
+  }
+
+  const plot = Plot.plot({
+    width: 760,
+    height: 240,
+    x: {
+      label: "Node",
+      tickRotate: -25
+    },
+    y: {
+      label: "Degree"
+    },
+    marks: [
+      Plot.bar(nodes, { x: "id", y: "degree", fill: "#1f77b4" }),
+      Plot.ruleY([0])
+    ]
+  });
+
+  container.appendChild(plot);
+}
+
+function renderNetwork(graph, svgElement) {
+  svgElement.innerHTML = "";
+  const width = Number(svgElement.getAttribute("width") || 760);
+  const height = Number(svgElement.getAttribute("height") || 520);
+
+  if (!graph.nodes.length) {
+    const placeholder = document.createElement("text");
+    placeholder.setAttribute("x", width / 2);
+    placeholder.setAttribute("y", height / 2);
+    placeholder.setAttribute("text-anchor", "middle");
+    placeholder.setAttribute("fill", "#666");
+    placeholder.textContent = "Run Python code to render the graph.";
+    svgElement.appendChild(placeholder);
+    return;
+  }
+
+  const svg = d3.select(svgElement)
+    .attr("viewBox", `0 0 ${width} ${height}`)
+    .attr("preserveAspectRatio", "xMidYMid meet");
+
+  const link = svg.append("g")
+    .attr("stroke", "#999")
+    .attr("stroke-opacity", 0.6)
+    .selectAll("line")
+    .data(graph.links)
+    .join("line")
+    .attr("stroke-width", d => Math.max(1, Math.min(4, d.weight || 1)));
+
+  const node = svg.append("g")
+    .attr("stroke", "#222")
+    .attr("stroke-width", 1.5)
+    .selectAll("g")
+    .data(graph.nodes)
+    .join("g")
+    .call(d3.drag()
+      .on("start", dragstarted)
+      .on("drag", dragged)
+      .on("end", dragended));
+
+  node.append("circle")
+    .attr("r", d => 8 + Math.min(d.degree * 2, 14))
+    .attr("fill", "#1f77b4");
+
+  node.append("text")
+    .attr("x", 12)
+    .attr("y", 4)
+    .attr("font-size", "0.9rem")
+    .attr("fill", "#222")
+    .text(d => d.id);
+
+  node.append("title")
+    .text(d => `${d.id}: degree ${d.degree}`);
+
+  const simulation = d3.forceSimulation(graph.nodes)
+    .force("link", d3.forceLink(graph.links).id(d => d.id).distance(120).strength(0.4))
+    .force("charge", d3.forceManyBody().strength(-320))
+    .force("center", d3.forceCenter(width / 2, height / 2))
+    .force("collide", d3.forceCollide().radius(d => 16 + Math.min(d.degree * 2, 12)));
+
+  simulation.on("tick", () => {
+    link
+      .attr("x1", d => Math.max(0, Math.min(width, d.source.x)))
+      .attr("y1", d => Math.max(0, Math.min(height, d.source.y)))
+      .attr("x2", d => Math.max(0, Math.min(width, d.target.x)))
+      .attr("y2", d => Math.max(0, Math.min(height, d.target.y)));
+
+    node.attr("transform", d => {
+      d.x = Math.max(16, Math.min(width - 16, d.x));
+      d.y = Math.max(16, Math.min(height - 16, d.y));
+      return `translate(${d.x},${d.y})`;
+    });
+  });
+
+  function dragstarted(event, d) {
+    if (!event.active) simulation.alphaTarget(0.3).restart();
+    d.fx = d.x;
+    d.fy = d.y;
+  }
+
+  function dragged(event, d) {
+    d.fx = event.x;
+    d.fy = event.y;
+  }
+
+  function dragended(event, d) {
+    if (!event.active) simulation.alphaTarget(0);
+    d.fx = null;
+    d.fy = null;
+  }
+}
+
+async function runPythonCode(code, output) {
+  output.textContent = "Running Python...";
+  pyodide.globals.set("code_input", code);
+
+  const python = `
+import json
+from types import SimpleNamespace
+
+class Graph:
+    def __init__(self):
+        self.adj = {}
+
+    def add_node(self, node):
+        self.adj.setdefault(node, {})
+
+    def add_edge(self, u, v, weight=1):
+        self.add_node(u)
+        self.add_node(v)
+        self.adj[u][v] = {"weight": weight}
+        self.adj[v][u] = {"weight": weight}
+
+    def nodes(self):
+        return list(self.adj.keys())
+
+    def edges(self):
+        seen = set()
+        edges = []
+        for u, nbrs in self.adj.items():
+            for v, data in nbrs.items():
+                if (v, u) in seen:
+                    continue
+                seen.add((u, v))
+                edges.append((u, v, data.get("weight", 1)))
+        return edges
+
+    def degree(self, node=None):
+        if node is None:
+            return {n: len(self.adj[n]) for n in self.adj}
+        return len(self.adj.get(node, {}))
+
+class NX:
+    Graph = Graph
+
+nx = NX()
+
+globals().update({"code_input": code_input})
+exec(code_input, globals())
+
+if "graph_output" in globals():
+    result = graph_output
+elif "G" in globals() and hasattr(G, "edges") and hasattr(G, "nodes"):
+    result = {
+        "nodes": [{"id": n, "degree": G.degree(n)} for n in G.nodes()],
+        "links": [{"source": u, "target": v, "weight": w} for u, v, w in G.edges()]
+    }
+else:
+    result = {"nodes": [], "links": []}
+
+json.dumps(result)
+`;
+
+  try {
+    const result = await pyodide.runPythonAsync(python);
+    return JSON.parse(result.trim());
+  } finally {
+    pyodide.globals.delete("code_input");
+  }
+}
+
+window.addEventListener("DOMContentLoaded", async () => {
+  const editor = document.getElementById("python-editor");
+  const svgElement = document.getElementById("graph-svg");
+  const chartContainer = document.getElementById("degree-chart");
+  const output = document.getElementById("py-output");
+  const runButton = document.getElementById("run-code");
+  const resetButton = document.getElementById("reset-code");
+
+  const defaultCode = editor.value.trim();
+
+  runButton.addEventListener("click", async () => {
+    try {
+      const graph = normalizeGraph(await runPythonCode(editor.value, output));
+      renderNetwork(graph, svgElement);
+      renderDegreePlot(graph.nodes, chartContainer);
+      output.textContent = "Python executed and graph rendered.";
+    } catch (error) {
+      output.textContent = `Error: ${error}`;
+    }
+  });
+
+  resetButton.addEventListener("click", () => {
+    editor.value = defaultCode;
+    output.textContent = "Code reset. Run Python to update the graph.";
+  });
+
+  output.textContent = "Loading Pyodide…";
+  pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/" });
+  output.textContent = "Pyodide ready. Run Python to render the graph.";
+  runButton.click();
+});
+</script>
+
+<style>
+#graph-ui {
+  display: grid;
+  gap: 1.5rem;
+}
+#graph-editor {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 64rem;
+}
+#python-editor {
+  width: 100%;
+  min-width: 24rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.95rem;
+  padding: 0.85rem;
+  border: 1px solid #c8c8c8;
+  border-radius: 0.5rem;
+  resize: vertical;
+}
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+button {
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 0.45rem;
+  background-color: #007acc;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+button:hover {
+  background-color: #005fa3;
+}
+#graph-output {
+  display: grid;
+  gap: 1rem;
+}
+#graph-area,
+#chart-area {
+  border: 1px solid #ddd;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  background: white;
+}
+#py-output {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  white-space: pre-wrap;
+  background: #f9f9f9;
+  border: 1px solid #ececec;
+  padding: 0.85rem;
+  border-radius: 0.5rem;
+}
+svg {
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+</style>
