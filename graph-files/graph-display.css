@@ -1,0 +1,92 @@
+/**
+ * graph-display.css
+ * ---------------------------------------------------------------------
+ * Styling owned by GraphDisplay's own viewport (graph-display.js).
+ * Kept separate from the surrounding widget chrome (styles.css) so the
+ * viewport looks right even if it's embedded somewhere with completely
+ * different page styling.
+ */
+
+.gd-viewport {
+  width: 100%;
+}
+
+.gd-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+
+.gd-empty-state {
+  fill: #767676;
+  font-size: 0.95rem;
+}
+
+/* Edges */
+.gd-edges .gd-edge {
+  stroke: #999;
+  stroke-opacity: 0.6;
+  transition: stroke 0.15s ease, stroke-opacity 0.15s ease;
+}
+
+.gd-edge.hl-active {
+  stroke: #f0a500;
+  stroke-opacity: 1;
+}
+
+.gd-edge.hl-adjacent {
+  stroke: #ff8c42;
+  stroke-opacity: 0.95;
+}
+
+.gd-edge.hl-path-current {
+  stroke: #e63946;
+  stroke-opacity: 1;
+  stroke-width: 3px;
+}
+
+.gd-edge.hl-path-visited {
+  stroke: #2a9d8f;
+  stroke-opacity: 0.9;
+}
+
+/* Nodes */
+.gd-node circle {
+  fill: #1f77b4;
+  stroke: #1c3d5a;
+  stroke-width: 1.5px;
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.gd-node text {
+  font-size: 0.85rem;
+  fill: #222;
+  pointer-events: none;
+  user-select: none;
+}
+
+.gd-node.hl-active circle {
+  fill: #f0a500;
+  stroke: #a86a00;
+}
+
+.gd-node.hl-adjacent circle {
+  fill: #ffb703;
+  stroke: #a86a00;
+}
+
+.gd-node.hl-path-current circle {
+  fill: #e63946;
+  stroke: #8f1d26;
+}
+
+.gd-node.hl-path-visited circle {
+  fill: #2a9d8f;
+  stroke: #1c6b62;
+}
+
+.gd-node:active,
+.gd-node:hover {
+  cursor: grab;
+}
