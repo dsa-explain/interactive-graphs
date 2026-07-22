@@ -317,6 +317,13 @@ h1, h2, h3, .title {
   background-image: none;
 }
 
+.gv-static .gv-svg {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
 .gv-static .gv-node {
   cursor: default;
 }
@@ -607,12 +614,12 @@ h1, h2, h3, .title {
 
 /* quarto callout */
 
-.callout-note {
+.callout-note .callout-tip {
   background-color: var(--highlight-box);
   border-color: var(--line);
   color: var(--ink);
 }
 
-.callout-note p {
+.callout-note .callout-tip p {
   color: var(--ink);
 }

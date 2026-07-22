@@ -13,11 +13,20 @@ let _markerSeq = 0;
  * @param {{width?: number, height?: number, directed?: boolean, caption?: string}} options
  */
 export function mountStaticGraphView(container, data, options = {}) {
+  if (!container) return;
+
   const width = options.width ?? 320;
   const height = options.height ?? 220;
   const directed = !!options.directed;
   const nodesIn = data?.nodes ?? [];
   const edgesIn = data?.edges ?? [];
+  const pad = 22;
+  // Keep forces proportional to the canvas so small inline demos stay in-frame
+  // (especially disconnected "island" components that otherwise repel off-screen).
+  const shortSide = Math.min(width, height);
+  const linkDistance = Math.max(48, shortSide * 0.38);
+  const charge = -Math.max(80, shortSide * 0.9);
+  const collideR = 22;
 
   container.innerHTML = "";
   container.classList.add("gv-root", "gv-static");
@@ -37,6 +46,8 @@ export function mountStaticGraphView(container, data, options = {}) {
     .select(canvasWrap)
     .append("svg")
     .attr("viewBox", `0 0 ${width} ${height}`)
+    .attr("width", width)
+    .attr("height", height)
     .attr("class", "gv-svg");
 
   const markerId = `gv-arrow-static-${_markerSeq++}`;
@@ -59,42 +70,58 @@ export function mountStaticGraphView(container, data, options = {}) {
   const edgeLayer = svg.append("g").attr("class", "gv-edge-layer");
   const nodeLayer = svg.append("g").attr("class", "gv-node-layer");
 
+  const spawnR = Math.max(24, shortSide * 0.28);
   const simNodes = nodesIn.map((n, i) => {
     const angle = (i / Math.max(1, nodesIn.length)) * 2 * Math.PI;
     return {
       id: n.id,
       label: n.label ?? n.id,
-      x: n.x ?? width / 2 + 70 * Math.cos(angle),
-      y: n.y ?? height / 2 + 70 * Math.sin(angle),
+      x: n.x ?? width / 2 + spawnR * Math.cos(angle),
+      y: n.y ?? height / 2 + spawnR * Math.sin(angle),
       fx: n.x != null ? n.x : null,
       fy: n.y != null ? n.y : null,
     };
   });
   const byId = new Map(simNodes.map((n) => [n.id, n]));
 
-  const simLinks = edgesIn.map((e, i) => ({
-    id: e.id ?? `e${i}`,
-    label: e.label ?? "",
-    source: byId.get(e.source),
-    target: byId.get(e.target),
-  })).filter((l) => l.source && l.target);
+  const simLinks = edgesIn
+    .map((e, i) => ({
+      id: e.id ?? `e${i}`,
+      label: e.label ?? "",
+      source: byId.get(e.source),
+      target: byId.get(e.target),
+    }))
+    .filter((l) => l.source && l.target);
 
   const simulation = d3
     .forceSimulation(simNodes)
-    .force("charge", d3.forceManyBody().strength(-220))
+    .force("charge", d3.forceManyBody().strength(charge))
     .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("collide", d3.forceCollide(28))
+    // Pull components toward the middle so disconnected islands stay visible.
+    .force("x", d3.forceX(width / 2).strength(0.07))
+    .force("y", d3.forceY(height / 2).strength(0.07))
+    .force("collide", d3.forceCollide(collideR))
     .force(
       "link",
       d3
         .forceLink(simLinks)
         .id((d) => d.id)
-        .distance(100)
-        .strength(0.6)
+        .distance(linkDistance)
+        .strength(0.55)
     )
     .stop();
 
-  for (let i = 0; i < 180; i++) simulation.tick();
+  function clamp() {
+    simNodes.forEach((d) => {
+      d.x = Math.max(pad, Math.min(width - pad, d.x));
+      d.y = Math.max(pad, Math.min(height - pad, d.y));
+    });
+  }
+
+  for (let i = 0; i < 200; i++) {
+    simulation.tick();
+    clamp();
+  }
 
   const edgeSel = edgeLayer
     .selectAll("g.gv-edge")
