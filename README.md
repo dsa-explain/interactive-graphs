@@ -25,3 +25,15 @@ python -m ipykernel install --user --name dsa_explain --display-name "Python (ds
 ```
 conda activate dsa_explain
 ```
+
+2. To preview the website locally, run this in the terminal from the root of the repository:
+
+```
+quarto preview
+```
+
+3. When ready to deploy an updated version of the website, run:
+
+```
+quarto render
+```
