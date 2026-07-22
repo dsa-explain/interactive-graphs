@@ -274,7 +274,7 @@ export function mountGraphView(engine, container, options = {}) {
     setTimeout(() => {
       statusEl.classList.remove("gv-status-flash");
       updateStatus();
-    }, 1400);
+    }, 1500);
   }
 
   if (options.caption) {
@@ -322,10 +322,11 @@ export function mountGraphView(engine, container, options = {}) {
   // Stable simulation-node objects keyed by id, so positions survive re-renders.
   const simNodes = new Map();
   let simLinks = [];
+  let lastStructureKey = "";
 
   const simulation = d3
     .forceSimulation()
-    .force("charge", d3.forceManyBody().strength(-320))
+    .force("charge", d3.forceManyBody().strength(-220))
     .force("center", d3.forceCenter(width / 2, height / 2))
     .force(
       "collide",
@@ -381,15 +382,23 @@ export function mountGraphView(engine, container, options = {}) {
     drawEdges(snapshot);
     drawNodes(snapshot);
 
-    simulation.nodes([...simNodes.values()]);
-    simulation.force("link").links(simLinks);
-    simulation.alpha(0.5).restart();
+    const structureKey =
+      snapshot.nodes.map((n) => n.id).join("\0") +
+      "|" +
+      snapshot.edges.map((e) => `${e.id}:${e.source}->${e.target}:${e.label}`).join("\0");
+    if (structureKey !== lastStructureKey) {
+      lastStructureKey = structureKey;
+      simulation.nodes([...simNodes.values()]);
+      simulation.force("link").links(simLinks);
+      simulation.alpha(0.5).restart();
+    }
 
     updateStatus();
   }
 
   function drawEdges(snapshot) {
     const neighbourEdgeIds = neighbourEdgeIdSet(snapshot);
+    const activeEdges = snapshot.viz?.activeEdges ?? new Set();
     const sel = edgeLayer.selectAll("g.gv-edge").data(simLinks, (d) => d.id);
     sel.exit().remove();
 
@@ -404,6 +413,7 @@ export function mountGraphView(engine, container, options = {}) {
       .attr("class", (d) => {
         let cls = "gv-edge-line";
         if (isSelected(snapshot, "edge", d.id)) cls += " gv-selected";
+        else if (activeEdges.has(d.id)) cls += " gv-traversed-edge";
         else if (neighbourEdgeIds.has(d.id)) cls += " gv-neighbour-edge";
         return cls;
       })
@@ -418,6 +428,9 @@ export function mountGraphView(engine, container, options = {}) {
 
   function drawNodes(snapshot) {
     const neighbourIds = neighbourIdSet(snapshot);
+    const visited = snapshot.viz?.visited ?? new Set();
+    const currentNode = snapshot.viz?.currentNode ?? null;
+    const currentNeighbor = snapshot.viz?.currentNeighbor ?? null;
     const sel = nodeLayer.selectAll("g.gv-node").data([...simNodes.values()], (d) => d.id);
     sel.exit().remove();
 
@@ -431,8 +444,11 @@ export function mountGraphView(engine, container, options = {}) {
       .select("circle")
       .attr("class", (d) => {
         let cls = "gv-node-circle";
-        if (isSelected(snapshot, "node", d.id)) cls += " gv-selected";
+        if (currentNode != null && d.id === currentNode) cls += " gv-selected";
+        else if (currentNeighbor != null && d.id === currentNeighbor) cls += " gv-neighbour";
+        else if (isSelected(snapshot, "node", d.id)) cls += " gv-selected";
         else if (neighbourIds.has(d.id)) cls += " gv-neighbour";
+        if (visited.has(d.id)) cls += " gv-visited";
         if (addEdgeMode && pendingEdgeSource === d.id) cls += " gv-pending";
         return cls;
       });

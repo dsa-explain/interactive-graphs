@@ -16,6 +16,13 @@ export class GraphEngine {
     this.nodes = new Map();
     this.edges = new Map();
     this.selection = null; // { type: 'node' | 'edge', id }
+    // Optional traversal / algorithm overlay (used by islands viz, etc.)
+    this.viz = {
+      visited: new Set(), // node ids
+      currentNode: null,
+      currentNeighbor: null,
+      activeEdges: new Set(), // edge ids currently highlighted as traversed
+    };
     this._listeners = new Set();
     this._nodeSeq = 0;
     this._edgeSeq = 0;
@@ -75,6 +82,12 @@ export class GraphEngine {
       edges: [...this.edges.values()],
       selection: this.selection,
       directed: this.directed,
+      viz: {
+        visited: new Set(this.viz.visited),
+        currentNode: this.viz.currentNode,
+        currentNeighbor: this.viz.currentNeighbor,
+        activeEdges: new Set(this.viz.activeEdges),
+      },
     };
   }
 
@@ -163,5 +176,43 @@ export class GraphEngine {
   clearSelection() {
     this.selection = null;
     this._notify();
+  }
+
+  /**
+   * Update algorithm highlight overlay. Pass a partial state; omitted keys
+   * are left unchanged. Use `clearViz()` to wipe everything.
+   * @param {{visited?: Iterable, currentNode?: string|null, currentNeighbor?: string|null, activeEdges?: Iterable}} patch
+   */
+  setViz(patch = {}) {
+    if (patch.visited !== undefined) {
+      this.viz.visited = new Set(patch.visited);
+    }
+    if (patch.currentNode !== undefined) {
+      this.viz.currentNode = patch.currentNode;
+    }
+    if (patch.currentNeighbor !== undefined) {
+      this.viz.currentNeighbor = patch.currentNeighbor;
+    }
+    if (patch.activeEdges !== undefined) {
+      this.viz.activeEdges = new Set(patch.activeEdges);
+    }
+    this._notify();
+  }
+
+  clearViz() {
+    this.viz.visited = new Set();
+    this.viz.currentNode = null;
+    this.viz.currentNeighbor = null;
+    this.viz.activeEdges = new Set();
+    this._notify();
+  }
+
+  /** Find an edge id between a and b (undirected-aware), or null. */
+  findEdgeId(a, b) {
+    for (const e of this.edges.values()) {
+      if (e.source === a && e.target === b) return e.id;
+      if (!this.directed && e.source === b && e.target === a) return e.id;
+    }
+    return null;
   }
 }

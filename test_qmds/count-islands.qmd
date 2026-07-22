@@ -1,5 +1,5 @@
 ---
-title: "Connectivity and Islands"
+title: "Graph Connectivity"
 subtitle: "Fully Connected Graphs and Islands"
 ---
 
@@ -103,18 +103,79 @@ Every node you can possibly visit from a given starting node is part of the same
 Tip: Use a recursive function to traverse the graph.
 :::
 
-Plan......<><>
+Drag the blocks below into a plan for counting islands. Click any block to
+toggle between the plain-language description and the Python code. Container
+blocks (ones that end with `:`) can hold nested blocks.
 
-**Available Code Blocks: [click to toggle]**
+::: {.panel-grid}
+::: {.panel}
+<div id="islands-blocks"></div>
+:::
+::: {.panel}
+<div id="islands-viz" class="cb-viz-placeholder"></div>
+:::
+:::
 
-- "initialise final count as 0":"count = 0"
-- "initialise visited as an empty set":"visited = set()"
-- "increment count by 1":"count += 1"
-- "define traverse function":"def traverse(node):
-- "record node as visited":"visited.add(node)"
-- "for each neighbor of node":"for neighbor in node.neighbors:"
-- "if neighbor is not visited":"if neighbor not in visited:"
-- "traverse the neighbor":"traverse(neighbor)"
+```{python}
+#| echo: false
+# Sample graph with 3 islands: {0,1,2}, {3,4}, {5,6}
+islands_nodes = [
+    {"id": "0", "label": "0"},
+    {"id": "1", "label": "1"},
+    {"id": "2", "label": "2"},
+    {"id": "3", "label": "3"},
+    {"id": "4", "label": "4"},
+    {"id": "5", "label": "5"},
+    {"id": "6", "label": "6"},
+]
+islands_edges = [
+    {"id": "e0", "source": "0", "target": "1", "label": ""},
+    {"id": "e1", "source": "1", "target": "2", "label": ""},
+    {"id": "e2", "source": "0", "target": "2", "label": ""},
+    {"id": "e3", "source": "3", "target": "4", "label": ""},
+    {"id": "e4", "source": "5", "target": "6", "label": ""},
+]
 
-**Animating how visited is growing:**
-highlight nodes as they are visited. highlight edges as they are traversed. keep a counter on the top right to show the number of islands. at the bottom show a box which keeps on adding the visited nodes to it so the student can see the history of visited nodes.
+ojs_define(islands_nodes = islands_nodes, islands_edges = islands_edges)
+```
+
+```{ojs}
+//| echo: false
+import { mountCodeBlocksView } from "./js/code-blocks-view.js";
+import { GraphEngine } from "./js/graph-engine.js";
+import { mountIslandsVizView } from "./js/islands-viz-view.js";
+
+islandsBlocks = mountCodeBlocksView(document.querySelector("#islands-blocks"), [
+
+  { id: "visited", code: "visited = set()", label: "initialise visited as an empty set" },
+  { id: "count0", code: "count = 0", label: "initialise count as 0" },
+
+  { id: "def_dfs", code: "def dfs(node):", label: "define dfs function", container: true },
+  { id: "mark", code: "visited.add(node)", label: "record node as visited" },
+  { id: "for_neighbor", code: "for neighbor in graph[node]:", label: "for each neighbor of node", container: true },
+  { id: "if_unvisited", code: "if neighbor not in visited:", label: "if neighbor is not visited", container: true },
+  { id: "recurse", code: "dfs(neighbor)", label: "traverse the neighbor" },
+
+  { id: "for_node", code: "for node in range(n):", label: "for each node from 0 to n-1", container: true },
+  { id: "if_new", code: "if node not in visited:", label: "if node is not visited", container: true },
+  { id: "inc", code: "count += 1", label: "increment count by 1 — found a new component" },
+  { id: "call_dfs", code: "dfs(node)", label: "traverse everything reachable from node" },
+
+], { preplaced: ["count0", "visited", "def_dfs", "for_node"] });
+
+islandsEngine = new GraphEngine(
+  { nodes: islands_nodes, edges: islands_edges },
+  { directed: false }
+);
+
+islandsViz = mountIslandsVizView(
+  document.querySelector("#islands-viz"),
+  islandsEngine,
+  {
+    getPython: () => islandsBlocks.toPython(),
+    width: 400,
+    height: 260,
+    stepDelayMs: 820,
+  }
+);
+```

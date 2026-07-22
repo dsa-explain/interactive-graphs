@@ -18,7 +18,7 @@ website:
       - href: test_qmds/graph-representation.qmd
         text: Graph Representation
       - href: test_qmds/count-islands.qmd
-        text: Connectivity and Islands
+        text: Graph Connectivity
 format:
   html:
     theme: cosmo
