@@ -1,0 +1,181 @@
+---
+title: "Graph Connectivity"
+subtitle: "Fully Connected Graphs and Islands"
+---
+
+### Connected Graphs
+
+Graphs are fully connected if there is a path between every pair of vertices. If there exists a pair of nodes for which you cannot reach one from the other by traversing the graph, the graph is not fully connected. 
+
+Examples:
+
+#### Fully Connected Graph
+
+E.x.
+
+::: {.static-graph-inline}
+<div id="intro-static-graph"></div>
+:::
+
+```{python}
+#| echo: false
+intro_nodes = [
+    {"id": "A", "label": "A"},
+    {"id": "B", "label": "B"},
+    {"id": "C", "label": "C"},
+]
+intro_edges = [
+    {"id": "e0", "source": "A", "target": "B", "label": ""},
+    {"id": "e1", "source": "B", "target": "C", "label": ""},
+]
+
+ojs_define(intro_nodes = intro_nodes, intro_edges = intro_edges)
+```
+
+```{ojs}
+//| echo: false
+import { mountStaticGraphView } from "./js/static-graph-view.js";
+
+introView = mountStaticGraphView(
+  document.querySelector("#intro-static-graph"),
+  { nodes: intro_nodes, edges: intro_edges },
+  { width: 320, height: 220, directed: false }
+);
+```
+
+
+#### Not Fully Connected Graph
+
+E.x.
+
+::: {.static-graph-inline}
+<div id="not-fully-connected-static-graph"></div>
+:::
+
+```{python}
+#| echo: false
+not_fully_connected_nodes = [
+    {"id": "A", "label": "A"},
+    {"id": "B", "label": "B"},
+    {"id": "C", "label": "C"},
+    {"id": "D", "label": "D"},
+    {"id": "E", "label": "E"},
+]
+not_fully_connected_edges = [
+    {"id": "e0", "source": "A", "target": "B", "label": ""},
+    {"id": "e1", "source": "B", "target": "C", "label": ""},
+    {"id": "e2", "source": "E", "target": "D", "label": ""},
+]
+
+ojs_define(not_fully_connected_nodes = not_fully_connected_nodes, not_fully_connected_edges = not_fully_connected_edges)
+```
+
+```{ojs}
+//| echo: false
+
+not_fully_connected_view = mountStaticGraphView(
+  document.querySelector("#not-fully-connected-static-graph"),
+  { nodes: not_fully_connected_nodes, edges: not_fully_connected_edges },
+  { width: 320, height: 220, directed: false }
+);
+```
+
+
+### Islands
+
+#### Question: Count the number of islands in a graph
+
+An island is a group of nodes that are not connected to any other nodes in the graph. 
+
+::: {.callout-tip collapse="true"}
+## Hint
+
+Every node you can possibly visit from a given starting node is part of the same island. Thus we can simply traverse the graph and count the number of times we have to start a new traversal to visit all the nodes in the graph.
+:::
+
+::: {.callout-tip collapse="true"}
+## Code Help
+
+1. Start with a random first node and traverse the graph. Record all nodes being visited. This is the first "island".
+2. Look for a node that has not been visited. If you find such a node it means that this node is not connected to the first "island". Increment the count to record a new island. Start a new traversal from this nodes. 
+3. Repeat the process until you have visited all the nodes in the graph.
+
+Tip: Use a recursive function to traverse the graph.
+:::
+
+Drag the blocks below into a plan for counting islands. Click any block to
+toggle between the plain-language description and the Python code. Container
+blocks (ones that end with `:`) can hold nested blocks.
+
+::: {.panel-grid}
+::: {.panel}
+<div id="islands-blocks"></div>
+:::
+::: {.panel}
+<div id="islands-viz" class="cb-viz-placeholder"></div>
+:::
+:::
+
+```{python}
+#| echo: false
+# Sample graph with 3 islands: {0,1,2}, {3,4}, {5,6}
+islands_nodes = [
+    {"id": "0", "label": "0"},
+    {"id": "1", "label": "1"},
+    {"id": "2", "label": "2"},
+    {"id": "3", "label": "3"},
+    {"id": "4", "label": "4"},
+    {"id": "5", "label": "5"},
+    {"id": "6", "label": "6"},
+]
+islands_edges = [
+    {"id": "e0", "source": "0", "target": "1", "label": ""},
+    {"id": "e1", "source": "1", "target": "2", "label": ""},
+    {"id": "e2", "source": "0", "target": "2", "label": ""},
+    {"id": "e3", "source": "3", "target": "4", "label": ""},
+    {"id": "e4", "source": "5", "target": "6", "label": ""},
+]
+
+ojs_define(islands_nodes = islands_nodes, islands_edges = islands_edges)
+```
+
+```{ojs}
+//| echo: false
+import { mountCodeBlocksView } from "./js/code-blocks-view.js";
+import { GraphEngine } from "./js/graph-engine.js";
+import { mountIslandsVizView } from "./js/islands-viz-view.js";
+
+islandsBlocks = mountCodeBlocksView(document.querySelector("#islands-blocks"), [
+
+  { id: "visited", code: "visited = set()", label: "initialise visited as an empty set" },
+  { id: "count0", code: "count = 0", label: "initialise count as 0" },
+
+  { id: "def_dfs", code: "def dfs(node):", label: "define dfs function", container: true },
+  { id: "mark", code: "visited.add(node)", label: "record node as visited" },
+  { id: "for_neighbor", code: "for neighbor in graph[node]:", label: "for each neighbor of node", container: true },
+  { id: "if_unvisited", code: "if neighbor not in visited:", label: "if neighbor is not visited", container: true },
+  { id: "recurse", code: "dfs(neighbor)", label: "traverse the neighbor" },
+
+  { id: "for_node", code: "for node in range(n):", label: "for each node from 0 to n-1", container: true },
+  { id: "if_new", code: "if node not in visited:", label: "if node is not visited", container: true },
+  { id: "inc", code: "count += 1", label: "increment count by 1 — found a new component" },
+  { id: "call_dfs", code: "dfs(node)", label: "traverse everything reachable from node" },
+
+], { preplaced: ["count0", "visited", "def_dfs", "for_node"] });
+
+islandsEngine = new GraphEngine(
+  { nodes: islands_nodes, edges: islands_edges },
+  { directed: false }
+);
+
+islandsViz = mountIslandsVizView(
+  document.querySelector("#islands-viz"),
+  islandsEngine,
+  {
+    getPython: () => islandsBlocks.toPython(),
+    width: 400,
+    height: 260,
+    stepDelayMs: 820,
+  }
+);
+```

@@ -1,0 +1,29 @@
+project:
+  type: website
+  output-dir: _site
+  render:
+    - index.qmd
+    - test_qmds/*.qmd
+
+website:
+  title: "Graph Structures Explorer"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: test_qmds/neighbours.qmd
+        text: Neighbours
+      - href: test_qmds/sandbox.qmd
+        text: Sandbox
+      - href: test_qmds/graph-representation.qmd
+        text: Graph Representation
+      - href: test_qmds/count-islands.qmd
+        text: Graph Connectivity
+format:
+  html:
+    theme: cosmo
+    toc: false
+    css: css/graph.css
+    grid:
+      body-width: 1000px
+    embed-resources: false
