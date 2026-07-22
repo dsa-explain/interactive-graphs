@@ -3,18 +3,7 @@ title: "Graph Structures Lab"
 subtitle: "An interactive tour of graphs and the ways we represent them"
 ---
 
-Every page in this site is built on the same graph engine and the same
-canvas. What changes is the second view sitting next to it -- so you can
-see one structure re-expressed as a list, a matrix, or a neighbour set.
+- **[Sandbox](sandbox.qmd)** -- a blank canvas with the full toolbar: add and delete nodes and edges, update labels, and select things to see them highlighted.
+- **[Neighbours](neighbours.qmd)** -- click a node to see exactly who it's connected to.
+- **[Graph Representation](graph-representation.qmd)** -- Two different ways to representgraphs: watch a graph turn into rows of `[key]: [neighbour] [neighbour]` boxes, starting with a single row before seeing the whole list or the same graph as a grid of 0s and 1s, again starting with a single row before the full N x N matrix.
 
-- **[Sandbox](sandbox.qmd)** -- a blank canvas with the full toolbar: add
-  and delete nodes and edges, update labels, and select things to see them
-  highlighted.
-- **[Adjacency List](adjacency-list.qmd)** -- watch a graph turn into rows
-  of `[key]: [neighbour] [neighbour]` boxes, starting with a single row
-  before seeing the whole list.
-- **[Adjacency Matrix](adjacency-matrix.qmd)** -- the same graph as a grid
-  of 0s and 1s, again starting with a single row before the full N x N
-  matrix.
-- **[Neighbours](neighbours.qmd)** -- click a node to see exactly who it's
-  connected to.

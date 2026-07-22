@@ -47,11 +47,12 @@ nbEngine = new GraphEngine({ nodes: nb_nodes, edges: nb_edges }, { directed: fal
 
 ```{ojs}
 //| echo: false
-mountGraphView(nbEngine, document.querySelector("#nb-graph"), {
+nbView = mountGraphView(nbEngine, document.querySelector("#nb-graph"), {
   width: 560,
   height: 440,
   showToolbar: false,
+  highlightNeighbours: true,
   caption: "Click a node to see its neighbours",
 });
-mountNeighboursView(nbEngine, document.querySelector("#nb-panel"));
+nbPanel = mountNeighboursView(nbEngine, document.querySelector("#nb-panel"));
 ```

@@ -6,7 +6,7 @@ project:
     - test_qmds/*.qmd
 
 website:
-  title: "Graph Structures Lab"
+  title: "Graph Structures Explorer"
   navbar:
     left:
       - href: index.qmd
@@ -15,10 +15,8 @@ website:
         text: Neighbours
       - href: test_qmds/sandbox.qmd
         text: Sandbox
-      - href: test_qmds/adjacency-list.qmd
-        text: Adjacency List
-      - href: test_qmds/adjacency-matrix.qmd
-        text: Adjacency Matrix
+      - href: test_qmds/graph-representation.qmd
+        text: Graph Representation
       
 format:
   html:

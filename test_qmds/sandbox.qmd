@@ -42,7 +42,7 @@ sandboxEngine = new GraphEngine(sandboxData, { directed: false });
 
 ```{ojs}
 //| echo: false
-mountGraphView(sandboxEngine, document.querySelector("#sandbox-graph"), {
+sandboxView = mountGraphView(sandboxEngine, document.querySelector("#sandbox-graph"), {
   width: 760,
   height: 460,
 });

@@ -103,12 +103,13 @@ function openPromptModal({
 /**
  * @param {import("./graph-engine.js").GraphEngine} engine
  * @param {HTMLElement} container
- * @param {{width?: number, height?: number, showToolbar?: boolean, caption?: string}} options
+ * @param {{width?: number, height?: number, showToolbar?: boolean, caption?: string, highlightNeighbours?: boolean}} options
  */
 export function mountGraphView(engine, container, options = {}) {
   const width = options.width ?? 520;
   const height = options.height ?? 440;
   const showToolbar = options.showToolbar ?? true;
+  const highlightNeighbours = options.highlightNeighbours ?? false;
 
   container.innerHTML = "";
   container.classList.add("gv-root");
@@ -375,6 +376,7 @@ export function mountGraphView(engine, container, options = {}) {
   }
 
   function drawEdges(snapshot) {
+    const neighbourEdgeIds = neighbourEdgeIdSet(snapshot);
     const sel = edgeLayer.selectAll("g.gv-edge").data(simLinks, (d) => d.id);
     sel.exit().remove();
 
@@ -386,9 +388,12 @@ export function mountGraphView(engine, container, options = {}) {
     merged.attr("data-id", (d) => d.id);
     merged
       .select("line")
-      .attr("class", (d) =>
-        "gv-edge-line" + (isSelected(snapshot, "edge", d.id) ? " gv-selected" : "")
-      )
+      .attr("class", (d) => {
+        let cls = "gv-edge-line";
+        if (isSelected(snapshot, "edge", d.id)) cls += " gv-selected";
+        else if (neighbourEdgeIds.has(d.id)) cls += " gv-neighbour-edge";
+        return cls;
+      })
       .attr("marker-end", engine.directed ? "url(#gv-arrow)" : null)
       .on("click", (event, d) => {
         event.stopPropagation();
@@ -399,6 +404,7 @@ export function mountGraphView(engine, container, options = {}) {
   }
 
   function drawNodes(snapshot) {
+    const neighbourIds = neighbourIdSet(snapshot);
     const sel = nodeLayer.selectAll("g.gv-node").data([...simNodes.values()], (d) => d.id);
     sel.exit().remove();
 
@@ -410,7 +416,13 @@ export function mountGraphView(engine, container, options = {}) {
     merged.attr("data-id", (d) => d.id);
     merged
       .select("circle")
-      .attr("class", (d) => "gv-node-circle" + (isSelected(snapshot, "node", d.id) ? " gv-selected" : "") + (addEdgeMode && pendingEdgeSource === d.id ? " gv-pending" : ""));
+      .attr("class", (d) => {
+        let cls = "gv-node-circle";
+        if (isSelected(snapshot, "node", d.id)) cls += " gv-selected";
+        else if (neighbourIds.has(d.id)) cls += " gv-neighbour";
+        if (addEdgeMode && pendingEdgeSource === d.id) cls += " gv-pending";
+        return cls;
+      });
     merged.select("text.gv-node-label").text((d) => d.label);
 
     merged.on("click", (event, d) => {
@@ -457,6 +469,20 @@ export function mountGraphView(engine, container, options = {}) {
 
   function isSelected(snapshot, type, id) {
     return snapshot.selection && snapshot.selection.type === type && snapshot.selection.id === id;
+  }
+
+  function neighbourIdSet(snapshot) {
+    if (!highlightNeighbours || !snapshot.selection || snapshot.selection.type !== "node") {
+      return new Set();
+    }
+    return new Set(engine.getNeighbours(snapshot.selection.id).map((n) => n.id));
+  }
+
+  function neighbourEdgeIdSet(snapshot) {
+    if (!highlightNeighbours || !snapshot.selection || snapshot.selection.type !== "node") {
+      return new Set();
+    }
+    return new Set(engine.getNeighbours(snapshot.selection.id).map((n) => n.via));
   }
 
   function ticked() {

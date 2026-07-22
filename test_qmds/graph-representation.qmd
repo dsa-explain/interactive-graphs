@@ -1,0 +1,247 @@
+---
+title: "Graph Representation"
+subtitle: "See how a graph becomes a list of neighbours"
+---
+
+How do we represent a graph? A graph is basically the sum of its nodes and edges. If we record all the nodes and edges, we can represent the graph!
+
+E.x.
+
+::: {.static-graph-inline}
+<div id="intro-static-graph"></div>
+:::
+
+```{python}
+#| echo: false
+intro_nodes = [
+    {"id": "A", "label": "A"},
+    {"id": "B", "label": "B"},
+    {"id": "C", "label": "C"},
+]
+intro_edges = [
+    {"id": "e0", "source": "A", "target": "B", "label": ""},
+    {"id": "e1", "source": "B", "target": "C", "label": ""},
+]
+
+ojs_define(intro_nodes = intro_nodes, intro_edges = intro_edges)
+```
+
+```{ojs}
+//| echo: false
+import { mountStaticGraphView } from "./js/static-graph-view.js";
+
+introView = mountStaticGraphView(
+  document.querySelector("#intro-static-graph"),
+  { nodes: intro_nodes, edges: intro_edges },
+  { width: 280, height: 180, directed: false }
+);
+```
+
+If we record:
+This graph has 3 nodes: A, B, C and 2 edges: A <-> B and B <-> C we have enough information to represent the graph!
+
+## 1. Adjacency List
+
+An adjacency list is a list of all the nodes that are directly connected to a given node.
+
+### One row at a time
+
+Select a node on the graph below. Its adjacency row -- the node's key,
+followed by a box for every neighbour -- appears on the right. Nothing else
+is shown yet, so you can focus on what a single row means before looking at
+the whole structure.
+
+::: {.callout-note}
+The elements in the adjacency list are simply that node's **neighbours**!.
+:::
+
+```{python}
+#| echo: false
+w1_nodes = [
+    {"id": "A", "label": "A"},
+    {"id": "B", "label": "B"},
+    {"id": "C", "label": "C"},
+]
+w1_edges = [
+    {"id": "e0", "source": "A", "target": "B", "label": ""},
+    {"id": "e1", "source": "A", "target": "C", "label": ""},
+]
+
+ojs_define(w1_nodes = w1_nodes, w1_edges = w1_edges)
+```
+
+::: {.widget-block}
+::: {.panel-grid}
+::: {.panel}
+<div id="al1-graph"></div>
+:::
+::: {.panel}
+<div id="al1-list"></div>
+:::
+:::
+:::
+
+```{ojs}
+//| echo: false
+import { GraphEngine } from "./js/graph-engine.js";
+import { mountGraphView } from "./js/graph-view.js";
+import { mountAdjacencyListSingle } from "./js/adjacency-list-view.js";
+
+al1Engine = new GraphEngine({ nodes: w1_nodes, edges: w1_edges }, { directed: false });
+```
+
+```{ojs}
+//| echo: false
+al1View = mountGraphView(al1Engine, document.querySelector("#al1-graph"), { width: 460, height: 380 });
+al1List = mountAdjacencyListSingle(al1Engine, document.querySelector("#al1-list"));
+```
+
+### The full adjacency list
+
+Now every node gets a row at once. Add, delete, or update nodes and edges on
+the graph and watch every row update together. Selecting a node highlights
+its row; selecting an edge highlights the matching box on both of its
+endpoints' rows.
+
+```{python}
+#| echo: false
+w2_nodes = [
+    {"id": "A", "label": "A"},
+    {"id": "B", "label": "B"},
+    {"id": "C", "label": "C"},
+    {"id": "D", "label": "D"},
+]
+w2_edges = [
+    {"id": "e0", "source": "A", "target": "B", "label": ""},
+    {"id": "e1", "source": "A", "target": "C", "label": ""},
+    {"id": "e2", "source": "B", "target": "D", "label": ""},
+    {"id": "e3", "source": "C", "target": "D", "label": ""},
+]
+
+ojs_define(w2_nodes = w2_nodes, w2_edges = w2_edges)
+```
+
+::: {.widget-block}
+::: {.panel-grid}
+::: {.panel}
+<div id="al2-graph"></div>
+:::
+::: {.panel}
+<div id="al2-list"></div>
+:::
+:::
+:::
+
+```{ojs}
+//| echo: false
+import { mountAdjacencyList } from "./js/adjacency-list-view.js";
+
+al2Engine = new GraphEngine({ nodes: w2_nodes, edges: w2_edges }, { directed: false });
+```
+
+```{ojs}
+//| echo: false
+al2View = mountGraphView(al2Engine, document.querySelector("#al2-graph"), { width: 460, height: 380 });
+al2ListSingle = mountAdjacencyListSingle(al2Engine, document.querySelector("#al2-list"));
+al2List = mountAdjacencyList(al2Engine, document.querySelector("#al2-list"));
+```
+
+## 2. Adjacency Matrix
+
+We can see that in the adjacency list, each list can be of different lengths. We know the total number of nodes in the graph, so we can simply number each node from 1 to N, and use the position of the node in the list to represent the edge. When we stack all the nodes from 1 to N, we will get a matrix of size NxN.
+
+### One row at a time
+
+Select a node on the graph below. You can see the comparison between the adjacency list and the adjacency matrix too. The header lists every node in the graph,
+and the single row underneath shows a 1 where that node connects to the
+column's node, and a 0 otherwise. The selected node's own column is tinted
+so you can see where the row and column would cross in the full matrix.
+
+```{python}
+#| echo: false
+w1_nodes = [
+    {"id": "A", "label": "A"},
+    {"id": "B", "label": "B"},
+    {"id": "C", "label": "C"},
+]
+w1_edges = [
+    {"id": "e0", "source": "A", "target": "B", "label": ""},
+    {"id": "e1", "source": "A", "target": "C", "label": ""},
+]
+
+ojs_define(m1_nodes = w1_nodes, m1_edges = w1_edges)
+```
+
+::: {.widget-block}
+::: {.panel-grid}
+::: {.panel}
+<div id="am1-graph"></div>
+:::
+::: {.panel}
+<div id="am1-list"></div>
+<div id="am1-matrix"></div>
+:::
+:::
+:::
+
+```{ojs}
+//| echo: false
+import { mountAdjacencyMatrixSingle } from "./js/adjacency-matrix-view.js";
+
+am1Engine = new GraphEngine({ nodes: m1_nodes, edges: m1_edges }, { directed: false });
+```
+
+```{ojs}
+//| echo: false
+am1View = mountGraphView(am1Engine, document.querySelector("#am1-graph"), { width: 460, height: 380 });
+am1Matrix = mountAdjacencyMatrixSingle(am1Engine, document.querySelector("#am1-matrix"));
+am1List = mountAdjacencyListSingle(am1Engine, document.querySelector("#am1-list"));
+```
+
+### The full adjacency matrix
+
+Now the whole N x N matrix is shown. The row and column of the selected
+node are both tinted; selecting an edge highlights its exact cell(s). Try
+adding a node and watch the grid grow by one row and one column.
+
+```{python}
+#| echo: false
+w2_nodes = [
+    {"id": "A", "label": "A"},
+    {"id": "B", "label": "B"},
+    {"id": "C", "label": "C"},
+    {"id": "D", "label": "D"},
+]
+w2_edges = [
+    {"id": "e0", "source": "A", "target": "B", "label": ""},
+    {"id": "e1", "source": "A", "target": "C", "label": ""},
+    {"id": "e2", "source": "B", "target": "D", "label": ""},
+    {"id": "e3", "source": "C", "target": "D", "label": ""},
+]
+
+ojs_define(m2_nodes = w2_nodes, m2_edges = w2_edges)
+```
+
+::: {.widget-block}
+::: {.panel-grid}
+::: {.panel}
+<div id="am2-graph"></div>
+:::
+::: {.panel}
+<div id="am2-matrix"></div>
+:::
+:::
+:::
+
+```{ojs}
+//| echo: false
+import { mountAdjacencyMatrix } from "./js/adjacency-matrix-view.js";
+
+am2Engine = new GraphEngine({ nodes: m2_nodes, edges: m2_edges }, { directed: false });
+```
+
+```{ojs}
+//| echo: false
+am2View = mountGraphView(am2Engine, document.querySelector("#am2-graph"), { width: 460, height: 380 });
+am2Matrix = mountAdjacencyMatrix(am2Engine, document.querySelector("#am2-matrix"));
+```

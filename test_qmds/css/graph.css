@@ -28,6 +28,9 @@
   --coral: #feb686;
   --coral-soft: rgba(254, 182, 134, 0.28);
 
+  --neighbour-node: #86c0fe;
+  --neighbour-node-stroke: #e8f2ff;
+
   --font-display: "Montserrat", "Space Grotesk", sans-serif;
   --font-body: "Montserrat", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "Cascadia Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -271,6 +274,18 @@ h1, h2, h3, .title {
   fill: var(--coral);
   stroke: #fdfeff;
   stroke-width: 2.5px;
+}
+
+.gv-node-circle.gv-neighbour {
+  fill: var(--neighbour-node);
+  stroke: var(--neighbour-node-stroke);
+  stroke-width: 2px;
+}
+
+.gv-edge-line.gv-neighbour-edge {
+  stroke: var(--coral);
+  stroke-width: 2.2px;
+  stroke-opacity: 0.85;
 }
 
 .gv-node-circle.gv-pending {
