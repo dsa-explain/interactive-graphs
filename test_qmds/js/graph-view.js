@@ -323,16 +323,19 @@ export function mountGraphView(engine, container, options = {}) {
 
   const simulation = d3
     .forceSimulation()
-    .force("charge", d3.forceManyBody().strength(-260))
+    .force("charge", d3.forceManyBody().strength(-320))
     .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("collide", d3.forceCollide(30))
+    .force(
+      "collide",
+      d3.forceCollide().radius((d) => 16 + Math.min((d.degree || 0) * 2, 12))
+    )
     .force(
       "link",
       d3
         .forceLink()
         .id((d) => d.id)
-        .distance(110)
-        .strength(0.5)
+        .distance(120)
+        .strength(0.4)
     )
     .on("tick", ticked);
 
@@ -344,14 +347,22 @@ export function mountGraphView(engine, container, options = {}) {
     for (const id of [...simNodes.keys()]) {
       if (!liveIds.has(id)) simNodes.delete(id);
     }
+    const degreeById = new Map(snapshot.nodes.map((n) => [n.id, 0]));
+    snapshot.edges.forEach((e) => {
+      degreeById.set(e.source, (degreeById.get(e.source) || 0) + 1);
+      degreeById.set(e.target, (degreeById.get(e.target) || 0) + 1);
+    });
+
     snapshot.nodes.forEach((n, i) => {
+      const degree = degreeById.get(n.id) || 0;
       if (simNodes.has(n.id)) {
-        Object.assign(simNodes.get(n.id), { label: n.label });
+        Object.assign(simNodes.get(n.id), { label: n.label, degree });
       } else {
         const angle = (i / Math.max(1, snapshot.nodes.length)) * 2 * Math.PI;
         simNodes.set(n.id, {
           id: n.id,
           label: n.label,
+          degree,
           x: width / 2 + 80 * Math.cos(angle) + (Math.random() - 0.5) * 20,
           y: height / 2 + 80 * Math.sin(angle) + (Math.random() - 0.5) * 20,
         });
@@ -486,24 +497,29 @@ export function mountGraphView(engine, container, options = {}) {
   }
 
   function ticked() {
+    const pad = 16;
     edgeLayer
       .selectAll("g.gv-edge")
       .select("line")
-      .attr("x1", (d) => d.source.x)
-      .attr("y1", (d) => d.source.y)
-      .attr("x2", (d) => d.target.x)
-      .attr("y2", (d) => d.target.y);
+      .attr("x1", (d) => Math.max(0, Math.min(width, d.source.x)))
+      .attr("y1", (d) => Math.max(0, Math.min(height, d.source.y)))
+      .attr("x2", (d) => Math.max(0, Math.min(width, d.target.x)))
+      .attr("y2", (d) => Math.max(0, Math.min(height, d.target.y)));
     edgeLayer
       .selectAll("g.gv-edge")
       .select("text")
       .attr("x", (d) => (d.source.x + d.target.x) / 2)
       .attr("y", (d) => (d.source.y + d.target.y) / 2 - 6);
-    nodeLayer.selectAll("g.gv-node").attr("transform", (d) => `translate(${d.x},${d.y})`);
+    nodeLayer.selectAll("g.gv-node").attr("transform", (d) => {
+      d.x = Math.max(pad, Math.min(width - pad, d.x));
+      d.y = Math.max(pad, Math.min(height - pad, d.y));
+      return `translate(${d.x},${d.y})`;
+    });
   }
 
   function drag(sim) {
     function dragstarted(event, d) {
-      if (!event.active) sim.alphaTarget(0.2).restart();
+      if (!event.active) sim.alphaTarget(0.3).restart();
       d.fx = d.x;
       d.fy = d.y;
     }
@@ -513,10 +529,9 @@ export function mountGraphView(engine, container, options = {}) {
     }
     function dragended(event, d) {
       if (!event.active) sim.alphaTarget(0);
-      // keep the node pinned where the student dropped it so the layout
-      // doesn't keep reshuffling as more nodes/edges are added
-      d.fx = event.x;
-      d.fy = event.y;
+      // release so the force layout can settle again (same feel as old-qmd)
+      d.fx = null;
+      d.fy = null;
     }
     return d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
   }
