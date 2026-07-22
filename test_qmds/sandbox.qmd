@@ -1,0 +1,49 @@
+---
+title: "Sandbox"
+subtitle: "Build a graph from scratch and try every operation"
+---
+
+Use the toolbar to add nodes and edges, select a node or edge by clicking it,
+then update or delete the current selection. This is the same graph engine
+and canvas used throughout the rest of the site -- everything you learn here
+carries over.
+
+```{python}
+#| echo: false
+initial_nodes = [
+    {"id": "A", "label": "A"},
+    {"id": "B", "label": "B"},
+    {"id": "C", "label": "C"},
+]
+initial_edges = [
+    {"id": "e0", "source": "A", "target": "B", "label": ""},
+    {"id": "e1", "source": "B", "target": "C", "label": ""},
+]
+
+ojs_define(sb_nodes = initial_nodes, sb_edges = initial_edges)
+```
+
+::: {.panel}
+<div id="sandbox-graph"></div>
+:::
+
+```{ojs}
+//| echo: false
+import { GraphEngine } from "./js/graph-engine.js";
+import { mountGraphView } from "./js/graph-view.js";
+
+sandboxData = ({
+  nodes: sb_nodes,
+  edges: sb_edges,
+});
+
+sandboxEngine = new GraphEngine(sandboxData, { directed: false });
+```
+
+```{ojs}
+//| echo: false
+mountGraphView(sandboxEngine, document.querySelector("#sandbox-graph"), {
+  width: 760,
+  height: 460,
+});
+```

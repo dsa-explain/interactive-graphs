@@ -1,0 +1,100 @@
+---
+title: "Adjacency Matrix"
+subtitle: "See how a graph becomes a grid of 0s and 1s"
+---
+
+## 1. One row at a time
+
+Select a node on the graph below. The header lists every node in the graph,
+and the single row underneath shows a 1 where that node connects to the
+column's node, and a 0 otherwise. The selected node's own column is tinted
+so you can see where the row and column would cross in the full matrix.
+
+```{python}
+#| echo: false
+w1_nodes = [
+    {"id": "A", "label": "A"},
+    {"id": "B", "label": "B"},
+    {"id": "C", "label": "C"},
+]
+w1_edges = [
+    {"id": "e0", "source": "A", "target": "B", "label": ""},
+    {"id": "e1", "source": "A", "target": "C", "label": ""},
+]
+
+ojs_define(m1_nodes = w1_nodes, m1_edges = w1_edges)
+```
+
+::: {.widget-block}
+::: {.panel-grid}
+::: {.panel}
+<div id="am1-graph"></div>
+:::
+::: {.panel}
+<div id="am1-matrix"></div>
+:::
+:::
+:::
+
+```{ojs}
+//| echo: false
+import { GraphEngine } from "./js/graph-engine.js";
+import { mountGraphView } from "./js/graph-view.js";
+import { mountAdjacencyMatrixSingle } from "./js/adjacency-matrix-view.js";
+
+am1Engine = new GraphEngine({ nodes: m1_nodes, edges: m1_edges }, { directed: false });
+```
+
+```{ojs}
+//| echo: false
+mountGraphView(am1Engine, document.querySelector("#am1-graph"), { width: 460, height: 380 });
+mountAdjacencyMatrixSingle(am1Engine, document.querySelector("#am1-matrix"));
+```
+
+## 2. The full adjacency matrix
+
+Now the whole N x N matrix is shown. The row and column of the selected
+node are both tinted; selecting an edge highlights its exact cell(s). Try
+adding a node and watch the grid grow by one row and one column.
+
+```{python}
+#| echo: false
+w2_nodes = [
+    {"id": "A", "label": "A"},
+    {"id": "B", "label": "B"},
+    {"id": "C", "label": "C"},
+    {"id": "D", "label": "D"},
+]
+w2_edges = [
+    {"id": "e0", "source": "A", "target": "B", "label": ""},
+    {"id": "e1", "source": "A", "target": "C", "label": ""},
+    {"id": "e2", "source": "B", "target": "D", "label": ""},
+    {"id": "e3", "source": "C", "target": "D", "label": ""},
+]
+
+ojs_define(m2_nodes = w2_nodes, m2_edges = w2_edges)
+```
+
+::: {.widget-block}
+::: {.panel-grid}
+::: {.panel}
+<div id="am2-graph"></div>
+:::
+::: {.panel}
+<div id="am2-matrix"></div>
+:::
+:::
+:::
+
+```{ojs}
+//| echo: false
+import { mountAdjacencyMatrix } from "./js/adjacency-matrix-view.js";
+
+am2Engine = new GraphEngine({ nodes: m2_nodes, edges: m2_edges }, { directed: false });
+```
+
+```{ojs}
+//| echo: false
+mountGraphView(am2Engine, document.querySelector("#am2-graph"), { width: 460, height: 380 });
+mountAdjacencyMatrix(am2Engine, document.querySelector("#am2-matrix"));
+```

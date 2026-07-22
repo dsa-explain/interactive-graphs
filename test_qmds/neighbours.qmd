@@ -1,0 +1,57 @@
+---
+title: "Neighbours"
+subtitle: "Select a node to see who it's connected to"
+---
+
+Click any node on the graph. Its neighbours light up on the canvas and are
+listed on the right, alongside a count. Click empty space to clear the
+selection.
+
+```{python}
+#| echo: false
+nb_nodes = [
+    {"id": "A", "label": "A"},
+    {"id": "B", "label": "B"},
+    {"id": "C", "label": "C"},
+    {"id": "D", "label": "D"},
+    {"id": "E", "label": "E"},
+]
+nb_edges = [
+    {"id": "e0", "source": "A", "target": "B", "label": ""},
+    {"id": "e1", "source": "A", "target": "C", "label": ""},
+    {"id": "e2", "source": "A", "target": "D", "label": ""},
+    {"id": "e3", "source": "B", "target": "C", "label": ""},
+    {"id": "e4", "source": "D", "target": "E", "label": ""},
+]
+
+ojs_define(nb_nodes = nb_nodes, nb_edges = nb_edges)
+```
+
+::: {.panel-grid}
+::: {.panel}
+<div id="nb-graph"></div>
+:::
+::: {.panel}
+<div id="nb-panel"></div>
+:::
+:::
+
+```{ojs}
+//| echo: false
+import { GraphEngine } from "./js/graph-engine.js";
+import { mountGraphView } from "./js/graph-view.js";
+import { mountNeighboursView } from "./js/neighbours-view.js";
+
+nbEngine = new GraphEngine({ nodes: nb_nodes, edges: nb_edges }, { directed: false });
+```
+
+```{ojs}
+//| echo: false
+mountGraphView(nbEngine, document.querySelector("#nb-graph"), {
+  width: 560,
+  height: 440,
+  showToolbar: false,
+  caption: "Click a node to see its neighbours",
+});
+mountNeighboursView(nbEngine, document.querySelector("#nb-panel"));
+```
