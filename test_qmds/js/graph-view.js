@@ -258,7 +258,9 @@ export function mountGraphView(engine, container, options = {}) {
     if (addEdgeMode && !pendingEdgeSource) {
       statusEl.textContent = "Add Edge: click the source node";
     } else if (addEdgeMode && pendingEdgeSource) {
-      statusEl.textContent = `Add Edge: click the target node (source = ${pendingEdgeSource})`;
+      const sourceLabel =
+        engine.nodes.get(pendingEdgeSource)?.label ?? pendingEdgeSource;
+      statusEl.textContent = `Add Edge: click the target node (source = ${sourceLabel})`;
     } else {
       statusEl.textContent = "";
     }
