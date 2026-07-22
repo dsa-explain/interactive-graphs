@@ -1,0 +1,9 @@
+name: dsa_explain
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - quarto
+  - networkx
+  - markdown-it-py
+  - jupyterlab
