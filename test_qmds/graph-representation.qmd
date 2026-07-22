@@ -142,7 +142,6 @@ al2Engine = new GraphEngine({ nodes: w2_nodes, edges: w2_edges }, { directed: fa
 ```{ojs}
 //| echo: false
 al2View = mountGraphView(al2Engine, document.querySelector("#al2-graph"), { width: 460, height: 380 });
-al2ListSingle = mountAdjacencyListSingle(al2Engine, document.querySelector("#al2-list"));
 al2List = mountAdjacencyList(al2Engine, document.querySelector("#al2-list"));
 ```
 

@@ -550,10 +550,11 @@ h1, h2, h3, .title {
   color: var(--graphite);
 }
 
-.adj-val.adj-edge-selected {
-  border-color: var(--line);
+.adj-val.adj-edge-selected,
+.adj-node-selected {
+  background: var(--coral);
   color: var(--ink);
-  background: var(--coral-soft);
+  border-color: var(--line);
   font-weight: 700;
 }
 
@@ -979,12 +980,14 @@ h1, h2, h3, .title {
 
 /* quarto callout */
 
-.callout-note .callout-tip {
+.callout-note,
+.callout-tip {
   background-color: var(--highlight-box);
   border-color: var(--line);
   color: var(--ink);
 }
 
-.callout-note .callout-tip p {
+.callout-note,
+.callout-tip p {
   color: var(--ink);
 }

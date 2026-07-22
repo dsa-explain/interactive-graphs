@@ -120,9 +120,13 @@ export function mountAdjacencyList(engine, container) {
         ? snapshot.edges.find((e) => e.id === snapshot.selection.id)
         : null;
 
+    const selectedNodeId =
+      snapshot.selection && snapshot.selection.type === "node"
+        ? snapshot.selection.id
+        : null;
+
     snapshot.nodes.forEach((node) => {
-      const isRowSelected =
-        snapshot.selection && snapshot.selection.type === "node" && snapshot.selection.id === node.id;
+      const isRowSelected = selectedNodeId === node.id;
 
       const row = document.createElement("div");
       row.className = "adj-row" + (isRowSelected ? " adj-row-selected" : "");
@@ -143,11 +147,17 @@ export function mountAdjacencyList(engine, container) {
         neighbours.forEach((nid) => {
           const n = snapshot.nodes.find((x) => x.id === nid);
           const box = valBox(n ? n.label : nid);
+
           const belongsToSelectedEdge =
             selectedEdge &&
             ((selectedEdge.source === node.id && selectedEdge.target === nid) ||
               (!snapshot.directed && selectedEdge.target === node.id && selectedEdge.source === nid));
           if (belongsToSelectedEdge) box.classList.add("adj-edge-selected");
+
+          if (selectedNodeId !== null && nid === selectedNodeId) {
+            box.classList.add("adj-node-selected");
+          }
+
           row.appendChild(box);
         });
       }
