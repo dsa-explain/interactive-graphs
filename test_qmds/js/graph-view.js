@@ -123,7 +123,7 @@ export function mountGraphView(engine, container, options = {}) {
     const toolbar = document.createElement("div");
     toolbar.className = "gv-toolbar";
 
-    const addNodeBtn = mkButton("Add Node", async () => {
+    const addNodeBtn = mkButton("Node", "Add Node", async () => {
       const label = await openPromptModal({
         title: "Add node",
         message: "Leave blank to use an auto-generated id.",
@@ -134,32 +134,14 @@ export function mountGraphView(engine, container, options = {}) {
       engine.addNode(label ? { label } : {});
     });
 
-    addEdgeBtn = mkButton("Add Edge", () => {
+    addEdgeBtn = mkButton("Edge", "Add Edge", () => {
       addEdgeMode = !addEdgeMode;
       pendingEdgeSource = null;
       addEdgeBtn.classList.toggle("gv-btn-active", addEdgeMode);
       updateStatus();
     });
 
-    const deleteNodeBtn = mkButton("Delete Node", () => {
-      const sel = engine.selection;
-      if (!sel || sel.type !== "node") {
-        flash("Select a node first, then Delete Node.");
-        return;
-      }
-      engine.deleteNode(sel.id);
-    });
-
-    const deleteEdgeBtn = mkButton("Delete Edge", () => {
-      const sel = engine.selection;
-      if (!sel || sel.type !== "edge") {
-        flash("Select an edge first, then Delete Edge.");
-        return;
-      }
-      engine.deleteEdge(sel.id);
-    });
-
-    const updateNodeBtn = mkButton("Update Node", async () => {
+    const updateNodeBtn = mkButton("Node", "Update Node", async () => {
       const sel = engine.selection;
       if (!sel || sel.type !== "node") {
         flash("Select a node first, then Update Node.");
@@ -176,7 +158,7 @@ export function mountGraphView(engine, container, options = {}) {
       if (label != null) engine.updateNode(sel.id, { label });
     });
 
-    const updateEdgeBtn = mkButton("Update Edge", async () => {
+    const updateEdgeBtn = mkButton("Edge", "Update Edge", async () => {
       const sel = engine.selection;
       if (!sel || sel.type !== "edge") {
         flash("Select an edge first, then Update Edge.");
@@ -193,8 +175,44 @@ export function mountGraphView(engine, container, options = {}) {
       if (label != null) engine.updateEdge(sel.id, { label });
     });
 
-    [addNodeBtn, addEdgeBtn, deleteNodeBtn, deleteEdgeBtn, updateNodeBtn, updateEdgeBtn].forEach(
-      (b) => toolbar.appendChild(b)
+    const deleteNodeBtn = mkButton("Node", "Delete Node", () => {
+      const sel = engine.selection;
+      if (!sel || sel.type !== "node") {
+        flash("Select a node first, then Delete Node.");
+        return;
+      }
+      engine.deleteNode(sel.id);
+    });
+
+    const deleteEdgeBtn = mkButton("Edge", "Delete Edge", () => {
+      const sel = engine.selection;
+      if (!sel || sel.type !== "edge") {
+        flash("Select an edge first, then Delete Edge.");
+        return;
+      }
+      engine.deleteEdge(sel.id);
+    });
+
+    toolbar.appendChild(
+      mkGroup(
+        "Add",
+        `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+        [addNodeBtn, addEdgeBtn]
+      )
+    );
+    toolbar.appendChild(
+      mkGroup(
+        "Update",
+        `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11.5 2.5l2 2L6 12H4v-2l7.5-7.5zM3 13.5h10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+        [updateNodeBtn, updateEdgeBtn]
+      )
+    );
+    toolbar.appendChild(
+      mkGroup(
+        "Delete",
+        `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 5h9M6 5V3.5h4V5M5.5 5l.5 8h4l.5-8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+        [deleteNodeBtn, deleteEdgeBtn]
+      )
     );
 
     statusEl = document.createElement("div");
@@ -203,13 +221,34 @@ export function mountGraphView(engine, container, options = {}) {
 
     container.appendChild(toolbar);
 
-    function mkButton(text, onClick) {
+    function mkButton(text, ariaLabel, onClick) {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "gv-btn";
       b.textContent = text;
+      b.setAttribute("aria-label", ariaLabel);
+      b.title = ariaLabel;
       b.addEventListener("click", onClick);
       return b;
+    }
+
+    function mkGroup(label, iconSvg, buttons) {
+      const group = document.createElement("div");
+      group.className = "gv-btn-group";
+      group.setAttribute("role", "group");
+      group.setAttribute("aria-label", label);
+
+      const badge = document.createElement("span");
+      badge.className = "gv-btn-group-badge";
+      badge.innerHTML = iconSvg + `<span class="gv-btn-group-label">${label}</span>`;
+      group.appendChild(badge);
+
+      const cluster = document.createElement("div");
+      cluster.className = "gv-btn-cluster";
+      buttons.forEach((b) => cluster.appendChild(b));
+      group.appendChild(cluster);
+
+      return group;
     }
   }
 

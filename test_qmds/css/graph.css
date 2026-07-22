@@ -119,10 +119,47 @@ h1, h2, h3, .title {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.55rem;
   padding: 0.6rem 0.7rem;
   background: var(--ink-soft);
   border-bottom: var(--border-w) solid rgba(255, 255, 255, 0.08);
+}
+
+.gv-btn-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.35rem 0.2rem 0.45rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gv-btn-group-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  color: #a9a8bd;
+  flex-shrink: 0;
+}
+
+.gv-btn-group-badge svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
+
+.gv-btn-group-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.gv-btn-cluster {
+  display: inline-flex;
+  gap: 0.25rem;
 }
 
 .gv-btn {
