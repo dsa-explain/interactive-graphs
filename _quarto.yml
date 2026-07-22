@@ -17,7 +17,8 @@ website:
         text: Sandbox
       - href: test_qmds/graph-representation.qmd
         text: Graph Representation
-      
+      - href: test_qmds/count-islands.qmd
+        text: Connectivity and Islands
 format:
   html:
     theme: cosmo

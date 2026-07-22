@@ -3,6 +3,8 @@ title: "Neighbours"
 subtitle: "Select a node to see who it's connected to"
 ---
 
+Neighbours are the nodes that are directly connected to a given node.
+
 Click any node on the graph. Its neighbours light up on the canvas and are
 listed on the right, alongside a count. Click empty space to clear the
 selection.

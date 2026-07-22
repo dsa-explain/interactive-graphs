@@ -245,3 +245,5 @@ am2Engine = new GraphEngine({ nodes: m2_nodes, edges: m2_edges }, { directed: fa
 am2View = mountGraphView(am2Engine, document.querySelector("#am2-graph"), { width: 460, height: 380 });
 am2Matrix = mountAdjacencyMatrix(am2Engine, document.querySelector("#am2-matrix"));
 ```
+
+#### Question: Get the neighbours of a node in a graph
