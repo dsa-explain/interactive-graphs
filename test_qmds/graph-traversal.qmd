@@ -207,11 +207,13 @@ To define neighbours, we have to be at a single state. The other "states" we can
 
 <example>
 
-### 3. Tracking: "Bag"
+### 3. Tracking: Nodes we need to visit
 
-Previously we simply tracked the path we were taking when we moved to B from A. But we need a system to actually select next states and keep track of nodes we could have visited. The simplest, we can have a "bag" from which we randomly select the next state we will visit. The bag will also help us keep track of nodes we could have visited but didn't.
+Previously we simply tracked the path we were taking when we moved to B from A. We missed exploring C even though we encountered it. So we need a system to actually select next states and keep track of nodes we could have visited. 
 
-### 4. Tracking: "Path"
+The simplest, we can have a "bag" from which we randomly select the next state we will visit. The bag will also help us keep track of nodes we could have visited but didn't.
+
+### 4. Tracking: Nodes we have visited
 
 This is simply the list of nodes we have visited and the edges we have used. 
 
