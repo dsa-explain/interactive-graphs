@@ -1,5 +1,39 @@
 # interactive-graphs
-This repository includes an example Quarto document that demonstrates an editable interactive network graph powered by Pyodide, D3, and Observable Plot.
+This repository includes code for a Quarto website introducing core concepts about graphs and graph algorithms using Python and Observable JS to add interactive visualizations.
 
-- `interactive-graph.qmd`: Quarto markdown with an editable edge list, a force-directed network layout, Python graph transformation via Pyodide, and an Observable Plot degree chart.
+## Contributing and Running the website locally
 
+### First Time Users
+
+1. Clone this repository and navigate to the directory in your terminal.
+2. Install the conda environment. In your terminal run:
+
+```
+conda env create -f conda_environment.yml
+```
+
+3. Add a `dsa_explain` kernel for Quarto to use:
+
+```
+python -m ipykernel install --user --name dsa_explain --display-name "Python (dsa_explain)"
+```
+
+### All users
+
+1. Activate the `dsa_explain` conda environment:
+
+```
+conda activate dsa_explain
+```
+
+2. To preview the website locally, run this in the terminal from the root of the repository:
+
+```
+quarto preview
+```
+
+3. When ready to deploy an updated version of the website, run:
+
+```
+quarto render
+```

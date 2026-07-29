@@ -36,3 +36,5 @@ format:
     grid:
       body-width: 1000px
     embed-resources: false
+
+jupyter: dsa_explain
