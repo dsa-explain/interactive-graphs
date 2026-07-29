@@ -109,6 +109,7 @@ mutable currentStep = 0
 
 ```{ojs}
 //| echo: false
+//| output: false
 stepControls = {
   const prevBtn = html`<button class="gt-nav-btn">← Previous</button>`;
   const nextBtn = html`<button class="gt-nav-btn">Next →</button>`;
@@ -126,6 +127,7 @@ stepControls = {
 
 ```{ojs}
 //| echo: false
+//| output: false
 graphPanel = {
   const step = steps[currentStep];
   const mount = html`<div class="gt-graph-mount"></div>`;
@@ -145,6 +147,7 @@ graphPanel = {
 
 ```{ojs}
 //| echo: false
+//| output: false
 infoPanel = {
   const step = steps[currentStep];
   const nextList = step.possibleNext ?? [];
@@ -222,27 +225,19 @@ You realize that if the Cafeteria is connected to your room through the station'
 
 Work through the questions below. The map on the left starts with only the heater and your room; more of the station appears as you go. Press **Reveal answer** to uncover each answer and see it highlighted on the graph, bag, and TRACK - HEAT REACHABLE.
 
+<div id="heat-quiz"></div>
+
 ```{ojs}
 //| echo: false
 import {
   mountHeatQuiz,
   mountHeatPlayground,
 } from "./js/graph-traversal-helpers.js";
-```
 
-```{ojs}
-//| echo: false
-heatQuizHost = html`<div></div>`
-```
-
-```{ojs}
-//| echo: false
-heatQuiz = mountHeatQuiz(heatQuizHost, { width: 400, height: 260 })
-```
-
-```{ojs}
-//| echo: false
-heatQuizHost
+heatQuiz = mountHeatQuiz(document.querySelector("#heat-quiz"), {
+  width: 400,
+  height: 260,
+})
 ```
 
 Convert it to code!
@@ -250,9 +245,9 @@ Convert it to code!
 :::{.callout-tip}
 The flow is:
 
-initialisation: track and bag the first node: cafeteria
-traversal: pick a random node from the bag, add its neighbours to tracking and remove it from the bag
-continue to pick nodes from the bag until it is empty OR you encounter the goal node
+1. initialisation: track and bag the first node: cafeteria
+2. traversal: pick a random node from the bag, add its neighbours to tracking and remove it from the bag
+3. continue to pick nodes from the bag until it is empty OR you encounter the goal node
 :::
 
 Drag the 5 steps below into the loop body, in the order they should run.
@@ -309,6 +304,10 @@ heatCodeViz = mountHeatCodeViz(document.querySelector("#heat-code-viz"), {
   },
 })
 ```
+
+:::{.callout-tip}
+In the above code, for simplicity, we are not checking if P exists in the neighbours. Thus we are depending on the random choice to pick P from the bag to stop the loop. We can simply add that condition if we wish to make it faster.
+:::
 
 Code exercise:
 

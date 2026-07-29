@@ -43,9 +43,7 @@ export function mountStaticGraphView(container, data, options = {}) {
   const currentId = highlight.current != null ? String(highlight.current) : null;
   const previousId = highlight.previous != null ? String(highlight.previous) : null;
   const nextId = highlight.next != null ? String(highlight.next) : null;
-  // Edge whose highlight should travel previous → current (or previous → end).
-  const travelToId = currentId ?? endId;
-  const travelFromId = previousId;
+  // Animated edges travel current → each neighbour; previous → current stays solid.
   const nodesIn = data?.nodes ?? [];
   const edgesIn = data?.edges ?? [];
   const pad = 22;
@@ -158,33 +156,24 @@ export function mountStaticGraphView(container, data, options = {}) {
     return (s === a && t === b) || (s === b && t === a);
   };
 
-  /** Orient line endpoints in the direction of traversal. */
+  /** Orient line endpoints current → neighbour (direction of possible next step). */
   const travelCoords = (link) => {
     const s = link.source;
     const t = link.target;
     const forward = { x1: s.x, y1: s.y, x2: t.x, y2: t.y };
     const reverse = { x1: t.x, y1: t.y, x2: s.x, y2: s.y };
 
-    if (travelFromId != null && travelToId != null && connects(link, travelFromId, travelToId)) {
-      return s.id === travelFromId ? forward : reverse;
+    if (currentId != null) {
+      if (s.id === currentId && neighbours.has(t.id)) return forward;
+      if (t.id === currentId && neighbours.has(s.id)) return reverse;
     }
 
-    const iS = visitedList.indexOf(s.id);
-    const iT = visitedList.indexOf(t.id);
-    if (iS >= 0 && iT >= 0 && iS !== iT) {
-      return iS < iT ? forward : reverse;
-    }
-
-    // Fall back to pathEdges order: earlier endpoint in the id "A—B" is not reliable;
-    // use source→target as defined.
     return forward;
   };
 
   const isTravelingEdge = (link) =>
-    pathEdges.has(link.id) &&
-    travelFromId != null &&
-    travelToId != null &&
-    connects(link, travelFromId, travelToId);
+    currentId != null &&
+    [...neighbours].some((nb) => connects(link, currentId, nb));
 
   const edgeSel = edgeLayer
     .selectAll("g.gv-edge")
@@ -194,16 +183,16 @@ export function mountStaticGraphView(container, data, options = {}) {
     .attr("class", "gv-edge")
     .attr("data-id", (d) => d.id);
 
-  // Base edge line. Completed path edges stay solid; the active travel edge
-  // gets a dim underlay so the marching segment reads on top.
+  // Base edge line. Path edges (incl. previous→current) stay solid; edges to
+  // neighbours get a dim underlay so the marching segment reads on top.
   edgeSel
     .append("line")
     .attr("class", (d) => {
       let cls = "gv-edge-line";
-      if (pathEdges.has(d.id)) {
-        cls += isTravelingEdge(d)
-          ? " gv-traversed-edge gv-traversed-edge-active"
-          : " gv-traversed-edge";
+      if (isTravelingEdge(d)) {
+        cls += " gv-traversed-edge gv-traversed-edge-active";
+      } else if (pathEdges.has(d.id)) {
+        cls += " gv-traversed-edge";
       }
       return cls;
     })
@@ -213,7 +202,7 @@ export function mountStaticGraphView(container, data, options = {}) {
     .attr("y2", (d) => d.target.y)
     .attr("marker-end", directed ? `url(#${markerId})` : null);
 
-  // Traveling highlight: short segment marching previous → current/end.
+  // Traveling highlight: short segment marching current → each neighbour.
   edgeSel
     .filter(isTravelingEdge)
     .append("line")

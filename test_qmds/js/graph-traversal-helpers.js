@@ -347,7 +347,7 @@ export function renderBagPanel(opts = {}) {
         <span class="ht-bag-title">${escapeHtml(title)}</span>
       </div>
       <div class="ht-bag-body">${chips}</div>
-      <div class="ht-bag-footer">random draw · unordered frontier</div>
+      <div class="ht-bag-footer">unordered</div>
     </div>
   `;
 }
@@ -533,7 +533,7 @@ export function mountStationGraphView(container, data, options = {}) {
     path.setAttribute("d", orthogonalVentPath(s.x, s.y, t.x, t.y));
     path.setAttribute(
       "class",
-      pathEdges.has(id) ? "ht-edge ht-edge-active" : "ht-edge"
+      "ht-edge"
     );
     path.setAttribute("data-id", id);
     edgeLayer.appendChild(path);
@@ -1158,10 +1158,16 @@ export function eventsToHeatFrames(data, events) {
         : "Done — bag empty, heat_reachable stays False.";
     }
 
+    // Graph blink rules per step (only these nodes pulse):
+    //   pick / check_goal / remove_node → current node only
+    //   track_neighbours / bag_neighbours → current node + neighbours
+    const showNeighbours =
+      blockId === "track_neighbours" || blockId === "bag_neighbours";
+
     frames.push({
       blockId,
       node: nodeId,
-      neighbours: neighbourIds,
+      neighbours: showNeighbours ? neighbourIds : [],
       bag: bagIds,
       bagPick: blockId === "pick" || blockId === "check_goal" || blockId === "track_neighbours" || blockId === "bag_neighbours"
         ? nodeId
@@ -1270,14 +1276,21 @@ export function mountHeatCodeViz(container, options = {}) {
   function render() {
     const frame = currentFrame() ?? idleState();
 
+    // Blink only what this step cares about (see eventsToHeatFrames).
+    // Done / idle frames clear focus so nothing keeps pulsing.
+    const highlight =
+      frame.blockId == null
+        ? { pathEdges: frame.pathEdges ?? [] }
+        : {
+            current: frame.node,
+            neighbours: frame.neighbours ?? [],
+            pathEdges: frame.pathEdges ?? [],
+          };
+
     mountStationGraphView(graphMount, data, {
       width,
       height,
-      highlight: {
-        current: frame.node,
-        neighbours: frame.neighbours ?? [],
-        pathEdges: frame.pathEdges ?? [],
-      },
+      highlight,
     });
 
     panels.innerHTML =

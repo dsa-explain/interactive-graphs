@@ -17,6 +17,8 @@ website:
         text: Sandbox
       - href: test_qmds/graph-representation.qmd
         text: Graph Representation
+      - href: test_qmds/graph-traversal.qmd
+        text: Graph Traversal
       - href: test_qmds/count-islands.qmd
         text: Graph Connectivity
 format:
