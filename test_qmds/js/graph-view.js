@@ -366,8 +366,8 @@ export function mountGraphView(engine, container, options = {}) {
           id: n.id,
           label: n.label,
           degree,
-          x: width / 2 + 80 * Math.cos(angle) + (Math.random() - 0.5) * 20,
-          y: height / 2 + 80 * Math.sin(angle) + (Math.random() - 0.5) * 20,
+          x: n.x ?? width / 2 + 80 * Math.cos(angle) + (Math.random() - 0.5) * 20,
+          y: n.y ?? height / 2 + 80 * Math.sin(angle) + (Math.random() - 0.5) * 20,
         });
       }
     });

@@ -8,9 +8,20 @@ import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 let _markerSeq = 0;
 
 /**
+ * @typedef {{
+ *   start?: string|null,
+ *   end?: string|null,
+ *   current?: string|null,
+ *   previous?: string|null,
+ *   next?: string|null,
+ *   neighbours?: Iterable<string>,
+ *   visited?: Iterable<string>,
+ *   pathEdges?: Iterable<string>,
+ * }} StaticHighlight
+ *
  * @param {HTMLElement} container
  * @param {{nodes: Array<{id: string, label?: string, x?: number, y?: number}>, edges: Array<{id?: string, source: string, target: string, label?: string}>}} data
- * @param {{width?: number, height?: number, directed?: boolean, caption?: string}} options
+ * @param {{width?: number, height?: number, directed?: boolean, caption?: string, highlight?: StaticHighlight}} options
  */
 export function mountStaticGraphView(container, data, options = {}) {
   if (!container) return;
@@ -18,6 +29,23 @@ export function mountStaticGraphView(container, data, options = {}) {
   const width = options.width ?? 320;
   const height = options.height ?? 220;
   const directed = !!options.directed;
+  const highlight = options.highlight ?? {};
+  const visitedList = [...(highlight.visited ?? [])].map(String).filter(Boolean);
+  const visited = new Set(visitedList);
+  const pathEdges = new Set(
+    [...(highlight.pathEdges ?? [])].map(String).filter(Boolean)
+  );
+  const neighbours = new Set(
+    [...(highlight.neighbours ?? [])].map(String).filter(Boolean)
+  );
+  const startId = highlight.start != null ? String(highlight.start) : null;
+  const endId = highlight.end != null ? String(highlight.end) : null;
+  const currentId = highlight.current != null ? String(highlight.current) : null;
+  const previousId = highlight.previous != null ? String(highlight.previous) : null;
+  const nextId = highlight.next != null ? String(highlight.next) : null;
+  // Edge whose highlight should travel previous → current (or previous → end).
+  const travelToId = currentId ?? endId;
+  const travelFromId = previousId;
   const nodesIn = data?.nodes ?? [];
   const edgesIn = data?.edges ?? [];
   const pad = 22;
@@ -123,6 +151,41 @@ export function mountStaticGraphView(container, data, options = {}) {
     clamp();
   }
 
+  const connects = (link, a, b) => {
+    if (a == null || b == null) return false;
+    const s = link.source.id;
+    const t = link.target.id;
+    return (s === a && t === b) || (s === b && t === a);
+  };
+
+  /** Orient line endpoints in the direction of traversal. */
+  const travelCoords = (link) => {
+    const s = link.source;
+    const t = link.target;
+    const forward = { x1: s.x, y1: s.y, x2: t.x, y2: t.y };
+    const reverse = { x1: t.x, y1: t.y, x2: s.x, y2: s.y };
+
+    if (travelFromId != null && travelToId != null && connects(link, travelFromId, travelToId)) {
+      return s.id === travelFromId ? forward : reverse;
+    }
+
+    const iS = visitedList.indexOf(s.id);
+    const iT = visitedList.indexOf(t.id);
+    if (iS >= 0 && iT >= 0 && iS !== iT) {
+      return iS < iT ? forward : reverse;
+    }
+
+    // Fall back to pathEdges order: earlier endpoint in the id "A—B" is not reliable;
+    // use source→target as defined.
+    return forward;
+  };
+
+  const isTravelingEdge = (link) =>
+    pathEdges.has(link.id) &&
+    travelFromId != null &&
+    travelToId != null &&
+    connects(link, travelFromId, travelToId);
+
   const edgeSel = edgeLayer
     .selectAll("g.gv-edge")
     .data(simLinks, (d) => d.id)
@@ -131,14 +194,38 @@ export function mountStaticGraphView(container, data, options = {}) {
     .attr("class", "gv-edge")
     .attr("data-id", (d) => d.id);
 
+  // Base edge line. Completed path edges stay solid; the active travel edge
+  // gets a dim underlay so the marching segment reads on top.
   edgeSel
     .append("line")
-    .attr("class", "gv-edge-line")
+    .attr("class", (d) => {
+      let cls = "gv-edge-line";
+      if (pathEdges.has(d.id)) {
+        cls += isTravelingEdge(d)
+          ? " gv-traversed-edge gv-traversed-edge-active"
+          : " gv-traversed-edge";
+      }
+      return cls;
+    })
     .attr("x1", (d) => d.source.x)
     .attr("y1", (d) => d.source.y)
     .attr("x2", (d) => d.target.x)
     .attr("y2", (d) => d.target.y)
     .attr("marker-end", directed ? `url(#${markerId})` : null);
+
+  // Traveling highlight: short segment marching previous → current/end.
+  edgeSel
+    .filter(isTravelingEdge)
+    .append("line")
+    .attr("class", "gv-edge-line gv-traveling-edge")
+    .each(function (d) {
+      const c = travelCoords(d);
+      d3.select(this)
+        .attr("x1", c.x1)
+        .attr("y1", c.y1)
+        .attr("x2", c.x2)
+        .attr("y2", c.y2);
+    });
 
   edgeSel
     .append("text")
@@ -156,11 +243,40 @@ export function mountStaticGraphView(container, data, options = {}) {
     .attr("data-id", (d) => d.id)
     .attr("transform", (d) => `translate(${d.x},${d.y})`);
 
-  nodeSel.append("circle").attr("r", 20).attr("class", "gv-node-circle");
+  nodeSel.append("circle").attr("r", 20).attr("class", (d) => {
+    let cls = "gv-node-circle";
+    // Role priority: current > previous/next > start/end > visited
+    if (currentId != null && d.id === currentId) cls += " gv-selected";
+    else if (previousId != null && d.id === previousId) cls += " gv-previous";
+    else if (nextId != null && d.id === nextId) cls += " gv-neighbour";
+    else if (neighbours.has(d.id)) cls += " gv-neighbour";
+    else if (startId != null && d.id === startId) cls += " gv-start";
+    else if (endId != null && d.id === endId) cls += " gv-end";
+    if (visited.has(d.id)) cls += " gv-visited";
+    return cls;
+  });
   nodeSel
     .append("text")
     .attr("class", "gv-node-label")
     .attr("text-anchor", "middle")
     .attr("dy", "0.32em")
     .text((d) => d.label);
+
+  const roleOf = (d) => {
+    if (currentId != null && d.id === currentId) return "current";
+    if (previousId != null && d.id === previousId) return "previous";
+    if (nextId != null && d.id === nextId) return "next";
+    if (neighbours.has(d.id)) return "next";
+    if (startId != null && d.id === startId) return "start";
+    if (endId != null && d.id === endId) return "end";
+    return "";
+  };
+
+  nodeSel
+    .filter((d) => !!roleOf(d))
+    .append("text")
+    .attr("class", "gv-role-label")
+    .attr("text-anchor", "middle")
+    .attr("y", 34)
+    .text((d) => roleOf(d));
 }

@@ -70,7 +70,10 @@ export function planToPython(plan, opts = {}) {
       container: Array.isArray(node.children),
     };
     const line = headerLine(def);
-    const lines = line ? [pad(depth) + line] : [];
+    // A block's code may itself span multiple physical lines (e.g. a
+    // fixed if/break combo treated as one atomic draggable block) — pad
+    // every line, not just the first.
+    const lines = line ? line.split("\n").map((l) => pad(depth) + l) : [];
     if (Array.isArray(node.children)) {
       if (node.children.length === 0) {
         lines.push(pad(depth + 1) + "pass");
@@ -89,7 +92,14 @@ export function planToPython(plan, opts = {}) {
 /**
  * @param {HTMLElement} container
  * @param {Array<{id?: string, label: string, code: string, python?: string, container?: boolean}>} [blocks]
- * @param {{heading?: string, workspaceLabel?: string, preplaced?: string[]}} [options]
+ * @param {{
+ *   heading?: string,
+ *   workspaceLabel?: string,
+ *   preplaced?: string[],
+ *   solutionOrder?: string[],
+ *   lockedBefore?: Array<{code: string, label?: string}>,
+ *   lockedContainer?: {code: string, label?: string},
+ * }} [options]
  */
 export function mountCodeBlocksView(container, blocks = DEFAULT_BLOCKS, options = {}) {
   if (!container) return;
@@ -109,6 +119,9 @@ export function mountCodeBlocksView(container, blocks = DEFAULT_BLOCKS, options 
   });
   const defById = new Map(defs.map((d) => [d.id, d]));
   const preplaced = options.preplaced ?? DEFAULT_PREPLACED;
+  const solutionOrder = options.solutionOrder ?? null;
+  const lockedBefore = options.lockedBefore ?? [];
+  const lockedContainer = options.lockedContainer ?? null;
 
   // Stable shuffle order for the palette (re-applied after each render).
   const paletteOrder = defs.map((d) => d.id);
@@ -158,10 +171,37 @@ export function mountCodeBlocksView(container, blocks = DEFAULT_BLOCKS, options 
   workspaceLabel.textContent = options.workspaceLabel ?? "Your plan";
   rightCol.appendChild(workspaceLabel);
 
+  /** A fixed, non-interactive block: no drag handle, no delete button. */
+  function createLockedBlockElement(def, { isContainer = false, slotEl = null } = {}) {
+    const el = document.createElement("div");
+    el.className = "cb-block cb-locked" + (isContainer ? " cb-container" : "");
+    const row = document.createElement("div");
+    row.className = "cb-block-row";
+    const label = document.createElement("span");
+    label.className = "cb-block-label";
+    label.textContent = def.code ?? def.label ?? "";
+    row.appendChild(label);
+    el.appendChild(row);
+    if (isContainer && slotEl) el.appendChild(slotEl);
+    return el;
+  }
+
+  lockedBefore.forEach((def) => {
+    rightCol.appendChild(createLockedBlockElement(def));
+  });
+
   const workspace = document.createElement("div");
   workspace.className = "cb-slot cb-workspace";
   workspace.dataset.slot = "root";
-  rightCol.appendChild(workspace);
+
+  if (lockedContainer) {
+    workspace.classList.add("cb-loop-slot");
+    rightCol.appendChild(
+      createLockedBlockElement(lockedContainer, { isContainer: true, slotEl: workspace })
+    );
+  } else {
+    rightCol.appendChild(workspace);
+  }
 
   const controls = document.createElement("div");
   controls.className = "cb-controls";
@@ -170,6 +210,15 @@ export function mountCodeBlocksView(container, blocks = DEFAULT_BLOCKS, options 
   resetBtn.className = "cb-btn";
   resetBtn.textContent = "Reset";
   controls.appendChild(resetBtn);
+
+  let solutionBtn = null;
+  if (solutionOrder) {
+    solutionBtn = document.createElement("button");
+    solutionBtn.type = "button";
+    solutionBtn.className = "cb-btn cb-btn-solution";
+    solutionBtn.textContent = "Get Solution";
+    controls.appendChild(solutionBtn);
+  }
   container.appendChild(controls);
 
   let draggedEl = null;
@@ -389,12 +438,49 @@ export function mountCodeBlocksView(container, blocks = DEFAULT_BLOCKS, options 
     renderPalette();
   }
 
+  function applySolutionArrangement() {
+    if (!solutionOrder) return;
+    workspace.innerHTML = "";
+    used.clear();
+    solutionOrder.forEach((typeId) => {
+      if (!defById.has(typeId) || used.has(typeId)) return;
+      const block = createBlockElement(typeId);
+      if (!block) return;
+      workspace.appendChild(block);
+      used.add(typeId);
+    });
+    renderPalette();
+  }
+
+  function clearHighlight() {
+    workspace.querySelectorAll(".cb-block-highlight").forEach((el) => {
+      el.classList.remove("cb-block-highlight");
+    });
+  }
+
+  /** Highlight the placed block(s) of a given type (no-op if not placed). */
+  function highlight(typeId) {
+    clearHighlight();
+    if (!typeId) return false;
+    const els = workspace.querySelectorAll(`.cb-block[data-type="${typeId}"]`);
+    els.forEach((el) => el.classList.add("cb-block-highlight"));
+    return els.length > 0;
+  }
+
   initSlot(workspace);
   applyDefaultArrangement();
 
   resetBtn.addEventListener("click", () => {
+    clearHighlight();
     applyDefaultArrangement();
   });
+
+  if (solutionBtn) {
+    solutionBtn.addEventListener("click", () => {
+      clearHighlight();
+      applySolutionArrangement();
+    });
+  }
 
   function getPlan() {
     function readSlot(slotEl) {
@@ -418,18 +504,48 @@ export function mountCodeBlocksView(container, blocks = DEFAULT_BLOCKS, options 
 
   return {
     reset() {
+      clearHighlight();
       applyDefaultArrangement();
     },
+    /** Arrange the workspace into the correct `solutionOrder` (no-op if none was given). */
+    applySolution() {
+      applySolutionArrangement();
+    },
+    /** Highlight the placed block(s) matching a type id; returns false if not placed. */
+    highlight,
+    clearHighlight,
     /** Nested tree of { id, label, code, python, children? } from the workspace. */
     getPlan,
     /**
-     * Current workspace as runnable Python source (indented).
-     * Empty container bodies become `pass`.
+     * Full runnable Python: locked preamble + (optional) locked container
+     * wrapping the workspace body. Empty container bodies become `pass`.
      * @param {{indent?: number}} [opts]
      * @returns {string}
      */
     toPython(opts = {}) {
-      return planToPython(getPlan(), opts);
+      const indentSize = opts.indent ?? 4;
+      const parts = [];
+
+      lockedBefore.forEach((def) => {
+        const src = (def.code || def.label || "").trim();
+        if (src) parts.push(src);
+      });
+
+      const body = planToPython(getPlan(), opts);
+
+      if (lockedContainer) {
+        let header = (lockedContainer.code || lockedContainer.label || "").trim();
+        if (header && !/:\s*$/.test(header)) header += ":";
+        const pad = " ".repeat(indentSize);
+        const indented = body
+          ? body.split("\n").map((l) => (l.length ? pad + l : l)).join("\n")
+          : pad + "pass";
+        parts.push(header ? `${header}\n${indented}` : indented);
+      } else if (body) {
+        parts.push(body);
+      }
+
+      return parts.join("\n\n");
     },
   };
 }
