@@ -7,20 +7,27 @@ project:
 
 website:
   title: "Graph Structures Explorer"
-  navbar:
-    left:
+  sidebar:
+    style: "docked"
+    search: true
+    contents:
       - href: index.qmd
         text: Home
-      - href: test_qmds/neighbours.qmd
-        text: Neighbours
-      - href: test_qmds/sandbox.qmd
-        text: Sandbox
-      - href: test_qmds/graph-representation.qmd
-        text: Graph Representation
-      - href: test_qmds/graph-traversal.qmd
-        text: Graph Traversal
-      - href: test_qmds/count-islands.qmd
-        text: Graph Connectivity
+      - section: "Basics"
+        contents:
+          - href: test_qmds/neighbours.qmd
+            text: Neighbours
+          - href: test_qmds/sandbox.qmd
+            text: Sandbox
+      - section: "Graph Algorithms"
+        contents:
+          - href: test_qmds/graph-representation.qmd
+            text: Graph Representation
+          - href: test_qmds/graph-traversal.qmd
+            text: Graph Traversal
+          - href: test_qmds/count-islands.qmd
+            text: Graph Connectivity
+
 format:
   html:
     theme: cosmo
