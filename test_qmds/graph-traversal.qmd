@@ -1,0 +1,319 @@
+---
+title: "Graph Traversal"
+subtitle: "Moving through a graph"
+---
+
+## Introduction
+
+Now that we have a graph and a way to represent it, we can start to move through it. When we are doing so, we will create a "Path". Let's take an example of a path from node A to node E. 
+
+## Walking Through a Traversal
+
+Lets do a sample traversal!
+
+```{ojs}
+//| echo: false
+import { mountStaticGraphView } from "./js/static-graph-view.js";
+```
+
+```{ojs}
+//| echo: false
+graphNodes = ([
+  { id: "A", label: "A" },
+  { id: "B", label: "B" },
+  { id: "C", label: "C" },
+  { id: "D", label: "D" },
+  { id: "F", label: "F" },
+  { id: "E", label: "E" },
+])
+```
+
+```{ojs}
+//| echo: false
+graphEdges = ([
+  { id: "A—B", source: "A", target: "B" },
+  { id: "A—C", source: "A", target: "C" },
+  { id: "B—D", source: "B", target: "D" },
+  { id: "C—D", source: "C", target: "D" },
+  { id: "D—F", source: "D", target: "F" },
+  { id: "F—E", source: "F", target: "E" },
+])
+```
+
+```{ojs}
+//| echo: false
+steps = ([
+  {
+    title: "Start Node",
+    description: "We begin the traversal by picking a start node.",
+    node: "A",
+    nodeLabel: "Start node",
+    highlight: { current: "A" }
+  },
+  {
+    title: "Begin Traversal",
+    description: "The current node is A. Its neighbours, B and C, are the possible next states we could move to. For the current traversal let us RANDOMLY choose to move to B.",
+    node: "A",
+    possibleNext: ["B", "C"],
+    highlight: { current: "A", neighbours: ["B", "C"] }
+  },
+  {
+    title: "Move to a Neighbour",
+    description: "We move from A to its neighbour B, which becomes the new current node. We used the edge A—B to do so. Congratulations! We took our first step! But wait, how do we know what path we're taking? We need to **track** our path. So we record both the nodes we visited and the edges we used. We can also track the nodes we **encountered** but didn't visit, like C. But for now, lets just focus on the nodes we visited and the edges we used.",
+    node: "B",
+    from: "A",
+    visited: ["A", "B"],
+    highlight: { current: "B", previous: "A", visited: ["A", "B"], pathEdges: ["A—B"] }
+  },
+    {
+    title: "Next step",
+    description: "From B we have 2 neighbours: D or the previous node A. Since we already visited A (we have also recorded this) we want to choose a new node and move to D.",
+    node: "B",
+    from: "A",
+    visited: ["A", "B"],
+    possibleNext: ["A","D"],
+    highlight: { current: "B", previous: "A", neighbours: ["D"], visited: ["A", "B"], pathEdges: ["A—B"] }
+  },
+  {
+    title: "Continue Traversing",
+    description: "We take another step, moving to D. Now we can see two new neighbours: F and C. We can choose to move to F or C. Let's choose F.",
+    node: "D",
+    possibleNext: ["F", "C"],
+    visited: ["A", "B", "D"],
+    highlight: { current: "D", previous: "B", neighbours: ["F","C"], visited: ["A", "B", "D"], pathEdges: ["A—B", "B—D"] }
+  },
+  {
+    title: "Keep Going",
+    description: "One more step takes us to F. We're getting closer to the end node, and F's neighbour E is now the only possible next move.",
+    node: "F",
+    possibleNext: ["E"],
+    visited: ["A", "B", "D", "F"],
+    highlight: { current: "F", previous: "D", neighbours: ["E"], visited: ["A", "B", "D", "F"], pathEdges: ["A—B", "B—D", "D—F"] }
+  },
+  {
+    title: "Reach the End Node",
+    description: "We arrive at E, the end node. The full traversal is now visible: every visited node and every edge used along the way.",
+    node: "E",
+    nodeLabel: "End node",
+    visited: ["A", "B", "D", "F", "E"],
+    highlight: { end: "E", previous: "F", visited: ["A", "B", "D", "F", "E"], pathEdges: ["A—B", "B—D", "D—F", "F—E"] }
+  },
+])
+```
+
+
+```{ojs}
+//| echo: false
+mutable currentStep = 0
+```
+
+```{ojs}
+//| echo: false
+stepControls = {
+  const prevBtn = html`<button class="gt-nav-btn">← Previous</button>`;
+  const nextBtn = html`<button class="gt-nav-btn">Next →</button>`;
+  prevBtn.disabled = currentStep === 0;
+  nextBtn.disabled = currentStep === steps.length - 1;
+  prevBtn.onclick = () => { mutable currentStep = Math.max(0, currentStep - 1); };
+  nextBtn.onclick = () => { mutable currentStep = Math.min(steps.length - 1, currentStep + 1); };
+  return html`<div class="gt-controls">
+    ${prevBtn}
+    <span class="gt-step-indicator">Step ${currentStep + 1} of ${steps.length}</span>
+    ${nextBtn}
+  </div>`;
+}
+```
+
+```{ojs}
+//| echo: false
+graphPanel = {
+  const step = steps[currentStep];
+  const mount = html`<div class="gt-graph-mount"></div>`;
+  mountStaticGraphView(
+    mount,
+    { nodes: graphNodes, edges: graphEdges },
+    {
+      width: 360,
+      height: 260,
+      directed: false,
+      highlight: step.highlight
+    }
+  );
+  return mount;
+}
+```
+
+```{ojs}
+//| echo: false
+infoPanel = {
+  const step = steps[currentStep];
+  const nextList = step.possibleNext ?? [];
+  const visitedNodes = step.visited ?? [];
+  const visitedEdges = step.highlight.pathEdges ?? [];
+  return html`<div class="gt-info">
+    <h4>${step.title}</h4>
+    <p class="gt-desc">${step.description}</p>
+    <div class="gt-info-row">
+      <span class="gt-info-key">${step.nodeLabel ?? "Current node"}:</span>
+      <span class="gt-node-chip">${step.node}</span>
+    </div>
+    <div class="gt-info-row">
+      <span class="gt-info-key" style=${nextList.length ? "" : "visibility:hidden"}>Possible next:</span>
+      ${nextList.length
+        ? nextList.map(n => html`<span class="gt-node-chip gt-chip-next">${n}</span>`)
+        : html`<span style="visibility:hidden">—</span>`}
+    </div>
+    <div class="gt-info-row">
+      <span class="gt-info-key" style=${visitedNodes.length ? "" : "visibility:hidden"}>Visited nodes:</span>
+      ${visitedNodes.length
+        ? visitedNodes.map(n => html`<span class="gt-node-chip gt-chip-visited">${n}</span>`)
+        : html`<span style="visibility:hidden">—</span>`}
+    </div>
+    <div class="gt-info-row">
+      <span class="gt-info-key" style=${visitedEdges.length ? "" : "visibility:hidden"}>Visited edges:</span>
+      ${visitedEdges.length
+        ? visitedEdges.map(e => html`<span class="gt-node-chip gt-chip-visited">${e}</span>`)
+        : html`<span style="visibility:hidden">—</span>`}
+    </div>
+  </div>`;
+}
+```
+
+```{ojs}
+//| echo: false
+html`<div class="gt-panel-wrap">
+  <div class="gt-panel">
+    ${graphPanel}
+    ${infoPanel}
+  </div>
+  ${stepControls}
+</div>`
+```
+
+Now in the above traversal, we made 2 random choices which coincidentally led us to the end nofe. In real graphs, we do not know how the full graph looks like unless we fully explore the graph. So we need to be systematic in our traversal. Before we do that, lets have a short list of definitions.
+
+### 1. State
+
+A state is the node we can be in at any given time.
+
+<example>
+
+### 2. Neighbours
+
+To define neighbours, we have to be at a single state. The other "states" we can visit from the current state are called neighbours.
+
+<example>
+
+### 3. Tracking: "Bag"
+
+Previously we simply tracked the path we were taking when we moved to B from A. But we need a system to actually select next states and keep track of nodes we could have visited. The simplest, we can have a "bag" from which we randomly select the next state we will visit. The bag will also help us keep track of nodes we could have visited but didn't.
+
+### 4. Tracking: "Path"
+
+This is simply the list of nodes we have visited and the edges we have used. 
+
+Let's do an exercise to identify the essential components of a graph traversal.
+
+## Exercise: Heat Spread
+
+You're part of the crew on a large space station. While reading a book in your room, **P**, you start to feel cold, so you go to the **Cafeteria** to turn on the heater. However, you would rather continue reading in the comfort of your own room.
+
+You realize that if the Cafeteria is connected to your room through the station's ventilation system, the warm air will eventually reach your room and you can return. Determine whether the heat can reach room P — or in other words, is there **a** path from the Cafeteria to room P?
+
+Work through the questions below. The map on the left starts with only the heater and your room; more of the station appears as you go. Press **Reveal answer** to uncover each answer and see it highlighted on the graph, bag, and TRACK - HEAT REACHABLE.
+
+```{ojs}
+//| echo: false
+import {
+  mountHeatQuiz,
+  mountHeatPlayground,
+} from "./js/graph-traversal-helpers.js";
+```
+
+```{ojs}
+//| echo: false
+heatQuizHost = html`<div></div>`
+```
+
+```{ojs}
+//| echo: false
+heatQuiz = mountHeatQuiz(heatQuizHost, { width: 400, height: 260 })
+```
+
+```{ojs}
+//| echo: false
+heatQuizHost
+```
+
+Convert it to code!
+
+:::{.callout-tip}
+The flow is:
+
+initialisation: track and bag the first node: cafeteria
+traversal: pick a random node from the bag, add its neighbours to tracking and remove it from the bag
+continue to pick nodes from the bag until it is empty OR you encounter the goal node
+:::
+
+Drag the 5 steps below into the loop body, in the order they should run.
+The block above the loop is given for free and can't be changed. Press
+**Step** to advance one line at a time, **Play** to run automatically, or
+**Get Solution** if you get stuck — then watch the graph, bag and
+tracking panel react on the right.
+
+::: {.panel-grid}
+::: {.panel}
+<div id="heat-code-blocks"></div>
+:::
+::: {.panel}
+<div id="heat-code-viz" class="cb-viz-placeholder"></div>
+:::
+:::
+
+```{ojs}
+//| echo: false
+import { mountCodeBlocksView } from "./js/code-blocks-view.js";
+import { mountHeatCodeViz } from "./js/graph-traversal-helpers.js";
+```
+
+```{ojs}
+//| echo: false
+heatCodeBlocks = mountCodeBlocksView(document.querySelector("#heat-code-blocks"), [
+  { id: "pick", code: "node = random.choice(list(bag))", label: "pick a random node from the bag" },
+  { id: "check_goal", code: "if node == \"P\":\n    heat_reachable = True\n    break", label: "check if we reached the goal — stop if so" },
+  { id: "track_neighbours", code: "neighbours = get_neighbours(node)\ntracking.add(neighbours)", label: "track the current node's neighbours" },
+  { id: "bag_neighbours", code: "bag.add(neighbours)", label: "add the neighbours to the bag" },
+  { id: "remove_node", code: "bag.remove(node)", label: "remove the current node from the bag" },
+], {
+  heading: "Traversal Steps",
+  workspaceLabel: "Loop body — while bag:",
+  preplaced: [],
+  solutionOrder: ["pick", "check_goal", "track_neighbours", "bag_neighbours", "remove_node"],
+  lockedBefore: [
+    { code: "bag = set()\ntracking = set()\n\ntracking.add(\"Cafeteria\")\nbag.add(\"Cafeteria\")\nheat_reachable = False" },
+  ],
+  lockedContainer: { code: "while bag:" },
+})
+```
+
+```{ojs}
+//| echo: false
+heatCodeViz = mountHeatCodeViz(document.querySelector("#heat-code-viz"), {
+  width: 420,
+  height: 280,
+  stepDelayMs: 900,
+  getPython: () => heatCodeBlocks.toPython(),
+  onStep: (frame) => {
+    if (frame?.blockId) heatCodeBlocks.highlight(frame.blockId);
+    else heatCodeBlocks.clearHighlight();
+  },
+})
+```
+
+Code exercise:
+
+Question: Oh no! There is a breach in the admin room window and all air is leaking out. The space station is on lockdown. All rooms connected to the admin room vents are dangerous. Can you list out all these rooms?
+
+Hint: You can start traversing from the admin room. This time the stop condition is when the bag is empty.
+
+
