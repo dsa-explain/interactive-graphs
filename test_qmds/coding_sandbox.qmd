@@ -1,5 +1,135 @@
 ---
 title: "Coding Sandbox"
+subtitle: "Write Python to build a graph and watch the visualization update"
+format:
+  html:
+    embed-resources: true
+---
+
+This page uses a Pyodide-powered Python editor to build a graph and immediately redraws the graph in the browser. The visualization and toolbar should match the standalone Sandbox page; this document adds the Python editor as an input step alongside the same graph canvas.
+
+```{python}
+#| echo: false
+default_python_code = """import json
+
+G = nx.Graph()
+G.add_edge(\"Alice\", \"Bob\")
+G.add_edge(\"Bob\", \"Carol\")
+G.add_edge(\"Carol\", \"Dave\")
+G.add_edge(\"Alice\", \"Dave\")
+G.add_edge(\"Bob\", \"Eve\")
+G.add_edge(\"Eve\", \"Frank\")
+G.add_edge(\"Frank\", \"Carol\")
+
+# Optional: inspect or modify the graph
+print(\"nodes:\", list(G.nodes()))
+print(\"edges:\", list(G.edges()))
+
+# The renderer uses G if graph_output is not defined.
+# You can also set graph_output manually to a {\"nodes\": [...], \"edges\": [...]} dict.
+"""
+
+ojs_define(sb_default_code = default_python_code)
+```
+
+```{=html}
+<div class="panel-grid">
+  <div class="panel">
+    <div class="graph-widget__panel" id="python-editor-root">
+      <h3>Edit Python graph code</h3>
+      <label for="python-editor-1">Python (uses a small <code>networkx</code>-like <code>nx</code> shim)</label>
+      <textarea id="python-editor-1" data-role="python-editor" rows="14"></textarea>
+      <div class="graph-widget__row">
+        <button data-role="run-code">Run Python</button>
+        <button data-role="reset-code" class="secondary">Reset code</button>
+        <button data-role="show-json" class="secondary">Show current JSON</button>
+      </div>
+      <pre data-role="json-output" class="graph-widget__json" hidden></pre>
+      <div data-role="status" class="graph-widget__status"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Sandbox</div>
+    <div class="panel">
+      <div id="sandbox-graph"></div>
+    </div>
+  </div>
+</div>
+```
+
+```{=html}
+<link rel="stylesheet" href="./css/graph.css">
+<link rel="stylesheet" href="./css/styles.css">
+```
+
+```{ojs}
+//| echo: false
+import { GraphEngine } from "./js/graph-engine.js";
+import { mountGraphView } from "./js/graph-view.js";
+import { PyGraphEngine } from "./js/py-graph-engine.js";
+import { PythonEditorInput } from "./js/python-editor-input.js";
+
+sandboxData = ({ nodes: [], edges: [] });
+sandboxEngine = new GraphEngine(sandboxData, { directed: false });
+```
+
+```{ojs}
+//| echo: false
+sandboxView = mountGraphView(sandboxEngine, document.querySelector("#sandbox-graph"), {
+  width: 760,
+  height: 460,
+});
+```
+
+```{ojs}
+//| echo: false
+setupEditor = (() => {
+  let editor = document.querySelector("[data-role='python-editor']");
+  if (editor) {
+    editor.value = sb_default_code;
+  }
+
+  let pyEngine = new PyGraphEngine({});
+  let graphDisplayAdapter = {
+    setGraph(graphJSON) {
+      for (const id of Array.from(sandboxEngine.nodes.keys())) {
+        sandboxEngine.deleteNode(id);
+      }
+      for (const n of graphJSON.nodes || []) {
+        sandboxEngine.addNode({ id: n.id, label: n.label ?? n.id });
+      }
+      for (const e of graphJSON.edges || []) {
+        if (!sandboxEngine.nodes.has(e.source)) sandboxEngine.addNode({ id: e.source, label: e.source });
+        if (!sandboxEngine.nodes.has(e.target)) sandboxEngine.addNode({ id: e.target, label: e.target });
+        sandboxEngine.addEdge({ source: e.source, target: e.target, label: e.label ?? "" });
+      }
+    },
+    toJSON() {
+      const snap = sandboxEngine.snapshot();
+      return {
+        nodes: snap.nodes.map((n) => ({ id: n.id, label: n.label })),
+        edges: snap.edges.map((e) => ({ source: e.source, target: e.target, label: e.label })),
+      };
+    },
+  };
+
+  let pythonRoot = document.querySelector("#python-editor-root");
+  let pythonInput = null;
+  if (pythonRoot) {
+    pythonInput = PythonEditorInput.mount(pythonRoot, {
+      graphDisplay: graphDisplayAdapter,
+      engine: pyEngine,
+    });
+    pythonInput.start();
+  }
+
+  return pythonInput;
+})();
+```
+
+---
+title: "Coding Sandbox"
 subtitle: "Build a graph from using Python code"
 ---
 
