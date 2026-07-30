@@ -3,6 +3,7 @@ project:
   output-dir: _site
   render:
     - index.qmd
+    - coding_sandbox.qmd
     - test_qmds/*.qmd
 
 website:
@@ -11,6 +12,8 @@ website:
     left:
       - href: index.qmd
         text: Home
+      - href: coding_sandbox.qmd
+        text: Coding Sandbox
       - href: test_qmds/neighbours.qmd
         text: Neighbours
       - href: test_qmds/sandbox.qmd
@@ -23,7 +26,7 @@ format:
   html:
     theme: cosmo
     toc: false
-    css: css/graph.css
+    css: test_qmds/css/graph.css
     grid:
       body-width: 1000px
     embed-resources: false
