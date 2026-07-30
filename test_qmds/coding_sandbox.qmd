@@ -8,6 +8,15 @@ format:
 
 This page uses a Pyodide-powered Python editor to build a graph and immediately redraws the graph in the browser. The visualization and toolbar should match the standalone Sandbox page; this document adds the Python editor as an input step alongside the same graph canvas.
 
+The editor supports a small NetworkX-like API:
+
+- `G = nx.Graph()`
+- `G.add_node(name)`
+- `G.add_edge(u, v, weight=1)`
+- `G.nodes()`
+- `G.edges()`
+- `G.degree(node)`
+
 ```{python}
 #| echo: false
 default_python_code = """import json
@@ -21,12 +30,6 @@ G.add_edge(\"Bob\", \"Eve\")
 G.add_edge(\"Eve\", \"Frank\")
 G.add_edge(\"Frank\", \"Carol\")
 
-# Optional: inspect or modify the graph
-print(\"nodes:\", list(G.nodes()))
-print(\"edges:\", list(G.edges()))
-
-# The renderer uses G if graph_output is not defined.
-# You can also set graph_output manually to a {\"nodes\": [...], \"edges\": [...]} dict.
 """
 
 ojs_define(sb_default_code = default_python_code)
@@ -126,54 +129,4 @@ setupEditor = (() => {
 
   return pythonInput;
 })();
-```
-
----
-title: "Coding Sandbox"
-subtitle: "Build a graph from using Python code"
----
-
-Use the toolbar to add nodes and edges, select a node or edge by clicking it,
-then update or delete the current selection. This is the same graph engine
-and canvas used throughout the rest of the site -- everything you learn here
-carries over.
-
-```{python}
-#| echo: false
-initial_nodes = [
-    {"id": "A", "label": "A"},
-    {"id": "B", "label": "B"},
-    {"id": "C", "label": "C"},
-]
-initial_edges = [
-    {"id": "e0", "source": "A", "target": "B", "label": ""},
-    {"id": "e1", "source": "B", "target": "C", "label": ""},
-]
-
-ojs_define(sb_nodes = initial_nodes, sb_edges = initial_edges)
-```
-
-::: {.panel}
-<div id="sandbox-graph"></div>
-:::
-
-```{ojs}
-//| echo: false
-import { GraphEngine } from "./js/graph-engine.js";
-import { mountGraphView } from "./js/graph-view.js";
-
-sandboxData = ({
-  nodes: sb_nodes,
-  edges: sb_edges,
-});
-
-sandboxEngine = new GraphEngine(sandboxData, { directed: false });
-```
-
-```{ojs}
-//| echo: false
-sandboxView = mountGraphView(sandboxEngine, document.querySelector("#sandbox-graph"), {
-  width: 760,
-  height: 460,
-});
 ```
