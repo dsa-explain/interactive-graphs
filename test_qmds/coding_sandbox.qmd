@@ -12,10 +12,8 @@ The editor supports a small NetworkX-like API:
 
 - `G = nx.Graph()`
 - `G.add_node(name)`
-- `G.add_edge(u, v, weight=1)`
-- `G.nodes()`
-- `G.edges()`
-- `G.degree(node)`
+- `G.add_edge(u, v)`
+
 
 ```{python}
 #| echo: false
@@ -40,7 +38,6 @@ ojs_define(sb_default_code = default_python_code)
   <div class="panel">
     <div class="graph-widget__panel" id="python-editor-root">
       <h3>Edit Python graph code</h3>
-      <label for="python-editor-1">Python (uses a small <code>networkx</code>-like <code>nx</code> shim)</label>
       <textarea id="python-editor-1" data-role="python-editor" rows="14"></textarea>
       <div class="graph-widget__row">
         <button data-role="run-code">Run Python</button>

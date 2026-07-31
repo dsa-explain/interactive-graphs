@@ -3,7 +3,7 @@ title: "Graph Structures Lab"
 subtitle: "An interactive tour of graphs and the ways we represent them"
 ---
 
-- **[Coding Sandbox](coding_sandbox.qmd)** -- write Python in a Pyodide-powered editor and watch the graph redraw instantly.
+- **[Coding Sandbox](test_qmds/coding_sandbox.qmd)** -- write Python in a Pyodide-powered editor and watch the graph redraw instantly.
 - **[Sandbox](test_qmds/sandbox.qmd)** -- a blank canvas with the full toolbar: add and delete nodes and edges, update labels, and select things to see them highlighted.
 - **[Neighbours](test_qmds/neighbours.qmd)** -- click a node to see exactly who it's connected to.
 - **[Graph Representation](test_qmds/graph-representation.qmd)** -- Two different ways to representgraphs: watch a graph turn into rows of `[key]: [neighbour] [neighbour]` boxes, starting with a single row before seeing the whole list or the same graph as a grid of 0s and 1s, again starting with a single row before the full N x N matrix.
