@@ -1,0 +1,126 @@
+---
+title: "Directed and Weighted Graph"
+subtitle: "How arrows and edge weights change graph meaning"
+---
+
+A directed graph has edges that point in one direction only. The arrow shows the edge's source and target, so `A → B` is not the same as `B → A`.
+
+### Directed graph example
+
+::: {.static-graph-inline}
+<div id="directed-example"></div>
+:::
+
+```{python}
+#| echo: false
+dg_nodes = [
+    {"id": "A", "label": "A"},
+    {"id": "B", "label": "B"},
+    {"id": "C", "label": "C"},
+]
+dg_edges = [
+    {"id": "e0", "source": "A", "target": "B", "label": ""},
+    {"id": "e1", "source": "B", "target": "C", "label": ""},
+    {"id": "e2", "source": "A", "target": "C", "label": ""},
+]
+ojs_define(dg_nodes = dg_nodes, dg_edges = dg_edges)
+```
+
+```{ojs}
+//| echo: false
+//| results: hide
+import { mountStaticGraphView } from "./js/static-graph-view.js";
+
+mountStaticGraphView(
+  document.querySelector("#directed-example"),
+  { nodes: dg_nodes, edges: dg_edges },
+  {
+    width: 380,
+    height: 260,
+    directed: true,
+    caption: "A directed graph: edges only flow in one direction",
+  }
+);
+```
+
+`A → B` is an arrow that means the connection goes from `A` to `B` only. Directed graphs are useful for one-way roads, data flow, and precedence relationships.
+
+## Weighted Graphs
+
+A weighted graph gives each edge a number called a weight. That number can represent distance, cost, strength, or any value that changes how the graph is used.
+
+### Undirected weighted graph
+
+::: {.static-graph-inline}
+<div id="weighted-undirected"></div>
+:::
+
+```{python}
+#| echo: false
+wu_nodes = [
+    {"id": "A", "label": "A"},
+    {"id": "B", "label": "B"},
+    {"id": "C", "label": "C"},
+]
+wu_edges = [
+    {"id": "e0", "source": "A", "target": "B", "label": "4"},
+    {"id": "e1", "source": "B", "target": "C", "label": "2"},
+    {"id": "e2", "source": "A", "target": "C", "label": "5"},
+]
+ojs_define(wu_nodes = wu_nodes, wu_edges = wu_edges)
+```
+
+```{ojs}
+//| echo: false
+//| results: hide
+mountStaticGraphView(
+  document.querySelector("#weighted-undirected"),
+  { nodes: wu_nodes, edges: wu_edges },
+  {
+    width: 380,
+    height: 260,
+    directed: false,
+    caption: "An undirected weighted graph: each edge has the same weight both ways",
+  }
+);
+```
+
+In this undirected weighted graph, the edge `A — B` has weight `4`, and that value applies in both directions.
+
+### Directed weighted graph
+
+::: {.static-graph-inline}
+<div id="weighted-directed"></div>
+:::
+
+```{python}
+#| echo: false
+wd_nodes = [
+    {"id": "A", "label": "A"},
+    {"id": "B", "label": "B"},
+    {"id": "C", "label": "C"},
+]
+wd_edges = [
+    {"id": "e0", "source": "A", "target": "B", "label": "3"},
+    {"id": "e1", "source": "B", "target": "C", "label": "1"},
+    {"id": "e2", "source": "A", "target": "C", "label": "2"},
+]
+ojs_define(wd_nodes = wd_nodes, wd_edges = wd_edges)
+```
+
+```{ojs}
+//| echo: false
+//| results: hide
+mountStaticGraphView(
+  document.querySelector("#weighted-directed"),
+  { nodes: wd_nodes, edges: wd_edges },
+  {
+    width: 380,
+    height: 260,
+    directed: true,
+    caption: "A directed weighted graph: arrows carry numeric weights",
+  }
+);
+```
+
+A directed weighted graph combines both ideas: each edge has a direction and a numeric weight. The edge `A → B` with weight `3` is not the same as `B → A`.
