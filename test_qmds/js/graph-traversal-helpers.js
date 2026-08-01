@@ -109,12 +109,26 @@ export function filterStationGraph(data, visibility) {
 // ---------------------------------------------------------------------------
 
 /**
- * Each quiz item has two independent panel configs: `question` (shown before
- * reveal) and `answer` (shown after). Each panel config is a standalone
- * input — graph, highlight, bag, and tracking are all specified per panel,
- * not derived from one shared filtered graph. This lets a given question's
- * "before" and "after" states use entirely different graphs if needed, and
- * lets you edit the graph in one panel without touching the other.
+ * One shared question shape feeds BOTH quiz styles. `mountTraversalQuiz`
+ * (below) looks at `options` to decide how to render:
+ *   - `options` present (2-3 {id,label,correct,feedback} entries)  → MCQ
+ *     mode: the learner clicks a room instead of a "Reveal" button.
+ *   - `options` omitted                                            → plain
+ *     reveal-answer mode: a single "Reveal answer" button shows
+ *     `answer.text`.
+ * You can freely mix the two styles within the same `questions` array —
+ * each question is checked independently.
+ *
+ * Question shape:
+ *   {
+ *     prompt: string
+ *     note?: string             // optional footnote, shown once answered/solved
+ *     options?: [{id, label, correct, feedback}]   // omit for reveal-answer mode
+ *     question: Panel           // graph/bag/tracking state shown before answering
+ *     answer: Panel & { text?: string } // state shown after; `text` is the
+ *                                       // reveal-mode answer copy (ignored in MCQ mode,
+ *                                       // where each option's own `feedback` is used instead)
+ *   }
  *
  * Panel shape:
  *   {
@@ -126,187 +140,8 @@ export function filterStationGraph(data, visibility) {
  *     bagPick?: string|null
  *     bagPickDone?: string|null // picked room fading out of the bag
  *     tracking?: string[]
- *     prompt?: string          // question panel only
- *     text?: string            // answer panel only (the answer copy)
- *     note?: string            // answer panel only (optional footnote)
  *   }
  */
-export const HEAT_QUIZ_QUESTIONS = [
-  {
-    id: 1,
-    question: {
-      prompt: 'What are the "states" in this problem?',
-      visibility: 3,
-    },
-    answer: {
-      text: "The rooms in the space station.",
-      visibility: 3,
-      highlight: { start: "C", end: "P", visited: ["C", "M", "CQ","A","G","S", "AD", "P"], },
-      tracking: [],
-      note: "States = rooms the heat (or you) can be in.",
-    },
-  },
-  {
-    id: 2,
-    question: {
-      prompt:
-        'What do we "track"?',
-      visibility: 3,
-      bag: [],
-    },
-    answer: {
-      text: "We track all rooms that the heat can reach. So at the start, the heat can reach the Cafeteria, so we will track the Cafeteria.",
-      visibility: 3,
-      highlight: {
-        start: "C",
-        end: "P",
-        current: "C",
-      },
-      bag: [],
-      tracking: ["C"],
-      trackPick: ["C"],
-    },
-  },
-  {
-    id: 3,
-    question: {
-      prompt: "For our traversal, what is the start state?",
-      visibility: 3,
-      tracking: ["C"],
-    },
-    answer: {
-      text: "The Cafeteria — that's where the heater is. We want to explore it so we bag it.",
-      visibility: 3,
-      highlight: { start: "C", end: "P", current: "C" },
-      bag: ["C"],
-      tracking: ["C"],
-      note: "Heat starts spreading from the Cafeteria.",
-    },
-  },
-  {
-    id: 4,
-    question: {
-      prompt:
-        "Now we start exploring from the Cafeteria. At this point which rooms can be heated?",
-      visibility: 1,
-      tracking: ["C"],
-      highlight: {
-        current: "C",
-      },
-      bag: ["C"],
-      bagPick: "C",
-    },
-    answer: {
-      text: "MedBay and Crew Quarters are the neighbours, thus the heat can reach them, so we will track them.",
-      visibility: 1,
-      highlight: {
-        neighbours: ["M", "CQ"],
-      },
-      bag: ["C"],
-      bagPick: "C",
-      tracking: ["C","M", "CQ"],
-      trackPick: ["M", "CQ"],
-      note: "We can also choose to track these when we put them IN the bag, or pull them OUT of the bag. This is the simplest method: tracking AS SOON AS we encounter them.",
-    },
-  },
-  {
-    id: 5,
-    question: {
-      prompt:
-        'Now we\'ve fully explored the Cafeteria. What are the next rooms we need to explore?',
-      visibility: 1,
-      tracking: ["C","M", "CQ"],
-      bag: ["C"],
-      bagPickDone: "C",
-    },
-    answer: {
-      text: "We need to explore both MedBay and Crew Quarters. We also remove the Cafeteria from the bag because we have already explored it.",
-      visibility: 1,
-      highlight: {
-        neighbours: ["M", "CQ"],
-      },
-      bag: ["C","M", "CQ"],
-      bagPickDone: "C",
-      tracking: ["C","M", "CQ"],
-      note: "The bag holds rooms we have not explored yet.",
-    },
-  },
-  {
-    id: 6,
-    question: {
-      prompt:
-        "How do we pick the next room to continue the traversal?",
-      visibility: 1,
-      bag: ["M", "CQ"],
-      tracking: ["C","M", "CQ"],
-    },
-    answer: {
-      text: "We randomly pick one room from the bag.",
-      visibility: 1,
-      highlight: {
-        end: "P",
-        current: "M",
-      },
-      bag: ["M", "CQ"],
-      bagPick: "M",
-      tracking: ["C","M", "CQ"],
-      note: "Random pick from the bag = unordered traversal.",
-    },
-  },
-  {
-    id: 7,
-    question: {
-      prompt: "What do we track and bag as we move to the MedBay?",
-      visibility: 4,
-      bag: ["M","CQ"],
-      bagPick: "M",
-      tracking: ["C","M", "CQ"],
-      highlight: {
-        current: "M",
-      },
-    },
-    answer: {
-      text: "We track MedBay's neighbours (heat can reach them) and we bag MedBay's neighbours (we need to traverse them). \n\n We notice that Cafeteria has already been tracked so we do not add it to the bag again.",
-      visibility: 4,
-      highlight: {
-        current: "M",
-        previous: "C",
-        neighbours: ["A"],
-      },
-      bag: ["M","CQ", "A"],
-      bagPickDone: "M",
-      tracking: ["C","M", "CQ","A"],
-      note: "Tracking = all reachable rooms / Bag = rooms we have to visit in the future",
-    },
-  },
-  {
-    id: 8,
-    question: {
-      prompt: "When do we stop the traversal?",
-      visibility: 4,
-      bag: ["CQ", "A"],
-      bagPick: "A",
-      tracking: ["C","M", "CQ","A"],
-      highlight: {
-        current: "A",
-      }
-    },
-    answer: {
-      text: "When we reach room P OR we run out of rooms in the bag",
-      visibility: 2,
-      highlight: {
-        start: "C",
-        end: "P",
-        current: "P",
-        visited: ["C", "M", "A", "P"],
-      },
-      bag: ["CQ"],
-      tracking: ["C", "M", "CQ", "A", "P"],
-      note: "Goal reached: stop as soon as P is encountered.",
-    },
-  },
-];
-
 // ---------------------------------------------------------------------------
 // Bag + tracking UI (sci-fi station theme)
 // ---------------------------------------------------------------------------
@@ -481,6 +316,7 @@ export function mountStationGraphView(container, data, options = {}) {
   );
   const selectedId = options.selectedId != null ? String(options.selectedId) : null;
   const edgeSource = options.edgeSource != null ? String(options.edgeSource) : null;
+  const goalId = options.goalId != null ? String(options.goalId) : null;
   const nodesIn = data?.nodes ?? [];
   const edgesIn = data?.edges ?? [];
 
@@ -541,8 +377,11 @@ export function mountStationGraphView(container, data, options = {}) {
 
   byId.forEach((n) => {
     const classes = ["ht-node"];
-    if (blink.has(n.id)) classes.push("ht-node-blink");
+    const isCurrent = highlight.current != null && String(highlight.current) === n.id;
+    if (isCurrent) classes.push("ht-node-current");
+    else if (blink.has(n.id)) classes.push("ht-node-blink");
     if (selectedId === n.id || edgeSource === n.id) classes.push("ht-node-selected");
+    if (goalId && n.id === goalId) classes.push("ht-node-goal");
 
     const g = document.createElementNS(svgNS, "g");
     g.setAttribute("class", classes.join(" "));
@@ -600,22 +439,32 @@ function buildNavControls({ prevDisabled, nextDisabled, nextLabel, indicator, on
 // ---------------------------------------------------------------------------
 
 /**
- * Interactive Q&A: graph grows with the questions; Next reveals the answer
- * and highlights the matching concept on the left.
+ * Interactive Q&A that supports two question styles side by side, chosen
+ * per-question by whether `options` is present (see the question-shape
+ * doc comment above):
+ *   - Reveal mode:  a "Reveal answer" button shows the answer text.
+ *   - MCQ mode:     2-3 room buttons; wrong picks get inline feedback and
+ *                   stay clickable, the correct pick locks the question in.
+ * Either way, the graph/bag/tracking side panels update between the
+ * question's "before" and "after" state, and `goalId` (if given) marks the
+ * goal room on the graph.
  *
  * @param {HTMLElement} container
- * @param {{width?: number, height?: number, questions?: typeof HEAT_QUIZ_QUESTIONS}} options
+ * @param {{width?: number, height?: number, questions?: typeof DFS_QUIZ_QUESTIONS, goalId?: string}} options
  */
-export function mountHeatQuiz(container, options = {}) {
+export function mountTraversalQuiz(container, options = {}) {
   if (!container) return null;
 
   const width = options.width ?? 400;
   const height = options.height ?? 260;
-  const questions = options.questions ?? HEAT_QUIZ_QUESTIONS;
+  const questions = options.questions ?? DFS_QUIZ_QUESTIONS;
+  const goalId = options.goalId ?? TRAVERSAL_GOAL_ID;
   const fullData = createStationGraphData({ width, height });
 
   let qIndex = 0;
-  let revealed = false;
+  let revealed = false; // reveal-mode: has the answer been shown
+  let solved = questions.map(() => false); // mcq-mode: has the correct room been picked
+  let wrongPicks = new Set();
 
   container.innerHTML = "";
   container.classList.add("ht-quiz");
@@ -640,6 +489,10 @@ export function mountHeatQuiz(container, options = {}) {
   layout.append(left, right);
   container.append(layout);
 
+  function isMCQ(q) {
+    return Array.isArray(q.options) && q.options.length > 0;
+  }
+
   /**
    * Resolve a panel (question or answer) into concrete render inputs.
    * `panel.graph` is used verbatim if provided; otherwise it falls back to
@@ -660,13 +513,15 @@ export function mountHeatQuiz(container, options = {}) {
 
   function render() {
     const q = questions[qIndex];
-    const panel = revealed ? q.answer : q.question;
-    const resolved = resolvePanel(panel);
+    const mcq = isMCQ(q);
+    const shown = mcq ? solved[qIndex] : revealed;
+    const resolved = resolvePanel(shown ? q.answer : q.question);
 
     mountStationGraphView(graphMount, resolved.graph, {
       width,
       height,
       highlight: resolved.highlight,
+      goalId,
     });
 
     sidePanels.innerHTML =
@@ -676,29 +531,101 @@ export function mountHeatQuiz(container, options = {}) {
         pickDone: resolved.bagPickDone,
       });
 
+    const isLast = qIndex === questions.length - 1;
+    let bodyHtml;
+
+    if (mcq) {
+      const optionsHtml = q.options
+        .map((opt) => {
+          const classes = ["ht-mcq-btn"];
+          if (shown && opt.correct) classes.push("ht-mcq-btn-correct");
+          else if (!shown && wrongPicks.has(opt.id)) classes.push("ht-mcq-btn-incorrect");
+          if (shown) classes.push("ht-mcq-btn-disabled");
+          return `<button type="button" class="${classes.join(" ")}" data-id="${escapeHtml(opt.id)}" ${shown ? "disabled" : ""}>${escapeHtml(opt.label)}</button>`;
+        })
+        .join("");
+
+      let feedbackHtml;
+      if (shown) {
+        const correct = q.options.find((o) => o.correct);
+        feedbackHtml = `
+          <div class="ht-mcq-feedback ht-mcq-feedback-correct">
+            <span class="ht-mcq-feedback-label">Correct</span>${escapeHtml(correct.feedback)}
+          </div>
+          ${q.note ? `<p class="ht-quiz-note">${escapeHtml(q.note)}</p>` : ""}
+        `;
+      } else if (wrongPicks.size > 0) {
+        const lastId = [...wrongPicks][wrongPicks.size - 1];
+        const opt = q.options.find((o) => o.id === lastId);
+        feedbackHtml = `
+          <div class="ht-mcq-feedback ht-mcq-feedback-incorrect">
+            <span class="ht-mcq-feedback-label">Not quite</span>${escapeHtml(opt?.feedback ?? "")}
+          </div>
+        `;
+      } else {
+        feedbackHtml = `<div class="ht-mcq-feedback-hidden">Pick a room to see if you're right.</div>`;
+      }
+
+      bodyHtml = `<div class="ht-mcq-options">${optionsHtml}</div>${feedbackHtml}`;
+    } else {
+      bodyHtml = `
+        <div class="ht-quiz-answer-wrap ${shown ? "ht-quiz-answer-visible" : ""}">
+          ${
+            shown
+              ? `<div class="ht-quiz-answer"><span class="ht-quiz-answer-label">Answer</span>${escapeHtml(q.answer.text ?? "")}</div>
+                 ${q.note ? `<p class="ht-quiz-note">${escapeHtml(q.note)}</p>` : ""}`
+              : `<div class="ht-quiz-answer-hidden">Answer hidden — press Reveal to show</div>`
+          }
+        </div>
+      `;
+    }
+
     right.innerHTML = `
-      <div class="ht-quiz-meta">Question ${qIndex + 1} of ${questions.length}</div>
-      <h4 class="ht-quiz-prompt">${escapeHtml(q.question.prompt)}</h4>
-      <div class="ht-quiz-answer-wrap ${revealed ? "ht-quiz-answer-visible" : ""}">
-        ${
-          revealed
-            ? `<div class="ht-quiz-answer"><span class="ht-quiz-answer-label">Answer</span>${escapeHtml(q.answer.text)}</div>
-               ${q.answer.note ? `<p class="ht-quiz-note">${escapeHtml(q.answer.note)}</p>` : ""}`
-            : `<div class="ht-quiz-answer-hidden">Answer hidden — press Reveal to show</div>`
-        }
-      </div>
+      <div class="ht-quiz-meta">Question ${qIndex + 1} of ${questions.length}${mcq && isLast && goalId ? " — reach the goal!" : ""}</div>
+      <h4 class="ht-quiz-prompt">${escapeHtml(q.prompt ?? q.question?.prompt ?? "")}</h4>
+      ${bodyHtml}
     `;
 
+    if (mcq) {
+      right.querySelectorAll(".ht-mcq-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id");
+          const opt = q.options.find((o) => o.id === id);
+          if (!opt || solved[qIndex]) return;
+          if (opt.correct) {
+            solved[qIndex] = true;
+          } else {
+            wrongPicks.add(id);
+          }
+          render();
+        });
+      });
+    }
+
     const controls = buildNavControls({
-      prevDisabled: qIndex === 0 && !revealed,
-      nextDisabled: revealed && qIndex >= questions.length - 1,
-      nextLabel: !revealed
-        ? "Reveal answer →"
-        : qIndex < questions.length - 1
-          ? "Next question →"
-          : "Done",
-      indicator: revealed ? "Answer shown" : "Think first",
+      prevDisabled: mcq ? qIndex === 0 : qIndex === 0 && !revealed,
+      nextDisabled: mcq ? !shown || isLast : shown && qIndex >= questions.length - 1,
+      nextLabel: mcq
+        ? isLast
+          ? shown
+            ? "Solved! 🎉"
+            : "Solve to finish"
+          : "Next question →"
+        : !revealed
+          ? "Reveal answer →"
+          : qIndex < questions.length - 1
+            ? "Next question →"
+            : "Done",
+      indicator: mcq ? (shown ? "Solved" : "Pick a room") : revealed ? "Answer shown" : "Think first",
       onPrev: () => {
+        if (mcq) {
+          if (qIndex > 0) {
+            qIndex -= 1;
+            wrongPicks = new Set();
+            render();
+          }
+          return;
+        }
         if (revealed) {
           revealed = false;
         } else if (qIndex > 0) {
@@ -708,6 +635,14 @@ export function mountHeatQuiz(container, options = {}) {
         render();
       },
       onNext: () => {
+        if (mcq) {
+          if (shown && qIndex < questions.length - 1) {
+            qIndex += 1;
+            wrongPicks = new Set();
+            render();
+          }
+          return;
+        }
         if (!revealed) {
           revealed = true;
         } else if (qIndex < questions.length - 1) {
@@ -722,14 +657,19 @@ export function mountHeatQuiz(container, options = {}) {
 
   render();
   return {
-    getState: () => ({ qIndex, revealed }),
+    getState: () => ({ qIndex, revealed, solved: [...solved] }),
     goTo: (i, showAnswer = false) => {
       qIndex = Math.max(0, Math.min(questions.length - 1, i));
       revealed = !!showAnswer;
+      wrongPicks = new Set();
       render();
     },
   };
 }
+
+// Back-compat aliases: both old entry points now point at the single
+// unified mount function above, which auto-detects the style per question.
+export const mountHeatQuiz = mountTraversalQuiz;
 
 // ---------------------------------------------------------------------------
 // Live reachability playground (independent editor + animated traversal)
@@ -1501,469 +1441,117 @@ function promptLabel(title, defaultValue = "") {
   return value == null ? null : value.trim();
 }
 
+// ---------------------------------------------------------------------------
+// DFS / BFS quiz map + question sets
+// ---------------------------------------------------------------------------
+// The challenge: starting from the Cafeteria, reach the Admin room — the
+// goal room, tucked at the far end of Storage's branch. A few extra rooms
+// (G, off of A; H, off of D) give both DFS and BFS a proper third level, so
+// there's a real multi-step backtrack (DFS) / multi-level queue (BFS)
+// before either algorithm reaches the goal.
+//
+//        MedBay ── A ── G
+//       /
+// Cafeteria ── Electrical ── D ── H
+//       \
+//        Storage ── F ── Admin (GOAL)
+//
+// Same map, same "assume MedBay first" tie-break, is reused across all
+// four quiz exports below (DFS_QUIZ_QUESTIONS / BFS_QUIZ_QUESTIONS in the
+// reveal-answer style, and DFS_MCQ_QUESTIONS / BFS_MCQ_QUESTIONS in the
+// click-a-button style) so the two styles can be swapped in without
+// changing the story.
+
+const TRAVERSAL_LAYOUT = {
+  nodes: [
+    { id: "CAF", label: "Cafeteria", x: 40, y: 140 },
+    { id: "MED", label: "MedBay", x: 180, y: 40 },
+    { id: "ELEC", label: "Electrical", x: 180, y: 140 },
+    { id: "STO", label: "Storage", x: 180, y: 240 },
+    { id: "TA", label: "A", x: 320, y: 10 },
+    { id: "TB", label: "B", x: 320, y: 70 },
+    { id: "TG", label: "G", x: 460, y: 10 },
+    { id: "TD", label: "D", x: 320, y: 140 },
+    { id: "TH", label: "H", x: 460, y: 140 },
+    { id: "TF", label: "F", x: 320, y: 210 },
+    { id: "ADMIN", label: "Admin", x: 460, y: 240 },
+  ],
+  edges: [
+    { id: "CAF—MED", source: "CAF", target: "MED" },
+    { id: "CAF—ELEC", source: "CAF", target: "ELEC" },
+    { id: "CAF—STO", source: "CAF", target: "STO" },
+    { id: "MED—TA", source: "MED", target: "TA" },
+    { id: "MED—TB", source: "MED", target: "TB" },
+    { id: "TA—TG", source: "TA", target: "TG" },
+    { id: "ELEC—TD", source: "ELEC", target: "TD" },
+    { id: "TD—TH", source: "TD", target: "TH" },
+    { id: "STO—TF", source: "STO", target: "TF" },
+    { id: "TF—ADMIN", source: "TF", target: "ADMIN" },
+  ],
+};
+
+/** Full DFS/BFS station map (edit-friendly, same shape as `createStationGraphData`). */
+export function createTraversalGraphData(opts = {}) {
+  return scaleStationGraph(TRAVERSAL_LAYOUT, opts.width ?? 400, opts.height ?? 260);
+}
+
+const TRAV_W = 400;
+const TRAV_H = 260;
+const TRAVERSAL_FULL = createTraversalGraphData({ width: TRAV_W, height: TRAV_H });
+const TRAVERSAL_GOAL_ID = "ADMIN";
+
 /**
- * Independent station map editor + animated heat reachability.
- * Does not use GraphEngine / graph-view — owns its own graph state.
- *
- * @param {HTMLElement} container
- * @param {{width?: number, height?: number, initialData?: object, stepDelayMs?: number}} options
+ * Pull a labelled sub-view of the traversal map: only `visibleIds` are kept
+ * (everything else isn't drawn at all yet — a room appears once a room
+ * next to it has been visited and we "look through its doors").
  */
-export function mountHeatPlayground(container, options = {}) {
-  if (!container) return null;
-
-  const width = options.width ?? 520;
-  const height = options.height ?? 320;
-  const stepDelayMs = options.stepDelayMs ?? 900;
-
-  let data = cloneStationData(
-    options.initialData ?? createStationGraphData({ width, height })
+function travView(visibleIds) {
+  const visible = new Set(visibleIds);
+  const nodes = TRAVERSAL_FULL.nodes.filter((n) => visible.has(n.id));
+  const edges = TRAVERSAL_FULL.edges.filter(
+    (e) => visible.has(e.source) && visible.has(e.target)
   );
-  let mode = "select"; // select | add-node | add-edge | delete
-  let selectedId = null;
-  let edgeSource = null;
-  let frames = [];
-  let frameIndex = 0;
-  let playing = false;
-  let playTimer = null;
-  let statusMsg = "";
-  let drag = null; // { id, ox, oy }
+  return { nodes, edges };
+}
 
-  container.innerHTML = "";
-  container.classList.add("ht-anim", "ht-play");
-
-  const toolbar = document.createElement("div");
-  toolbar.className = "ht-play-toolbar";
-
-  const graphHost = document.createElement("div");
-  graphHost.className = "ht-anim-graph";
-
-  const panels = document.createElement("div");
-  panels.className = "ht-anim-panels";
-
-  const status = document.createElement("div");
-  status.className = "ht-play-status";
-
-  const controls = document.createElement("div");
-  controls.className = "ht-quiz-controls";
-
-  container.append(toolbar, graphHost, panels, status, controls);
-
-  function clearPlayTimer() {
-    if (playTimer != null) {
-      clearTimeout(playTimer);
-      playTimer = null;
-    }
-  }
-
-  function stopPlayback() {
-    playing = false;
-    clearPlayTimer();
-  }
-
-  function currentFrame() {
-    return frames[frameIndex] ?? null;
-  }
-
-  function playHighlight(frame) {
-    if (!frame) return {};
+/**
+ * One step = one question, built into the single unified question shape
+ * that `mountTraversalQuiz` consumes (see the doc comment near the top of
+ * the file). `options` lists the 2-3 rooms offered as choices; exactly one
+ * has `correct: true`. `feedback` is shown for whichever option gets picked
+ * (right or wrong) in MCQ mode, and the correct option's `feedback` doubles
+ * as the reveal-mode answer text. `note` is an extra teaching aside shown
+ * once the question is answered/solved either way.
+ *
+ * Omit `options` for a plain reveal-answer step instead of MCQ — in that
+ * case provide `neighbours` (ids to highlight as candidates before
+ * answering), `answerId` (id to highlight after), and `answerText` (the
+ * reveal copy) directly on the step.
+ */
+export function buildQuizQuestions(steps) {
+  return steps.map((s) => {
+    const correct = s.options?.find((o) => o.correct);
     return {
-      current: frame.current,
-      next: frame.bagPick,
-      neighbours: frame.bagPick ? [] : frame.neighbours ?? [],
-      pathEdges: frame.pathEdges ?? [],
+      prompt: s.prompt,
+      note: s.note,
+      options: s.options,
+      question: {
+        graph: travView(s.visible),
+        highlight: {
+          current: s.current,
+          neighbours: s.options ? s.options.map((o) => o.id) : s.neighbours,
+          pathEdges: s.pathEdgesBefore,
+        },
+        bag: s.bagBefore,
+        tracking: s.trackingBefore,
+      },
+      answer: {
+        graph: travView(s.visibleAfter ?? s.visible),
+        highlight: { current: correct ? correct.id : s.answerId, pathEdges: s.pathEdgesAfter },
+        bag: s.bagAfter,
+        tracking: s.trackingAfter,
+        text: correct ? correct.feedback : s.answerText,
+      },
     };
-  }
-
-  function validateEndpoints() {
-    const startId = findCafeteriaId(data.nodes);
-    const goalId = findRoomPId(data.nodes);
-    if (!startId || !goalId) {
-      const missing = [];
-      if (!startId) missing.push("Cafeteria");
-      if (!goalId) missing.push("room P");
-      statusMsg = `Add ${missing.join(" and ")} before starting the heat traversal.`;
-      return null;
-    }
-    statusMsg = "";
-    return { startId, goalId };
-  }
-
-  function startTraversal() {
-    const ends = validateEndpoints();
-    if (!ends) {
-      frames = [];
-      frameIndex = 0;
-      stopPlayback();
-      render();
-      return;
-    }
-    frames = buildReachabilityFrames(data, ends.startId, ends.goalId);
-    frameIndex = 0;
-    stopPlayback();
-    render();
-  }
-
-  function stepForward() {
-    if (!frames.length) {
-      startTraversal();
-      if (!frames.length) return;
-    }
-    if (frameIndex < frames.length - 1) {
-      frameIndex += 1;
-      render();
-    } else {
-      stopPlayback();
-      render();
-    }
-  }
-
-  function play() {
-    const ends = validateEndpoints();
-    if (!ends) {
-      frames = [];
-      frameIndex = 0;
-      render();
-      return;
-    }
-    if (!frames.length || frameIndex >= frames.length - 1) {
-      frames = buildReachabilityFrames(data, ends.startId, ends.goalId);
-      frameIndex = 0;
-    }
-    playing = true;
-    render();
-    const tick = () => {
-      if (!playing) return;
-      if (frameIndex >= frames.length - 1) {
-        stopPlayback();
-        render();
-        return;
-      }
-      frameIndex += 1;
-      render();
-      if (playing && frameIndex < frames.length - 1) {
-        playTimer = setTimeout(tick, stepDelayMs);
-      } else {
-        stopPlayback();
-        render();
-      }
-    };
-    playTimer = setTimeout(tick, stepDelayMs);
-  }
-
-  function resetTraversal() {
-    stopPlayback();
-    frames = [];
-    frameIndex = 0;
-    statusMsg = "";
-    render();
-  }
-
-  function invalidateTraversal() {
-    stopPlayback();
-    frames = [];
-    frameIndex = 0;
-  }
-
-  function mkTool(label, modeName) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "ht-nav-btn";
-    btn.textContent = label;
-    btn.onclick = () => {
-      mode = mode === modeName ? "select" : modeName;
-      edgeSource = null;
-      render();
-    };
-    return btn;
-  }
-
-  function renderToolbar() {
-    toolbar.innerHTML = "";
-    const tools = [
-      mkTool("Add room", "add-node"),
-      mkTool("Connect", "add-edge"),
-      mkTool("Delete", "delete"),
-    ];
-    tools.forEach((b) => {
-      if (
-        (b.textContent === "Add room" && mode === "add-node") ||
-        (b.textContent === "Connect" && mode === "add-edge") ||
-        (b.textContent === "Delete" && mode === "delete")
-      ) {
-        b.classList.add("ht-nav-btn-active");
-      }
-    });
-
-    const renameBtn = document.createElement("button");
-    renameBtn.type = "button";
-    renameBtn.className = "ht-nav-btn";
-    renameBtn.textContent = "Rename";
-    renameBtn.onclick = () => {
-      if (!selectedId) {
-        statusMsg = "Select a room first, then Rename.";
-        render();
-        return;
-      }
-      const node = data.nodes.find((n) => n.id === selectedId);
-      const label = promptLabel("Room name", node?.label ?? "");
-      if (label == null || !label) return;
-      node.label = label;
-      invalidateTraversal();
-      render();
-    };
-
-    toolbar.append(...tools, renameBtn);
-
-    const hint = document.createElement("span");
-    hint.className = "ht-play-hint";
-    hint.textContent =
-      mode === "add-node"
-        ? "Click the map to place a room"
-        : mode === "add-edge"
-          ? edgeSource
-            ? "Click the other room to connect"
-            : "Click the first room, then the second"
-          : mode === "delete"
-            ? "Click a room or vent to delete"
-            : "Drag rooms · click to select";
-    toolbar.appendChild(hint);
-  }
-
-  function svgPoint(evt) {
-    const svg = graphHost.querySelector("svg");
-    if (!svg) return { x: 0, y: 0 };
-    const pt = svg.createSVGPoint();
-    pt.x = evt.clientX;
-    pt.y = evt.clientY;
-    const ctm = svg.getScreenCTM();
-    if (!ctm) return { x: 0, y: 0 };
-    const local = pt.matrixTransform(ctm.inverse());
-    return { x: local.x, y: local.y };
-  }
-
-  function paintGraph() {
-    mountStationGraphView(graphHost, data, {
-      width,
-      height,
-      highlight: playHighlight(currentFrame()),
-      selectedId,
-      edgeSource,
-    });
-  }
-
-  // Single delegated listener set — survives SVG redraws inside graphHost.
-  graphHost.addEventListener("click", (evt) => {
-    if (drag?.moved) {
-      drag = null;
-      return;
-    }
-    const nodeEl = evt.target.closest(".ht-node");
-    const edgeEl = evt.target.closest(".ht-edge");
-
-    if (mode === "add-node" && !nodeEl) {
-      const { x, y } = svgPoint(evt);
-      const id = nextAutoRoomId(data.nodes);
-      const label = promptLabel("Room name (e.g. Cafeteria or P)", id);
-      if (label == null) return;
-      data.nodes.push({ id, label: label || id, x, y });
-      selectedId = id;
-      invalidateTraversal();
-      render();
-      return;
-    }
-
-    if (mode === "delete") {
-      if (nodeEl) {
-        const id = nodeEl.getAttribute("data-id");
-        data.nodes = data.nodes.filter((n) => n.id !== id);
-        data.edges = data.edges.filter((e) => e.source !== id && e.target !== id);
-        if (selectedId === id) selectedId = null;
-        invalidateTraversal();
-        render();
-        return;
-      }
-      if (edgeEl) {
-        const id = edgeEl.getAttribute("data-id");
-        data.edges = data.edges.filter((e) => e.id !== id);
-        invalidateTraversal();
-        render();
-        return;
-      }
-    }
-
-    if (mode === "add-edge" && nodeEl) {
-      const id = nodeEl.getAttribute("data-id");
-      if (!edgeSource) {
-        edgeSource = id;
-        selectedId = id;
-        render();
-        return;
-      }
-      if (edgeSource !== id) {
-        const exists = data.edges.some(
-          (e) =>
-            (e.source === edgeSource && e.target === id) ||
-            (e.source === id && e.target === edgeSource)
-        );
-        if (!exists) {
-          data.edges.push({
-            id: edgeIdBetween(edgeSource, id),
-            source: edgeSource,
-            target: id,
-          });
-          invalidateTraversal();
-        }
-      }
-      edgeSource = null;
-      render();
-      return;
-    }
-
-    if (mode === "select") {
-      if (nodeEl) {
-        selectedId = nodeEl.getAttribute("data-id");
-        render();
-      } else if (!edgeEl) {
-        selectedId = null;
-        edgeSource = null;
-        render();
-      }
-    }
   });
-
-  graphHost.addEventListener("pointerdown", (evt) => {
-    if (mode !== "select") return;
-    const nodeEl = evt.target.closest(".ht-node");
-    if (!nodeEl) return;
-    const id = nodeEl.getAttribute("data-id");
-    const node = data.nodes.find((n) => n.id === id);
-    if (!node) return;
-    const { x, y } = svgPoint(evt);
-    drag = { id, ox: x - node.x, oy: y - node.y, moved: false };
-    selectedId = id;
-    graphHost.setPointerCapture?.(evt.pointerId);
-    evt.preventDefault();
-  });
-
-  graphHost.addEventListener("pointermove", (evt) => {
-    if (!drag) return;
-    const node = data.nodes.find((n) => n.id === drag.id);
-    if (!node) return;
-    const { x, y } = svgPoint(evt);
-    const nx = Math.max(24, Math.min(width - 24, x - drag.ox));
-    const ny = Math.max(24, Math.min(height - 24, y - drag.oy));
-    if (Math.hypot(nx - node.x, ny - node.y) > 2) drag.moved = true;
-    node.x = nx;
-    node.y = ny;
-    paintGraph();
-  });
-
-  graphHost.addEventListener("pointerup", () => {
-    if (drag?.moved) invalidateTraversal();
-    drag = null;
-  });
-
-  function renderPanels() {
-    const frame = currentFrame();
-    panels.innerHTML =
-      renderBagPanel({
-        items: frame?.bag ?? [],
-        pick: frame?.bagPick ?? null,
-        pickDone: frame?.bagPickDone ?? null,
-        title: "TO BE EXPLORED",
-      }) +
-      renderTrackingPanel({
-        items: frame?.tracking ?? [],
-        title: "TRACK - HEAT REACHABLE",
-      });
-  }
-
-  function renderStatus() {
-    const ends = {
-      start: findCafeteriaId(data.nodes),
-      goal: findRoomPId(data.nodes),
-    };
-    let msg = statusMsg;
-    if (!msg && (!ends.start || !ends.goal)) {
-      const missing = [];
-      if (!ends.start) missing.push("Cafeteria");
-      if (!ends.goal) missing.push("room P");
-      msg = `Need ${missing.join(" and ")} on the map before heat can spread.`;
-    } else if (!msg && frames.length && frameIndex === frames.length - 1) {
-      const last = frames[frames.length - 1];
-      msg = last.reached
-        ? "Heat reached room P — there is a path from the Cafeteria."
-        : "Bag empty — heat never reached room P from the Cafeteria.";
-    } else if (!msg && frames.length) {
-      msg = `Traversal step ${frameIndex + 1} / ${frames.length}`;
-    } else if (!msg) {
-      msg = "Edit the map, then press Play or Step to spread heat.";
-    }
-    status.textContent = msg;
-    status.classList.toggle("ht-play-status-warn", !ends.start || !ends.goal);
-  }
-
-  function renderControls() {
-    controls.innerHTML = "";
-
-    const playBtn = document.createElement("button");
-    playBtn.type = "button";
-    playBtn.className = "ht-nav-btn";
-    playBtn.textContent = playing ? "Pause" : "Play";
-    playBtn.onclick = () => {
-      if (playing) {
-        stopPlayback();
-        render();
-      } else {
-        play();
-      }
-    };
-
-    const stepBtn = document.createElement("button");
-    stepBtn.type = "button";
-    stepBtn.className = "ht-nav-btn";
-    stepBtn.textContent = "Step →";
-    stepBtn.onclick = () => {
-      stopPlayback();
-      stepForward();
-    };
-
-    const resetBtn = document.createElement("button");
-    resetBtn.type = "button";
-    resetBtn.className = "ht-nav-btn ht-nav-btn-ghost";
-    resetBtn.textContent = "Reset";
-    resetBtn.onclick = () => resetTraversal();
-
-    controls.append(playBtn, stepBtn, resetBtn);
-  }
-
-  function render() {
-    renderToolbar();
-    paintGraph();
-    renderPanels();
-    renderStatus();
-    renderControls();
-  }
-
-  render();
-
-  return {
-    getData: () => cloneStationData(data),
-    setData: (next) => {
-      data = cloneStationData(next);
-      invalidateTraversal();
-      render();
-    },
-    destroy: () => stopPlayback(),
-  };
-}
-
-/** @deprecated use mountHeatPlayground */
-export function mountHeatTraversalAnimation(container, _engine, options = {}) {
-  return mountHeatPlayground(container, options);
-}
-
-/** @deprecated frames are generated live from the editable graph */
-export function createHeatTraversalSteps() {
-  return [];
 }
