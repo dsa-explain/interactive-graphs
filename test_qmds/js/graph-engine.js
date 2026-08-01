@@ -19,6 +19,7 @@ export class GraphEngine {
     // Optional traversal / algorithm overlay (used by islands viz, etc.)
     this.viz = {
       visited: new Set(), // node ids
+      frontier: new Set(), // node ids currently in the bag / to-explore list
       currentNode: null,
       currentNeighbor: null,
       activeEdges: new Set(), // edge ids currently highlighted as traversed
@@ -84,6 +85,7 @@ export class GraphEngine {
       directed: this.directed,
       viz: {
         visited: new Set(this.viz.visited),
+        frontier: new Set(this.viz.frontier),
         currentNode: this.viz.currentNode,
         currentNeighbor: this.viz.currentNeighbor,
         activeEdges: new Set(this.viz.activeEdges),
@@ -181,11 +183,14 @@ export class GraphEngine {
   /**
    * Update algorithm highlight overlay. Pass a partial state; omitted keys
    * are left unchanged. Use `clearViz()` to wipe everything.
-   * @param {{visited?: Iterable, currentNode?: string|null, currentNeighbor?: string|null, activeEdges?: Iterable}} patch
+   * @param {{visited?: Iterable, frontier?: Iterable, currentNode?: string|null, currentNeighbor?: string|null, activeEdges?: Iterable}} patch
    */
   setViz(patch = {}) {
     if (patch.visited !== undefined) {
       this.viz.visited = new Set(patch.visited);
+    }
+    if (patch.frontier !== undefined) {
+      this.viz.frontier = new Set(patch.frontier);
     }
     if (patch.currentNode !== undefined) {
       this.viz.currentNode = patch.currentNode;
@@ -201,6 +206,7 @@ export class GraphEngine {
 
   clearViz() {
     this.viz.visited = new Set();
+    this.viz.frontier = new Set();
     this.viz.currentNode = null;
     this.viz.currentNeighbor = null;
     this.viz.activeEdges = new Set();

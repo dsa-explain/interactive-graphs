@@ -1913,3 +1913,141 @@ h1, h2, h3, .title {
   color: var(--ht-muted, #94a3b8);
   font-style: italic;
 }
+
+/* ---------- bfs / dfs DIY bag order (bdo-*) ---------- */
+
+.bdo-root {
+  margin: 1.25rem 0 2rem;
+}
+
+.bdo-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .bdo-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bdo-left.panel {
+  overflow: hidden;
+}
+
+.bdo-graph .gv-caption {
+  color: rgba(253, 254, 255, 0.72);
+}
+
+.bdo-toolbar-locked {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.bdo-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem 1.1rem;
+  background: var(--highlight-box);
+  border: var(--border-w-thick) solid var(--line);
+  border-radius: var(--radius-md);
+  min-height: 280px;
+}
+
+.bdo-right .adj-heading {
+  margin-bottom: 0;
+}
+
+.bdo-status {
+  font-size: 0.92rem;
+  line-height: 1.35;
+  color: var(--ink);
+  min-height: 2.4em;
+}
+
+.bdo-status-done {
+  font-weight: 600;
+}
+
+.bdo-feedback {
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.bdo-feedback-hidden {
+  display: none;
+}
+
+.bdo-feedback-dfs,
+.bdo-feedback-bfs {
+  background: #f0fdf4;
+  color: #14532d;
+  border: 1px solid #86efac;
+}
+
+.bdo-feedback-mixed {
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fdba74;
+}
+
+.bdo-hint {
+  font-size: 0.82rem;
+  color: var(--muted-on-paper);
+  line-height: 1.35;
+}
+
+.bdo-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.bdo-controls .gv-btn {
+  background: var(--ink);
+  color: #fdfeff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.45rem 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.bdo-controls .gv-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bdo-controls .gv-btn:not(:disabled):hover {
+  filter: brightness(1.08);
+}
+
+button.ht-bag-chip.bdo-chip {
+  cursor: pointer;
+  font: inherit;
+  appearance: none;
+}
+
+button.ht-bag-chip.bdo-chip:hover {
+  background: #2eb7c9;
+  border-color: #1a8a99;
+  color: #ffffff;
+}
+
+button.ht-bag-chip.bdo-chip-front {
+  box-shadow: inset 3px 0 0 #1a8a99;
+}
+
+button.ht-bag-chip.bdo-chip-back {
+  box-shadow: inset -3px 0 0 #c45d2a;
+}

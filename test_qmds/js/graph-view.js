@@ -429,6 +429,7 @@ export function mountGraphView(engine, container, options = {}) {
   function drawNodes(snapshot) {
     const neighbourIds = neighbourIdSet(snapshot);
     const visited = snapshot.viz?.visited ?? new Set();
+    const frontier = snapshot.viz?.frontier ?? new Set();
     const currentNode = snapshot.viz?.currentNode ?? null;
     const currentNeighbor = snapshot.viz?.currentNeighbor ?? null;
     const sel = nodeLayer.selectAll("g.gv-node").data([...simNodes.values()], (d) => d.id);
@@ -447,6 +448,7 @@ export function mountGraphView(engine, container, options = {}) {
         if (currentNode != null && d.id === currentNode) cls += " gv-selected";
         else if (currentNeighbor != null && d.id === currentNeighbor) cls += " gv-neighbour";
         else if (isSelected(snapshot, "node", d.id)) cls += " gv-selected";
+        else if (frontier.has(d.id)) cls += " gv-neighbour";
         else if (neighbourIds.has(d.id)) cls += " gv-neighbour";
         if (visited.has(d.id)) cls += " gv-visited";
         if (addEdgeMode && pendingEdgeSource === d.id) cls += " gv-pending";

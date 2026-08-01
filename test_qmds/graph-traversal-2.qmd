@@ -447,7 +447,25 @@ Now that we have an intuition for the two strategies, let us explore how we can 
 
 If we take another look at the "Bag" we can see that for the first strategy we are emptying the bag from right to left, and for the second one left to right. 
 
-So instead of a set like last time, we can use a list to record the rooms we encounter. For the first strategy we can remove the last item after each iteration, while for the second one we can remove the first item. Hold on, is there a data structure for these two operations? Yes, it is a stack for the first strategy and a queue for the second one! Let's do the question using code now:
+So instead of a set like last time, we can use a list to record the rooms we encounter. For the first strategy we can remove the last item after each iteration, while for the second one we can remove the first item. Hold on, is there a data structure for these two operations? Yes, it is a stack for the first strategy and a queue for the second one! 
+
+### DIY
+
+Make your own graph and then try to list the nodes in the order you would visit them using both strategies. For consistency: for selecting between nodes in the same room (like A and B in the previous example), use an alphabetical order to populate the bag. Thus when you pop from the bag, you would pop B before A for the first strategy (i.e. from the end of the list), and A before B for the second one (i.e. from the start of the list).
+
+::: {.widget-block}
+<div id="bfs-dfs-order"></div>
+:::
+
+```{ojs}
+//| echo: false
+import { mountBfsDfsOrderView } from "./js/bfs-dfs-order.js";
+
+bfsDfsOrder = mountBfsDfsOrderView(document.querySelector("#bfs-dfs-order"), {
+  width: 480,
+  height: 380,
+})
+```
 
 ### Implement in code!
 
