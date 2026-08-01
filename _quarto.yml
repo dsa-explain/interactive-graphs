@@ -19,12 +19,14 @@ website:
             text: Neighbours
           - href: test_qmds/sandbox.qmd
             text: Sandbox
-      - section: "Graph Algorithms"
-        contents:
           - href: test_qmds/graph-representation.qmd
             text: Graph Representation
+      - section: "Graph Algorithms"
+        contents:
           - href: test_qmds/graph-traversal.qmd
             text: Graph Traversal
+          - href: test_qmds/graph-traversal-2.qmd
+            text: Traversal Strategies
           - href: test_qmds/count-islands.qmd
             text: Graph Connectivity
 

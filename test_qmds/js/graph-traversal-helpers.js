@@ -69,6 +69,18 @@ export function roomChipLabel(id) {
     AD: "Admin",
     S: "S",
     P: "P",
+    // TRAVERSAL_LAYOUT (DFS/BFS station map)
+    CAF: "Cafeteria",
+    MED: "MedBay",
+    ELEC: "Electrical",
+    STO: "Storage",
+    TA: "A",
+    TB: "B",
+    TG: "G",
+    TD: "D",
+    TH: "H",
+    TF: "F",
+    ADMIN: "Admin",
   };
   return map[id] ?? id;
 }
@@ -156,6 +168,7 @@ export function renderBagPanel(opts = {}) {
   const pickDone = opts.pickDone ?? null;
   const title = opts.title ?? "TO BE EXPLORED";
   const emptyText = opts.emptyText ?? "bay empty — awaiting rooms…";
+  const footer = opts.footer ?? "unordered";
 
   const chips =
     items.length === 0
@@ -182,7 +195,7 @@ export function renderBagPanel(opts = {}) {
         <span class="ht-bag-title">${escapeHtml(title)}</span>
       </div>
       <div class="ht-bag-body">${chips}</div>
-      <div class="ht-bag-footer">unordered</div>
+      <div class="ht-bag-footer">${escapeHtml(footer)}</div>
     </div>
   `;
 }
@@ -892,6 +905,15 @@ export function instrumentHeatPython(src) {
       out.push(`${indent}tracking = _TraceBag("tracking")`);
       continue;
     }
+    // Stack / queue exercises use list() instead of set().
+    if (/^\s*bag\s*=\s*list\(\)\s*$/.test(trimmed)) {
+      out.push(`${indent}bag = _TraceList("bag")`);
+      continue;
+    }
+    if (/^\s*tracking\s*=\s*list\(\)\s*$/.test(trimmed)) {
+      out.push(`${indent}tracking = _TraceList("tracking")`);
+      continue;
+    }
 
     // Guard infinite loops when the student forgets to remove from the bag.
     if (/^\s*while\s+bag\s*:\s*$/.test(trimmed)) {
@@ -901,8 +923,11 @@ export function instrumentHeatPython(src) {
     }
 
     // Check-goal fires *before* the if so the block highlights even when
-    // the condition is false.
-    if (/^\s*if\s+node\s*==\s*(["'])P\1\s*:\s*$/.test(trimmed)) {
+    // the condition is false. Accept heat-story "P" or traversal-story "Admin".
+    if (
+      /^\s*if\s+node\s*==\s*(["'])P\1\s*:\s*$/.test(trimmed) ||
+      /^\s*if\s+node\s*==\s*(["'])Admin\1\s*:\s*$/.test(trimmed)
+    ) {
       out.push(`${indent}_probe("check_goal")`);
       out.push(trimmed);
       continue;
@@ -915,21 +940,35 @@ export function instrumentHeatPython(src) {
       out.push(`${indent}_probe("pick")`);
     }
 
+    // Stack/queue: pop() picks and removes in one step.
+    if (/^\s*node\s*=\s*bag\.pop\s*\(\s*\)\s*$/.test(trimmed)) {
+      out.push(`${indent}_state["node"] = node`);
+      out.push(`${indent}_probe("pick")`);
+    }
+    // Queue variant: pop(0) removes from the front.
+    if (/^\s*node\s*=\s*bag\.pop\s*\(\s*0\s*\)\s*$/.test(trimmed)) {
+      out.push(`${indent}_state["node"] = node`);
+      out.push(`${indent}_probe("pick")`);
+    }
+
     if (/^\s*neighbours\s*=\s*get_neighbours\s*\(\s*node\s*\)\s*$/.test(trimmed)) {
       out.push(`${indent}_state["neighbours"] = list(neighbours)`);
     }
 
-    // Prefer the pedagogical `tracking.add(neighbours)` line; also accept update().
+    // Prefer the pedagogical `tracking.add(neighbours)` line; also accept update()
+    // and list concatenation (`tracking += neighbours`).
     if (
       /^\s*tracking\.add\s*\(\s*neighbours\s*\)\s*$/.test(trimmed) ||
-      /^\s*tracking\.update\s*\(\s*neighbours\s*\)\s*$/.test(trimmed)
+      /^\s*tracking\.update\s*\(\s*neighbours\s*\)\s*$/.test(trimmed) ||
+      /^\s*tracking\s*\+=\s*neighbours\s*$/.test(trimmed)
     ) {
       out.push(`${indent}_probe("track_neighbours")`);
     }
 
     if (
       /^\s*bag\.add\s*\(\s*neighbours\s*\)\s*$/.test(trimmed) ||
-      /^\s*bag\.update\s*\(\s*neighbours\s*\)\s*$/.test(trimmed)
+      /^\s*bag\.update\s*\(\s*neighbours\s*\)\s*$/.test(trimmed) ||
+      /^\s*bag\s*\+=\s*neighbours\s*$/.test(trimmed)
     ) {
       out.push(`${indent}_probe("bag_neighbours")`);
     }
@@ -938,7 +977,10 @@ export function instrumentHeatPython(src) {
       out.push(`${indent}_probe("remove_node")`);
     }
 
-    if (/^\s*heat_reachable\s*=\s*True\s*$/.test(trimmed)) {
+    if (
+      /^\s*heat_reachable\s*=\s*True\s*$/.test(trimmed) ||
+      /^\s*goal_reached\s*=\s*True\s*$/.test(trimmed)
+    ) {
       out.push(`${indent}_state["reached"] = True`);
     }
   }
@@ -968,6 +1010,7 @@ _state = {
     "iters": 0,
 }
 _MAX_ITERS = 80
+_GOAL_LABELS = ("P", "Admin")
 
 class _TraceBag(set):
     """set() stand-in: .add(iterable) expands like .update (pedagogical code)."""
@@ -982,12 +1025,25 @@ class _TraceBag(set):
             return
         super().add(item)
 
+class _TraceList(list):
+    """list() stand-in so bag/tracking stay visible to the probe harness."""
+    def __init__(self, role, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _state[role] = self
+
 def _snap(s):
-    return sorted(s) if s is not None else []
+    if s is None:
+        return []
+    # Preserve stack/queue order for lists; sets stay sorted for stability.
+    if isinstance(s, list):
+        return list(s)
+    return sorted(s)
 
 def _probe(block_id):
     node = _state["node"]
-    reached = bool(_state["reached"]) or (block_id == "check_goal" and node == "P")
+    reached = bool(_state["reached"]) or (
+        block_id == "check_goal" and node in _GOAL_LABELS
+    )
     if reached:
         _state["reached"] = True
     _events.append({
@@ -1010,10 +1066,11 @@ _GRAPH = ${adjLit}
 def get_neighbours(node):
     # Only return rooms not yet tracked — matches the quiz rule that we
     # do not re-bag rooms we have already encountered.
-    seen = _state["tracking"] or set()
+    seen = _state["tracking"] or []
     return [n for n in _GRAPH.get(node, []) if n not in seen]
 
 heat_reachable = False
+goal_reached = False
 _error = None
 
 try:
@@ -1026,6 +1083,8 @@ except RuntimeError as e:
 except Exception as e:
     _error = type(e).__name__ + ": " + str(e)
 
+_done_reached = bool(_state.get("reached") or heat_reachable or goal_reached)
+
 # Final snapshot so Play ends on a settled bag / tracking state.
 _events.append({
     "blockId": None,
@@ -1033,13 +1092,37 @@ _events.append({
     "neighbours": [],
     "bag": _snap(_state["bag"]),
     "tracking": _snap(_state["tracking"]),
-    "reached": bool(_state.get("reached") or heat_reachable),
-    "heat_reachable": bool(_state.get("reached") or heat_reachable),
+    "reached": _done_reached,
+    "heat_reachable": _done_reached,
     "done": True,
 })
 
-json.dumps({"events": _events, "result": bool(_state.get("reached") or heat_reachable), "error": _error})
+json.dumps({"events": _events, "result": _done_reached, "error": _error})
 `.trim();
+}
+
+/**
+ * Keep bag chip order stable when a room is removed: leave a ghost chip in
+ * its previous slot, and only append rooms that are brand-new to the bag.
+ */
+function bagDisplayWithGhost(prevBag, bagIds, ghostId) {
+  const bagSet = new Set(bagIds);
+  const seen = new Set();
+  const out = [];
+  for (const id of prevBag) {
+    if (seen.has(id)) continue;
+    if (id === ghostId || bagSet.has(id)) {
+      out.push(id);
+      seen.add(id);
+    }
+  }
+  for (const id of bagIds) {
+    if (seen.has(id)) continue;
+    out.push(id);
+    seen.add(id);
+  }
+  if (ghostId != null && !seen.has(ghostId)) out.push(ghostId);
+  return out;
 }
 
 /**
@@ -1050,6 +1133,7 @@ export function eventsToHeatFrames(data, events) {
   const frames = [];
   let pathEdges = [];
   let prevNodeId = null;
+  let prevBag = [];
   const via = new Map();
 
   // Seed via-map from the full undirected edge list for path highlighting.
@@ -1082,7 +1166,7 @@ export function eventsToHeatFrames(data, events) {
       message = `Picked ${roomChipLabel(nodeId ?? ev.node)} from the bag.`;
     } else if (blockId === "check_goal") {
       message = reached
-        ? `${roomChipLabel(nodeId ?? ev.node)} is the goal — heat_reachable = True.`
+        ? `${roomChipLabel(nodeId ?? ev.node)} is the goal — stop.`
         : `${roomChipLabel(nodeId ?? ev.node)} is not the goal — keep going.`;
     } else if (blockId === "track_neighbours") {
       message = neighbourIds.length
@@ -1094,8 +1178,8 @@ export function eventsToHeatFrames(data, events) {
       message = `Removed ${roomChipLabel(nodeId ?? ev.node)} from the bag.`;
     } else if (done) {
       message = reached
-        ? "Done — heat_reachable = True (path from Cafeteria to P)."
-        : "Done — bag empty, heat_reachable stays False.";
+        ? "Done — goal reached from Cafeteria."
+        : "Done — bag empty, goal not reached.";
     }
 
     // Graph blink rules per step (only these nodes pulse):
@@ -1104,21 +1188,48 @@ export function eventsToHeatFrames(data, events) {
     const showNeighbours =
       blockId === "track_neighbours" || blockId === "bag_neighbours";
 
+    // pop()/remove already dropped the chip from `bag`. Keep it in its old
+    // slot as pick-done so other chips don't slide (or jump to the end).
+    const missingCurrent = nodeId != null && !bagIds.includes(nodeId);
+    const showGhost =
+      missingCurrent &&
+      (blockId === "pick" ||
+        blockId === "remove_node" ||
+        blockId === "check_goal" ||
+        blockId === "track_neighbours" ||
+        blockId === "bag_neighbours");
+
+    const displayBag = showGhost
+      ? bagDisplayWithGhost(prevBag, bagIds, nodeId)
+      : bagIds;
+
     frames.push({
       blockId,
       node: nodeId,
       neighbours: showNeighbours ? neighbourIds : [],
-      bag: bagIds,
-      bagPick: blockId === "pick" || blockId === "check_goal" || blockId === "track_neighbours" || blockId === "bag_neighbours"
-        ? nodeId
-        : null,
-      bagPickDone: blockId === "remove_node" ? nodeId : null,
+      bag: displayBag,
+      bagPick:
+        !showGhost &&
+        (blockId === "pick" ||
+          blockId === "check_goal" ||
+          blockId === "track_neighbours" ||
+          blockId === "bag_neighbours")
+          ? nodeId
+          : null,
+      bagPickDone: showGhost ? nodeId : null,
       tracking: trackingIds,
       pathEdges: [...pathEdges],
       reached,
       done,
       message,
     });
+
+    // Keep the ghost in place through the current loop body, then drop it
+    // so the next pick doesn't slide later chips left into its slot.
+    prevBag =
+      blockId === "bag_neighbours" || blockId === "remove_node" || done
+        ? bagIds
+        : displayBag;
   }
   return frames;
 }
@@ -1133,6 +1244,7 @@ export function eventsToHeatFrames(data, events) {
  *   getPython: () => string,
  *   width?: number, height?: number, stepDelayMs?: number,
  *   data?: {nodes: Array, edges: Array},
+ *   bagFooter?: string,
  *   onStep?: (frame: object|null) => void,
  * }} options
  */
@@ -1144,6 +1256,7 @@ export function mountHeatCodeViz(container, options = {}) {
   const stepDelayMs = options.stepDelayMs ?? 900;
   const onStep = options.onStep ?? (() => {});
   const getPython = options.getPython ?? (() => "");
+  const bagFooter = options.bagFooter ?? "unordered";
 
   const data = options.data ?? createStationGraphData({ width, height });
   const startId = findCafeteriaId(data.nodes);
@@ -1238,6 +1351,7 @@ export function mountHeatCodeViz(container, options = {}) {
         items: frame.bag ?? [],
         pick: frame.bagPick ?? null,
         pickDone: frame.bagPickDone ?? null,
+        footer: bagFooter,
       }) +
       renderTrackingPanel({
         items: frame.tracking ?? [],
@@ -1266,7 +1380,7 @@ export function mountHeatCodeViz(container, options = {}) {
 
     // Heuristic: empty loop body is just `while bag:\n    pass`
     if (/while\s+bag\s*:\s*\n\s*pass\s*$/.test(userSrc) || /while\s+bag\s*:\s*$/.test(userSrc)) {
-      statusOverride = "The loop body is empty — drop the 5 steps inside `while bag:`.";
+      statusOverride = "The loop body is empty — drop the steps inside `while bag:`.";
       frames = [];
       frameIndex = -1;
       return false;

@@ -1,0 +1,550 @@
+---
+title: "Graph Representation 2"
+subtitle: "Systematic Graph Traversal"
+---
+
+So far we randomly picked nodes from the bag to traverse the graph. While we are traversing, we can notice that we can do one of the following:
+
+1. Explore the nodes IN THE ORDER we encounter them.
+
+::: {.static-graph-inline}
+<div id="order-encounter-graph"></div>
+:::
+
+2. Explore the nodes immediately adjacent to our current node first.
+
+::: {.static-graph-inline}
+<div id="order-adjacent-graph"></div>
+:::
+
+```{ojs}
+//| echo: false
+import { mountStaticGraphView } from "./js/static-graph-view.js";
+
+// A—B, A—D, A—E; B—C; C—F; D—G, D—H
+sharedEdges = ([
+  { id: "A—B", source: "A", target: "B" },
+  { id: "A—D", source: "A", target: "D" },
+  { id: "A—E", source: "A", target: "E" },
+  { id: "B—C", source: "B", target: "C" },
+  { id: "C—F", source: "C", target: "F" },
+  { id: "D—G", source: "D", target: "G" },
+  { id: "D—H", source: "D", target: "H" },
+])
+
+layout = ({
+  E: { x: 170, y: 150 },
+  A: { x: 60, y: 140 },
+  B: { x: 150, y: 40 },
+  C: { x: 250, y: 90 },
+  F: { x: 350, y: 50 },
+  D: { x: 150, y: 230 },
+  G: { x: 250, y: 290 },
+  H: { x: 250, y: 200 },
+})
+
+node = (id, order = null) => ({
+  id,
+  label: id,
+  order,
+  x: layout[id].x,
+  y: layout[id].y,
+})
+```
+
+```{ojs}
+//| echo: false
+// Encounter order from A: B then D (E still waiting). Path A→B→C marked.
+encounterNodes = ([
+  node("A", "1"),
+  node("B", "2"),
+  node("C"),
+  node("D", "4"),
+  node("E", "3"),
+  node("F"),
+  node("G"),
+  node("H"),
+])
+
+encounterView = mountStaticGraphView(
+  document.querySelector("#order-encounter-graph"),
+  { nodes: encounterNodes, edges: sharedEdges },
+  {
+    width: 420,
+    height: 340,
+    directed: false,
+    caption: "Visit order: A → B → D",
+    highlight: {
+      visited: ["A", "B", "D", "E"],
+      pathEdges: ["A—B", "A—D", "A—E"],
+    },
+  }
+);
+```
+
+```{ojs}
+//| echo: false
+// Go deep along neighbours first: A → B → C → F. Same path A→B→C marked.
+adjacentNodes = ([
+  node("A", "1"),
+  node("B", "2"),
+  node("C", "3"),
+  node("D"),
+  node("E"),
+  node("F", "4"),
+  node("G"),
+  node("H"),
+])
+
+adjacentView = mountStaticGraphView(
+  document.querySelector("#order-adjacent-graph"),
+  { nodes: adjacentNodes, edges: sharedEdges },
+  {
+    width: 420,
+    height: 340,
+    directed: false,
+    caption: "Visit order: A → B → C → F",
+    highlight: {
+      visited: ["A", "B", "C", "F"],
+      pathEdges: ["A—B", "B—C", "C—F"],
+    },
+  }
+);
+```
+
+### Exercise: Select the order
+
+Let us explore the same traversal problem from the previous lecture in a different way. You are trapped back in the space station. Each room may have several doors leading to other rooms.This time your aim is to reach the Admin Room.
+
+The graph on the left shows the rooms and paths. From the options, select the correct room order if you were to explore the graph using the two strategies above. 
+
+#### Strategy 1
+
+1. Explore one path completely. Pick the first door and keep walking through new rooms until you reach a room with no unexplored doors. Then backtrack to the previous room and try another door. Continue until you find Admin.
+
+::: {.static-graph-inline}
+<div id="dfs-quiz"></div>
+:::
+
+#### Strategy 2
+
+2. Explore the rooms in the order we encounter them.
+
+When we explore a single room, we would encounter its adjacent neighbours first. We would list them in the order we encounter them (but not enter them to see their further rooms). 
+
+In other words: Search level by level. Enter a room, check whether it is the exit, and record every door leading to new room. But come back to the initial room and fully explore its adjacent rooms. Only then enter the deeper rooms.Repeat until you find Admin.
+
+::: {.static-graph-inline}
+<div id="bfs-quiz"></div>
+:::
+
+
+```{ojs}
+//| echo: False
+import { mountTraversalQuiz, buildQuizQuestions } from "./js/graph-traversal-helpers.js";
+
+// actual graph lives in .js file for clarity
+// define graph visibility tiers
+
+V_LEVEL1 = ["CAF", "MED", "ELEC", "STO"];
+V_MED_KIDS = [...V_LEVEL1, "TA", "TB"];
+V_TA_KID = [...V_MED_KIDS, "TG"];
+V_ELEC_KID = [...V_TA_KID, "TD"];
+V_BFS_ELEC_KID = [...V_LEVEL1, "TA", "TB", "TD"];
+V_TD_KID = [...V_ELEC_KID, "TH"];
+V_STO_KID = [...V_TD_KID, "TF"];
+V_BFS_STO_KID = [...V_BFS_ELEC_KID, "TF"];
+V_BFS_A_KID = [...V_BFS_STO_KID, "TG"];
+V_BFS_G_KID = [...V_BFS_A_KID, "TH"];
+V_ALL = [...V_STO_KID, "ADMIN"];
+
+dfs_steps = [
+  {
+    visible: V_LEVEL1, current: "CAF",
+    pathEdgesBefore: [], pathEdgesAfter: ["CAF—MED"],
+    bagBefore: ["Storage", "Electrical", "Medbay"], bagAfter: ["Storage", "Electrical"],
+    trackingBefore: ["Cafeteria"], trackingAfter: ["Cafeteria", "MedBay"],
+    visibleAfter: V_LEVEL1,
+    prompt: "We start in the Cafeteria with the goal to reach Admin. Which room do we open first: MedBay, Electrical, or Storage?",
+    neighbours: ["MED", "ELEC", "STO"],
+    answerId: "MED",
+    answerText: "We can actually pick any of the 3 adjacent rooms! Let's assume we start from MedBay.",
+    note: "All three are equally valid : this method doesn't care which neighbour goes first, only that once we select one we commit to it and follow it all the way down.",
+  },
+  {
+    visible: V_MED_KIDS, current: "MED",
+    pathEdgesBefore: ["CAF—MED"], pathEdgesAfter: ["CAF—MED", "MED—TA"],
+    bagBefore: ["Storage", "Electrical", "B", "A"], bagAfter: ["Storage", "Electrical", "B"],
+    trackingBefore: ["Cafeteria", "MedBay"], trackingAfter: ["Cafeteria", "MedBay", "A"],
+    visibleAfter: V_TA_KID,
+    prompt: "MedBay has doors to A and B. If we keep opening doors until we hit the end, which do we go to next?",
+    options: [
+      { id: "ELEC", label: "Electrical", correct: false, feedback: "Not yet — MedBay's branch (A, B) has to be fully explored before we ever return to Cafeteria's other doors." },
+      { id: "STO", label: "Storage", correct: false, feedback: "Not yet — same reason: we're still inside MedBay's branch." },
+      { id: "TA", label: "A", correct: true, feedback: "A room adjacent to MedBay — either A or B would be correct, since order between them doesn't matter." },
+    ],
+    note: "We can select ANY of MedBay's adjacent rooms here — either is correct. What matters is going deeper before backing out.",
+  },
+  {
+    visible: V_TA_KID, current: "TA",
+    pathEdgesBefore: ["CAF—MED", "MED—TA"], pathEdgesAfter: ["CAF—MED", "MED—TA", "TA—TG"],
+    bagBefore: ["Storage", "Electrical", "B", "G"], bagAfter: ["Storage", "Electrical", "B"],
+    trackingBefore: ["Cafeteria", "MedBay", "A"], trackingAfter: ["Cafeteria", "MedBay", "A", "G"],
+    prompt: "A has one more door, to G. Do we open it, or head back toward B first?",
+    options: [
+      { id: "ELEC", label: "Electrical", correct: false, feedback: "Way too early — we haven't even finished A's branch yet." },
+      { id: "TB", label: "B", correct: false, feedback: "Not yet — A still has an unopened door (G), and we want to finish all room inside A before backtracking away from it." },
+      { id: "TG", label: "G", correct: true, feedback: "G — A isn't done until every one of its doors has been opened." },
+    ],
+    note: "A room only counts as \"fully explored\" once all of its own doors have been tried.",
+  },
+  {
+    visible: V_TA_KID, current: "TG",
+    pathEdgesBefore: ["CAF—MED", "MED—TA", "TA—TG"], pathEdgesAfter: ["CAF—MED", "MED—TA", "TA—TG", "MED—TB"],
+    bagBefore: ["Storage", "Electrical", "B"], bagAfter: ["Storage", "Electrical"],
+    trackingBefore: ["Cafeteria", "MedBay", "A", "G"], trackingAfter: ["Cafeteria", "MedBay", "A", "G", "B"],
+    prompt: "G is a dead end. We backtrack — first to A (also now fully explored), then to MedBay, which still has B waiting. Which room next?",
+    options: [
+      { id: "ELEC", label: "Electrical", correct: false, feedback: "Not yet — MedBay still has an unexplored door (B), so we stop backtracking there." },
+      { id: "STO", label: "Storage", correct: false, feedback: "Not yet — same reason, MedBay isn't finished." },
+      { id: "TB", label: "B", correct: true, feedback: "B — MedBay's last unopened door." },
+    ],
+    note: "We only backtrack one room at a time, and we stop as soon as we reach a room with a door still unopened. We won't backtrack any further — say, all the way to Cafeteria — until MedBay itself has been fully explored.",
+  },
+  {
+    visible: V_TA_KID, current: "TB",
+    pathEdgesBefore: ["CAF—MED", "MED—TA", "TA—TG", "MED—TB"], pathEdgesAfter: ["CAF—MED", "MED—TA", "TA—TG", "MED—TB", "CAF—ELEC"],
+    bagBefore: ["Storage", "Electrical"], bagAfter: ["Storage", "D"],
+    trackingBefore: ["Cafeteria", "MedBay", "A", "G", "B"], trackingAfter: ["Cafeteria", "MedBay", "A", "G", "B", "Electrical"],
+    visibleAfter: V_ELEC_KID,
+    prompt: "B is also a dead end, and now MedBay is fully explored — so we backtrack all the way to Cafeteria. Which room next: Electrical, Storage, or MedBay?",
+    options: [
+      { id: "ELEC", label: "Electrical", correct: true, feedback: "Both Electrical and Storage are correct. But for this walkthrough, let's take Electrical for the next question." },
+      { id: "STO", label: "Storage", correct: true, feedback: "Both Electrical and Storage are correct. But for this walkthrough, let's take Electrical for the next question." },
+      { id: "MED", label: "MedBay", correct: false, feedback: "MedBay's already fully visited" },
+    ],
+    note: "MedBay is done, so we can't go back there. Cafeteria still has Electrical and Storage unopened — we'll take Electrical.",
+  },
+  {
+    visible: V_ELEC_KID, current: "ELEC",
+    pathEdgesBefore: ["CAF—MED", "MED—TA", "TA—TG", "MED—TB", "CAF—ELEC"], pathEdgesAfter: ["CAF—MED", "MED—TA", "TA—TG", "MED—TB", "CAF—ELEC", "ELEC—TD"],
+    bagBefore: ["Storage", "D"], bagAfter: ["Storage", "H"],
+    trackingBefore: ["Cafeteria", "MedBay", "A", "G", "B", "Electrical"], trackingAfter: ["Cafeteria", "MedBay", "A", "G", "B", "Electrical", "D"],
+    visibleAfter: V_TD_KID,
+    prompt: "Electrical has one door, to D. Do we open it, or head to Storage instead?",
+    options: [
+      { id: "STO", label: "Storage", correct: false, feedback: "Not yet — Electrical still has an unopened door, so we go deeper first." },
+      { id: "TD", label: "D", correct: true, feedback: "D — same rule as MedBay's branch: go as deep as possible first." },
+      { id: "MED", label: "MedBay", correct: false, feedback: "MedBay's already fully visited." },
+    ],
+    note: "Storage is still waiting, but it has to wait until Electrical's whole branch is done.",
+  },
+  {
+    visible: V_TD_KID, current: "TD",
+    pathEdgesBefore: ["CAF—MED", "MED—TA", "TA—TG", "MED—TB", "CAF—ELEC", "ELEC—TD"], pathEdgesAfter: ["CAF—MED", "MED—TA", "TA—TG", "MED—TB", "CAF—ELEC", "ELEC—TD", "TD—TH"],
+    bagBefore: ["Storage", "H"], bagAfter: ["Storage"],
+    trackingBefore: ["Cafeteria", "MedBay", "A", "G", "B", "Electrical", "D"], trackingAfter: ["Cafeteria", "MedBay", "A", "G", "B", "Electrical", "D", "H"],
+    prompt: "D has one more door, to H. Open it, or backtrack to Storage?",
+    options: [
+      { id: "STO", label: "Storage", correct: false, feedback: "Not yet — D isn't fully explored until H has been tried too." },
+      { id: "TH", label: "H", correct: true, feedback: "H — D's last door." },
+      { id: "ELEC", label: "Electrical", correct: false, feedback: "Electrical's already fully visited." },
+    ],
+    note: "Same rule, one level deeper.",
+  },
+  {
+    visible: V_TD_KID, current: "TH",
+    pathEdgesBefore: ["CAF—MED", "MED—TA", "TA—TG", "MED—TB", "CAF—ELEC", "ELEC—TD", "TD—TH"], pathEdgesAfter: ["CAF—MED", "MED—TA", "TA—TG", "MED—TB", "CAF—ELEC", "ELEC—TD", "TD—TH", "CAF—STO"],
+    bagBefore: ["Storage"], bagAfter: ["F"],
+    trackingBefore: ["Cafeteria", "MedBay", "A", "G", "B", "Electrical", "D", "H"], trackingAfter: ["Cafeteria", "MedBay", "A", "G", "B", "Electrical", "D", "H", "Storage"],
+    visibleAfter: V_STO_KID,
+    prompt: "H is a dead end. D and Electrical are now both fully explored, so we backtrack all the way to Cafeteria. Which room is left?",
+    options: [
+      { id: "STO", label: "Storage", correct: true, feedback: "Storage — forced this time, since it's the only door Cafeteria has left." },
+      { id: "MED", label: "MedBay", correct: false, feedback: "MedBay's already fully visited." },
+      { id: "ELEC", label: "Electrical", correct: false, feedback: "Electrical's already fully visited." },
+    ],
+    note: "MedBay and Electrical are both done, so Storage is the only option left — no tie this time.",
+  },
+  {
+    visible: V_STO_KID, current: "STO",
+    pathEdgesBefore: ["CAF—MED", "MED—TA", "TA—TG", "MED—TB", "CAF—ELEC", "ELEC—TD", "TD—TH", "CAF—STO"], pathEdgesAfter: ["CAF—MED", "MED—TA", "TA—TG", "MED—TB", "CAF—ELEC", "ELEC—TD", "TD—TH", "CAF—STO", "STO—TF"],
+    bagBefore: ["F"], bagAfter: ["Admin"],
+    trackingBefore: ["Cafeteria", "MedBay", "A", "G", "B", "Electrical", "D", "H", "Storage"], trackingAfter: ["Cafeteria", "MedBay", "A", "G", "B", "Electrical", "D", "H", "Storage", "F"],
+    visibleAfter: V_ALL,
+    prompt: "Storage has one door, to F. Open it?",
+    options: [
+      { id: "TF", label: "F", correct: true, feedback: "F — Storage's only door." },
+      { id: "MED", label: "MedBay", correct: false, feedback: "MedBay's already fully visited." },
+      { id: "ELEC", label: "Electrical", correct: false, feedback: "Electrical's already fully visited." },
+    ],
+    note: "Getting close — F is the last room standing between us and Admin.",
+  },
+  {
+    visible: V_ALL, current: "TF",
+    pathEdgesBefore: ["CAF—MED", "MED—TA", "TA—TG", "MED—TB", "CAF—ELEC", "ELEC—TD", "TD—TH", "CAF—STO", "STO—TF"], pathEdgesAfter: ["CAF—MED", "MED—TA", "TA—TG", "MED—TB", "CAF—ELEC", "ELEC—TD", "TD—TH", "CAF—STO", "STO—TF", "TF—ADMIN"],
+    bagBefore: ["Admin"], bagAfter: [],
+    trackingBefore: ["Cafeteria", "MedBay", "A", "G", "B", "Electrical", "D", "H", "Storage", "F"], trackingAfter: ["Cafeteria", "MedBay", "A", "G", "B", "Electrical", "D", "H", "Storage", "F", "Admin"],
+    prompt: "F has one last door. What's behind it?",
+    options: [
+      { id: "ADMIN", label: "Admin", correct: true, feedback: "Admin! Every room has now been visited — DFS reaches the goal." },
+      { id: "MED", label: "MedBay", correct: false, feedback: "MedBay's already fully visited." },
+      { id: "ELEC", label: "Electrical", correct: false, feedback: "Electrical's already fully visited." },
+    ],
+    note: "Final order: Cafeteria → MedBay → A → G → B → Electrical → D → H → Storage → F → Admin. We always went as deep as possible before backtracking.",
+  },
+];
+
+bfs_steps = [
+   {
+    visible: V_LEVEL1, current: "CAF",
+    pathEdgesBefore: [], pathEdgesAfter: ["CAF—MED"],
+    bagBefore: ["MedBay", "Electrical", "Storage"], bagAfter: ["Electrical", "Storage", "A", "B"],
+    trackingBefore: ["Cafeteria"], trackingAfter: ["Cafeteria", "MedBay"],
+    visibleAfter: V_MED_KIDS,
+    prompt: "We start again in the Cafeteria with the goal to reach Admin. We want to explore all adjacent rooms first. Which room do we open first: MedBay, Electrical, or Storage?",
+    neighbours: ["MED", "ELEC", "STO"],
+    answerId: "MED",
+    answerText: "Same as the previous strategy, we can actually pick any of the 3 adjacent rooms. Let's again assume we start from MedBay.",
+    note: "All three of Cafeteria's neighbours were discovered together, so the order among them is arbitrary. We'll visit MedBay first.",
+  },
+  {
+    visible: V_MED_KIDS, current: "MED",
+    pathEdgesBefore: ["CAF—MED"], pathEdgesAfter: ["CAF—MED", "CAF—ELEC"],
+    bagBefore: ["Electrical", "Storage", "A", "B"], bagAfter: ["Storage", "A", "B", "D"],
+    trackingBefore: ["Cafeteria", "MedBay"], trackingAfter: ["Cafeteria", "MedBay", "Electrical"],
+    visibleAfter: V_BFS_ELEC_KID,
+    prompt: "Visiting MedBay reveals doors to A and B. Which room do we visit next: Electrical, Storage, or A?",
+    options: [
+      { id: "ELEC", label: "Electrical", correct: true, feedback: "Electrical — not A!" },
+      { id: "TA", label: "A", correct: false, feedback: "Too soon — A was only just discovered via MedBay. BFS finishes Cafeteria's own neighbours first." },
+      { id: "TB", label: "B", correct: false, feedback: "Too soon — B was only just discovered via MedBay. BFS finishes Cafeteria's own neighbours first." },
+    ],
+    note: "We finish visiting every room one door from Cafeteria before going any deeper. A and B wait their turn behind Electrical and Storage.",
+  },
+  {
+    visible: V_BFS_ELEC_KID, current: "ELEC",
+    pathEdgesBefore: ["CAF—MED", "CAF—ELEC"], pathEdgesAfter: ["CAF—MED", "CAF—ELEC", "CAF—STO"],
+    bagBefore: ["Storage", "A", "B", "D"], bagAfter: ["A", "B", "D", "F"],
+    trackingBefore: ["Cafeteria", "MedBay", "Electrical"], trackingAfter: ["Cafeteria", "MedBay", "Electrical", "Storage"],
+    visibleAfter: V_BFS_STO_KID,
+    prompt: "Electrical reveals a door to D. Which room do we visit next: Storage, A, or D?",
+    options: [
+      { id: "STO", label: "Storage", correct: true, feedback: "Storage — Cafeteria's last unvisited neighbour." },
+      { id: "TA", label: "A", correct: false, feedback: "Not yet — still one level-1 room (Storage) left to visit first." },
+      { id: "TD", label: "D", correct: false, feedback: "Too soon — D was just discovered and is a level deeper than Storage." },
+    ],
+    note: "Now every room one door from Cafeteria has been visited — level 1 is done! Next, BFS moves to level 2: A, B, and D, in the order they were discovered.",
+  },
+  {
+    visible: V_BFS_STO_KID, current: "STO",
+    pathEdgesBefore: ["CAF—MED", "CAF—ELEC", "CAF—STO"], pathEdgesAfter: ["CAF—MED", "CAF—ELEC", "CAF—STO", "MED—TA"],
+    bagBefore: ["A", "B", "D", "F"], bagAfter: ["B", "D", "F", "G"],
+    trackingBefore: ["Cafeteria", "MedBay", "Electrical", "Storage"], trackingAfter: ["Cafeteria", "MedBay", "Electrical", "Storage", "A"],
+    prompt: "Storage reveals a door to F. Now, which room do we visit next: A, D, or F?",
+    visibleAfter: V_BFS_A_KID,
+    options: [
+      { id: "TA", label: "A", correct: true, feedback: "We can pick either A or B - since they were discovered first (via MedBay), so it's first in line among the level-2 rooms. Let's take A for the next question." },
+      { id: "TB", label: "B", correct: true, feedback: "We can pick either A or B - since they were discovered first (via MedBay), so it's first in line among the level-2 rooms. Let's take A for the next question." },
+      { id: "TD", label: "D", correct: false, feedback: "Since D was discovered a step after A (via Electrical), so A goes first." },
+      { id: "TF", label: "F", correct: false, feedback: "Since F was discovered last — it's last in line for level 2." },
+    ],
+    note: "Because we encountered A and B (together) first through MedBay, we would start with them here as well.",
+  },
+  {
+    visible: V_BFS_A_KID, current: "TA",
+    pathEdgesBefore: ["CAF—MED", "CAF—ELEC", "CAF—STO", "MED—TA"], pathEdgesAfter: ["CAF—MED", "CAF—ELEC", "CAF—STO", "MED—TA", "MED—TB"],
+    bagBefore: ["B", "D", "F", "G"], bagAfter: ["D", "F", "G"],
+    trackingBefore: ["Cafeteria", "MedBay", "Electrical", "Storage", "A"], trackingAfter: ["Cafeteria", "MedBay", "Electrical", "Storage", "A", "B"],
+    visibleAfter: V_BFS_A_KID,
+    prompt: "We discover G in A. Which room is next in line: G, B, D, or F?",
+    options: [
+      { id: "TG", label: "G", correct: false, feedback: "We need to finish all level-2 rooms first before exploring deeper rooms." },
+      { id: "TB", label: "B", correct: true, feedback: "B — MedBay's other neighbour, discovered at the same time as A." },
+      { id: "TD", label: "D", correct: false, feedback: "D was discovered one step after B, so B goes first." },
+      { id: "TF", label: "F", correct: false, feedback: "F is even further back in line." },
+    ],
+    note: "B and D were both discovered before F. B was discovered when we visited MedBay — earlier than Electrical's D — so B goes first.",
+  },
+  {
+    visible: V_BFS_A_KID, current: "TB",
+    pathEdgesBefore: ["CAF—MED", "CAF—ELEC", "CAF—STO", "MED—TA", "MED—TB"], pathEdgesAfter: ["CAF—MED", "CAF—ELEC", "CAF—STO", "MED—TA", "MED—TB", "ELEC—TD"],
+    bagBefore: ["D", "F", "G"], bagAfter: ["F", "G", "H"],
+    trackingBefore: ["Cafeteria", "MedBay", "Electrical", "Storage", "A", "B"], trackingAfter: ["Cafeteria", "MedBay", "Electrical", "Storage", "A", "B", "D"],
+    visibleAfter: V_BFS_G_KID,
+    prompt: "B has no further doors either. Which room is next: D or F?",
+    options: [
+      { id: "TD", label: "D", correct: true, feedback: "D — Electrical's neighbour, next in line." },
+      { id: "TF", label: "F", correct: false, feedback: "F was discovered after D (via Storage, which we visited after Electrical) — D goes first." },
+      { id: "TG", label: "G", correct: false, feedback: "G is a level deeper — it just got discovered through A." },
+    ],
+    note: "D was discovered when we visited Electrical, before Storage — so D comes before F.",
+  },
+  {
+    visible: V_BFS_G_KID, current: "TD",
+    pathEdgesBefore: ["CAF—MED", "CAF—ELEC", "CAF—STO", "MED—TA", "MED—TB", "ELEC—TD"], pathEdgesAfter: ["CAF—MED", "CAF—ELEC", "CAF—STO", "MED—TA", "MED—TB", "ELEC—TD", "STO—TF"],
+    bagBefore: ["F", "G", "H"], bagAfter: ["G", "H", "Admin"],
+    trackingBefore: ["Cafeteria", "MedBay", "Electrical", "Storage", "A", "B", "D"], trackingAfter: ["Cafeteria", "MedBay", "Electrical", "Storage", "A", "B", "D", "F"],
+    visibleAfter: V_ALL,
+    prompt: "D reveals a door to H. Which room is next: F, G, or H?",
+    options: [
+      { id: "TF", label: "F", correct: true, feedback: "F — Storage's neighbour, the last of the level-2 rooms." },
+      { id: "TG", label: "G", correct: false, feedback: "G is level 3 — F still needs to go first." },
+      { id: "TH", label: "H", correct: false, feedback: "H is level 3 too, and was just discovered — it waits behind F." },
+    ],
+    note: "F was discovered before G and H, so it still goes first — level 2 finishes with F before level 3 begins.",
+  },
+  {
+    visible: V_ALL, current: "TF",
+    pathEdgesBefore: ["CAF—MED", "CAF—ELEC", "CAF—STO", "MED—TA", "MED—TB", "ELEC—TD", "STO—TF"], pathEdgesAfter: ["CAF—MED", "CAF—ELEC", "CAF—STO", "MED—TA", "MED—TB", "ELEC—TD", "STO—TF", "TA—TG"],
+    bagBefore: ["G", "H", "Admin"], bagAfter: ["H","Admin"],
+    trackingBefore: ["Cafeteria", "MedBay", "Electrical", "Storage", "A", "B", "D", "F"], trackingAfter: ["Cafeteria", "MedBay", "Electrical", "Storage", "A", "B", "D", "F", "G"],
+    visibleAfter: V_ALL,
+    prompt: "F reveals a door to Admin! Level 2 is finished — level 3 begins. Which room first: G, H, or Admin?",
+    options: [
+      { id: "TG", label: "G", correct: true, feedback: "G — discovered first at level 3 (via A, which we visited before D or F)." },
+      { id: "TH", label: "H", correct: false, feedback: "H was discovered one step after G (via D) — G goes first." },
+      { id: "ADMIN", label: "Admin", correct: false, feedback: "Almost! Admin was just discovered, via F — it's last in line at level 3." },
+    ],
+    note: "Even though Admin is now visible, according to our algorithm we would visit G and H first since they were discovered earlier in the queue.",
+  },
+  {
+    visible: V_ALL, current: "TG",
+    pathEdgesBefore: ["CAF—MED", "CAF—ELEC", "CAF—STO", "MED—TA", "MED—TB", "ELEC—TD", "STO—TF", "TA—TG"], pathEdgesAfter: ["CAF—MED", "CAF—ELEC", "CAF—STO", "MED—TA", "MED—TB", "ELEC—TD", "STO—TF", "TA—TG", "TD—TH"],
+    bagBefore: ["H","Admin"], bagAfter: ["Admin"],
+    trackingBefore: ["Cafeteria", "MedBay", "Electrical", "Storage", "A", "B", "D", "F", "G"], trackingAfter: ["Cafeteria", "MedBay", "Electrical", "Storage", "A", "B", "D", "F", "G", "H"],
+    prompt: "G has no further doors. Which room is next: H or Admin?",
+    options: [
+      { id: "TH", label: "H", correct: true, feedback: "H — discovered before Admin (via D, before F was visited)." },
+      { id: "TA", label: "A", correct: false, feedback: "We already visited A" },
+      { id: "MED", label: "MedBay", correct: false, feedback: "We already visited MedBay" },
+    ],
+    note: "One room left in the queue after this: Admin itself.",
+  },
+  {
+    visible: V_ALL, current: "TH",
+    pathEdgesBefore: ["CAF—MED", "CAF—ELEC", "CAF—STO", "MED—TA", "MED—TB", "ELEC—TD", "STO—TF", "TA—TG", "TD—TH"], pathEdgesAfter: ["CAF—MED", "CAF—ELEC", "CAF—STO", "MED—TA", "MED—TB", "ELEC—TD", "STO—TF", "TA—TG", "TD—TH", "TF—ADMIN"],
+    bagBefore: ["Admin"], bagAfter: [],
+    trackingBefore: ["Cafeteria", "MedBay", "Electrical", "Storage", "A", "B", "D", "F", "G", "H"], trackingAfter: ["Cafeteria", "MedBay", "Electrical", "Storage", "A", "B", "D", "F", "G", "H", "Admin"],
+    prompt: "Only one room is left in the queue. Which is it?",
+    options: [
+      { id: "ADMIN", label: "Admin", correct: true, feedback: "Admin! The last room in the queue. BFS reaches the goal." },
+      { id: "TG", label: "G", correct: false, feedback: "We already visited G" },
+      { id: "TF", label: "F", correct: false, feedback: "We already visited F" },
+    ],
+    note: "Final order: Cafeteria → MedBay, Electrical, Storage → A, B, D, F → G, H, Admin. We visited every room level by level, instead of diving deep the way DFS does.",
+  },
+];
+
+dfs_quiz_questions = buildQuizQuestions(dfs_steps);
+bfs_quiz_questions = buildQuizQuestions(bfs_steps);
+
+mountTraversalQuiz(document.querySelector("#dfs-quiz"), { questions: dfs_quiz_questions });
+mountTraversalQuiz(document.querySelector("#bfs-quiz"), { questions: bfs_quiz_questions });
+```
+
+Now that we have an intuition for the two strategies, let us explore how we can implement them in code. How do we record the order? Careful observation reveals that for the first strategy, we fully explore the newest rooms we encounter first. While in the second one we explore the rooms in the order we encounter them. 
+
+If we take another look at the "Bag" we can see that for the first strategy we are emptying the bag from right to left, and for the second one left to right. 
+
+So instead of a set like last time, we can use a list to record the rooms we encounter. For the first strategy we can remove the last item after each iteration, while for the second one we can remove the first item. Hold on, is there a data structure for these two operations? Yes, it is a stack for the first strategy and a queue for the second one! Let's do the question using code now:
+
+### Implement in code!
+
+Drag the blocks to the right place to implement the first strategy. This is going to explore the latest rooms first. In other words, we are going to go to the very deep rooms, then start backtracking. Or do a Depth First Search (DFS).
+
+::: {.panel-grid}
+::: {.panel}
+<div id="heat-code-blocks"></div>
+:::
+::: {.panel}
+<div id="heat-code-viz" class="cb-viz-placeholder"></div>
+:::
+:::
+
+```{ojs}
+//| echo: false
+import { mountCodeBlocksView } from "./js/code-blocks-view.js";
+import { mountHeatCodeViz, createTraversalGraphData } from "./js/graph-traversal-helpers.js";
+```
+
+```{ojs}
+//| echo: false
+heatCodeBlocks1 = mountCodeBlocksView(document.querySelector("#heat-code-blocks"), [
+  { id: "pick", code: "node = bag.pop()", label: "pick the last node from the bag AND remove it simultaneously" },
+  { id: "check_goal", code: "if node == \"Admin\":\n    goal_reached = True\n    break", label: "check if we reached the goal — stop if so" },
+  { id: "track_neighbours", code: "neighbours = get_neighbours(node)\ntracking += neighbours", label: "track the current node's neighbours" },
+  { id: "bag_neighbours", code: "bag += neighbours", label: "add the neighbours to the bag" },
+], {
+  heading: "Traversal Steps",
+  workspaceLabel: "Loop body — while bag:",
+  preplaced: [],
+  solutionOrder: ["pick", "check_goal", "track_neighbours", "bag_neighbours"],
+  lockedBefore: [
+    { code: "bag = list()\ntracking = list()\n\ntracking.append(\"Cafeteria\")\nbag.append(\"Cafeteria\")\ngoal_reached = False" },
+  ],
+  lockedContainer: { code: "while bag:" },
+})
+```
+
+```{ojs}
+//| echo: false
+heatCodeViz1 = mountHeatCodeViz(document.querySelector("#heat-code-viz"), {
+  width: 420,
+  height: 280,
+  stepDelayMs: 900,
+  data: createTraversalGraphData({ width: 420, height: 280 }),
+  bagFooter: "ordered list — pop from the right (stack)",
+  getPython: () => heatCodeBlocks1.toPython(),
+  onStep: (frame) => {
+    if (frame?.blockId) heatCodeBlocks1.highlight(frame.blockId);
+    else heatCodeBlocks1.clearHighlight();
+  },
+})
+```
+
+For the second one, we are going to explore the room in the order we encounter them. We note this order in our list. In other words, we are going to explore the entire breadth first before going deeper. Or do a Breadth First Search (BFS).
+
+::: {.panel-grid}
+::: {.panel}
+<div id="heat-code-blocks-2"></div>
+:::
+::: {.panel}
+<div id="heat-code-viz-2" class="cb-viz-placeholder"></div>
+:::
+:::
+
+```{ojs}
+//| echo: false
+heatCodeBlocks2 = mountCodeBlocksView(document.querySelector("#heat-code-blocks-2"), [
+  { id: "pick", code: "node = bag.pop(0)", label: "pick the first node from the bag AND remove it simultaneously" },
+  { id: "check_goal", code: "if node == \"Admin\":\n    goal_reached = True\n    break", label: "check if we reached the goal — stop if so" },
+  { id: "track_neighbours", code: "neighbours = get_neighbours(node)\ntracking += neighbours", label: "track the current node's neighbours" },
+  { id: "bag_neighbours", code: "bag += neighbours", label: "add the neighbours to the bag" },
+], {
+  heading: "Traversal Steps",
+  workspaceLabel: "Loop body — while bag:",
+  preplaced: [],
+  solutionOrder: ["pick", "check_goal", "track_neighbours", "bag_neighbours"],
+  lockedBefore: [
+    { code: "bag = list()\ntracking = list()\n\ntracking.append(\"Cafeteria\")\nbag.append(\"Cafeteria\")\ngoal_reached = False" },
+  ],
+  lockedContainer: { code: "while bag:" },
+})
+```
+
+```{ojs}
+//| echo: false
+heatCodeViz2 = mountHeatCodeViz(document.querySelector("#heat-code-viz-2"), {
+  width: 420,
+  height: 280,
+  stepDelayMs: 900,
+  data: createTraversalGraphData({ width: 420, height: 280 }),
+  bagFooter: "ordered list — pop from the left (queue)",
+  getPython: () => heatCodeBlocks2.toPython(),
+  onStep: (frame) => {
+    if (frame?.blockId) heatCodeBlocks2.highlight(frame.blockId);
+    else heatCodeBlocks2.clearHighlight();
+  },
+})
+```

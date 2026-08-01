@@ -236,9 +236,186 @@ import {
   mountHeatPlayground,
 } from "./js/graph-traversal-helpers.js";
 
+heat_quiz_questions = [
+  {
+    id: 1,
+    question: {
+      prompt: 'What are the "states" in this problem?',
+      visibility: 3,
+    },
+    answer: {
+      text: "The rooms in the space station.",
+      visibility: 3,
+      highlight: { start: "C", end: "P", visited: ["C", "M", "CQ","A","G","S", "AD", "P"], },
+      tracking: [],
+      note: "States = rooms the heat (or you) can be in.",
+    },
+  },
+  {
+    id: 2,
+    question: {
+      prompt:
+        'What do we "track"?',
+      visibility: 3,
+      bag: [],
+    },
+    answer: {
+      text: "We track all rooms that the heat can reach. So at the start, the heat can reach the Cafeteria, so we will track the Cafeteria.",
+      visibility: 3,
+      highlight: {
+        start: "C",
+        end: "P",
+        current: "C",
+      },
+      bag: [],
+      tracking: ["C"],
+      trackPick: ["C"],
+    },
+  },
+  {
+    id: 3,
+    question: {
+      prompt: "For our traversal, what is the start state?",
+      visibility: 3,
+      tracking: ["C"],
+    },
+    answer: {
+      text: "The Cafeteria — that's where the heater is. We want to explore it so we bag it.",
+      visibility: 3,
+      highlight: { start: "C", end: "P", current: "C" },
+      bag: ["C"],
+      tracking: ["C"],
+      note: "Heat starts spreading from the Cafeteria.",
+    },
+  },
+  {
+    id: 4,
+    question: {
+      prompt:
+        "Now we start exploring from the Cafeteria. At this point which rooms can be heated?",
+      visibility: 1,
+      tracking: ["C"],
+      highlight: {
+        current: "C",
+      },
+      bag: ["C"],
+      bagPick: "C",
+    },
+    answer: {
+      text: "MedBay and Crew Quarters are the neighbours, thus the heat can reach them, so we will track them.",
+      visibility: 1,
+      highlight: {
+        neighbours: ["M", "CQ"],
+      },
+      bag: ["C"],
+      bagPick: "C",
+      tracking: ["C","M", "CQ"],
+      trackPick: ["M", "CQ"],
+      note: "We can also choose to track these when we put them IN the bag, or pull them OUT of the bag. This is the simplest method: tracking AS SOON AS we encounter them.",
+    },
+  },
+  {
+    id: 5,
+    question: {
+      prompt:
+        'Now we\'ve fully explored the Cafeteria. What are the next rooms we need to explore?',
+      visibility: 1,
+      tracking: ["C","M", "CQ"],
+      bag: ["C"],
+      bagPickDone: "C",
+    },
+    answer: {
+      text: "We need to explore both MedBay and Crew Quarters. We also remove the Cafeteria from the bag because we have already explored it.",
+      visibility: 1,
+      highlight: {
+        neighbours: ["M", "CQ"],
+      },
+      bag: ["C","M", "CQ"],
+      bagPickDone: "C",
+      tracking: ["C","M", "CQ"],
+      note: "The bag holds rooms we have not explored yet.",
+    },
+  },
+  {
+    id: 6,
+    question: {
+      prompt:
+        "How do we pick the next room to continue the traversal?",
+      visibility: 1,
+      bag: ["M", "CQ"],
+      tracking: ["C","M", "CQ"],
+    },
+    answer: {
+      text: "We randomly pick one room from the bag.",
+      visibility: 1,
+      highlight: {
+        end: "P",
+        current: "M",
+      },
+      bag: ["M", "CQ"],
+      bagPick: "M",
+      tracking: ["C","M", "CQ"],
+      note: "Random pick from the bag = unordered traversal.",
+    },
+  },
+  {
+    id: 7,
+    question: {
+      prompt: "What do we track and bag as we move to the MedBay?",
+      visibility: 4,
+      bag: ["M","CQ"],
+      bagPick: "M",
+      tracking: ["C","M", "CQ"],
+      highlight: {
+        current: "M",
+      },
+    },
+    answer: {
+      text: "We track MedBay's neighbours (heat can reach them) and we bag MedBay's neighbours (we need to traverse them). \n\n We notice that Cafeteria has already been tracked so we do not add it to the bag again.",
+      visibility: 4,
+      highlight: {
+        current: "M",
+        previous: "C",
+        neighbours: ["A"],
+      },
+      bag: ["M","CQ", "A"],
+      bagPickDone: "M",
+      tracking: ["C","M", "CQ","A"],
+      note: "Tracking = all reachable rooms / Bag = rooms we have to visit in the future",
+    },
+  },
+  {
+    id: 8,
+    question: {
+      prompt: "When do we stop the traversal?",
+      visibility: 4,
+      bag: ["CQ", "A"],
+      bagPick: "A",
+      tracking: ["C","M", "CQ","A"],
+      highlight: {
+        current: "A",
+      }
+    },
+    answer: {
+      text: "When we reach room P OR we run out of rooms in the bag",
+      visibility: 2,
+      highlight: {
+        start: "C",
+        end: "P",
+        current: "P",
+        visited: ["C", "M", "A", "P"],
+      },
+      bag: ["CQ"],
+      tracking: ["C", "M", "CQ", "A", "P"],
+      note: "Goal reached: stop as soon as P is encountered.",
+    },
+  },
+];
+
 heatQuiz = mountHeatQuiz(document.querySelector("#heat-quiz"), {
   width: 400,
   height: 260,
+  questions: heat_quiz_questions,
 })
 ```
 

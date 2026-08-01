@@ -20,7 +20,7 @@ let _markerSeq = 0;
  * }} StaticHighlight
  *
  * @param {HTMLElement} container
- * @param {{nodes: Array<{id: string, label?: string, x?: number, y?: number}>, edges: Array<{id?: string, source: string, target: string, label?: string}>}} data
+ * @param {{nodes: Array<{id: string, label?: string, order?: string|number, x?: number, y?: number}>, edges: Array<{id?: string, source: string, target: string, label?: string}>}} data
  * @param {{width?: number, height?: number, directed?: boolean, caption?: string, highlight?: StaticHighlight}} options
  */
 export function mountStaticGraphView(container, data, options = {}) {
@@ -102,6 +102,7 @@ export function mountStaticGraphView(container, data, options = {}) {
     return {
       id: n.id,
       label: n.label ?? n.id,
+      order: n.order != null && n.order !== "" ? String(n.order) : null,
       x: n.x ?? width / 2 + spawnR * Math.cos(angle),
       y: n.y ?? height / 2 + spawnR * Math.sin(angle),
       fx: n.x != null ? n.x : null,
@@ -250,6 +251,16 @@ export function mountStaticGraphView(container, data, options = {}) {
     .attr("text-anchor", "middle")
     .attr("dy", "0.32em")
     .text((d) => d.label);
+
+  // Optional visit-order badge drawn beside the node (does not replace the name).
+  nodeSel
+    .filter((d) => d.order != null)
+    .append("text")
+    .attr("class", "gv-order-label")
+    .attr("text-anchor", "start")
+    .attr("x", 26)
+    .attr("dy", "0.32em")
+    .text((d) => d.order);
 
   const roleOf = (d) => {
     if (currentId != null && d.id === currentId) return "current";
