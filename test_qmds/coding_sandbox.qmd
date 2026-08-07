@@ -13,6 +13,7 @@ The editor supports a small NetworkX-like API:
 - `G = nx.Graph()`
 - `G.add_node(name)`
 - `G.add_edge(u, v)`
+- `G.add_edge(u, v, weight=...)` (positional weight is also accepted)
 
 
 ```{python}
@@ -20,10 +21,10 @@ The editor supports a small NetworkX-like API:
 default_python_code = """import json
 
 G = nx.Graph()
-G.add_edge(\"Alice\", \"Bob\")
+G.add_edge(\"Alice\", \"Bob\", weight=2)
 G.add_edge(\"Bob\", \"Carol\")
 G.add_edge(\"Carol\", \"Dave\")
-G.add_edge(\"Alice\", \"Dave\")
+G.add_edge(\"Alice\", \"Dave\", weight=3)
 G.add_edge(\"Bob\", \"Eve\")
 G.add_edge(\"Eve\", \"Frank\")
 G.add_edge(\"Frank\", \"Carol\")
@@ -102,14 +103,24 @@ setupEditor = (() => {
       for (const e of graphJSON.edges || []) {
         if (!sandboxEngine.nodes.has(e.source)) sandboxEngine.addNode({ id: e.source, label: e.source });
         if (!sandboxEngine.nodes.has(e.target)) sandboxEngine.addNode({ id: e.target, label: e.target });
-        sandboxEngine.addEdge({ source: e.source, target: e.target, label: e.label ?? "" });
+        sandboxEngine.addEdge({
+          source: e.source,
+          target: e.target,
+          label: e.label ?? "",
+          weight: e.weight !== undefined ? e.weight : 1,
+        });
       }
     },
     toJSON() {
       const snap = sandboxEngine.snapshot();
       return {
         nodes: snap.nodes.map((n) => ({ id: n.id, label: n.label })),
-        edges: snap.edges.map((e) => ({ source: e.source, target: e.target, label: e.label })),
+        edges: snap.edges.map((e) => ({
+          source: e.source,
+          target: e.target,
+          label: e.label,
+          weight: e.weight,
+        })),
       };
     },
   };
