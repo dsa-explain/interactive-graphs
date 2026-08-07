@@ -18,8 +18,7 @@ The editor supports a small NetworkX-like API and keeps the graph and code edito
 
 ```{python}
 #| echo: false
-default_python_code = """import json
-
+default_python_code = """
 G = nx.Graph()
 G.add_node("Bob")
 G.add_node("Carol")
@@ -43,6 +42,7 @@ ojs_define(sb_default_code = default_python_code)
       <div class="graph-widget__row">
         <button data-role="run-code">Run Python</button>
         <button data-role="reset-code" class="secondary">Reset code</button>
+        <button data-role="sync-code" class="secondary">Sync graph to code</button>
         <button data-role="show-json" class="secondary">Show current JSON</button>
       </div>
       <pre data-role="json-output" class="graph-widget__json" hidden></pre>
@@ -131,7 +131,6 @@ setupEditor = (() => {
     pythonInput = PythonEditorInput.mount(pythonRoot, {
       graphDisplay: graphDisplayAdapter,
       engine: pyEngine,
-      graphEngine: sandboxEngine,
     });
     pythonInput.start();
   }

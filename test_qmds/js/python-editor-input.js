@@ -1,11 +1,11 @@
 export class PythonEditorInput {
-  constructor({ engine, graphDisplay, graphEngine, editor, runButton, resetButton, jsonButton, jsonOutput, status }) {
+  constructor({ engine, graphDisplay, editor, runButton, resetButton, syncButton, jsonButton, jsonOutput, status }) {
     this.engine = engine;
     this.graphDisplay = graphDisplay;
-    this.graphEngine = graphEngine;
     this.editor = editor;
     this.runButton = runButton;
     this.resetButton = resetButton;
+    this.syncButton = syncButton;
     this.jsonButton = jsonButton;
     this.jsonOutput = jsonOutput;
     this.status = status;
@@ -13,18 +13,17 @@ export class PythonEditorInput {
     this.lastGeneratedCode = editor.value;
     this.isDirty = false;
     this.ignoreEditorChange = false;
-    this.editorRunTimer = null;
   }
 
-  static mount(root, { graphDisplay, engine, graphEngine }) {
+  static mount(root, { graphDisplay, engine }) {
     const byRole = role => root.querySelector(`[data-role="${role}"]`);
     const input = new PythonEditorInput({
       engine,
       graphDisplay,
-      graphEngine,
       editor: byRole("python-editor"),
       runButton: byRole("run-code"),
       resetButton: byRole("reset-code"),
+      syncButton: byRole("sync-code"),
       jsonButton: byRole("show-json"),
       jsonOutput: byRole("json-output"),
       status: byRole("status")
@@ -36,11 +35,11 @@ export class PythonEditorInput {
   bindEvents() {
     this.runButton?.addEventListener("click", () => this.runAndApply());
     this.resetButton?.addEventListener("click", () => this.reset());
+    this.syncButton?.addEventListener("click", () => this._syncGraphToCode());
     this.jsonButton?.addEventListener("click", () => this.toggleJSON());
     this.editor?.addEventListener("input", () => {
       if (this.ignoreEditorChange) return;
       this.isDirty = this.editor.value !== this.lastGeneratedCode;
-      this._scheduleEditorRun();
     });
   }
 
@@ -49,9 +48,6 @@ export class PythonEditorInput {
     await this.engine.init();
     this._setStatus("Pyodide ready. Run Python to render the graph.");
     await this.runAndApply();
-    if (this.graphEngine) {
-      this.graphEngine.subscribe(() => this._onGraphUpdate());
-    }
   }
 
   async runAndApply() {
@@ -61,22 +57,13 @@ export class PythonEditorInput {
       this.graphDisplay.setGraph(rawGraph);
       this._setStatus("Python executed and graph rendered.");
       if (this.jsonOutput && !this.jsonOutput.hidden) this._renderJSON();
-      if (!this.isDirty) {
-        this._syncGraphToCode();
-      }
     } catch (error) {
       this._setStatus(`Error: ${error}`);
-    } finally {
-      this.editorRunTimer = null;
     }
   }
 
   reset() {
     this.editor.value = this.defaultCode;
-    if (this.editorRunTimer) {
-      clearTimeout(this.editorRunTimer);
-      this.editorRunTimer = null;
-    }
     this.isDirty = this.editor.value !== this.lastGeneratedCode;
     this._setStatus("Code reset. Run Python to update the graph.");
   }
@@ -88,15 +75,6 @@ export class PythonEditorInput {
     if (this.jsonButton) this.jsonButton.textContent = this.jsonOutput.hidden ? "Show current JSON" : "Hide current JSON";
   }
 
-  _onGraphUpdate() {
-    if (this.isDirty) return;
-    this._syncGraphToCode();
-  }
-
-  _scheduleEditorRun() {
-    if (this.editorRunTimer) clearTimeout(this.editorRunTimer);
-    this.editorRunTimer = setTimeout(() => this.runAndApply(), 500);
-  }
 
   _syncGraphToCode() {
     if (!this.editor) return;
