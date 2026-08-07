@@ -8,7 +8,7 @@ format:
 
 This page uses a Pyodide-powered Python editor to build a graph and immediately redraws the graph in the browser. The visualization and toolbar should match the standalone Sandbox page; this document adds the Python editor as an input step alongside the same graph canvas.
 
-The editor supports a small NetworkX-like API:
+The editor supports a small NetworkX-like API and keeps the graph and code editor in sync automatically:
 
 - `G = nx.Graph()`
 - `G.add_node(name)`
@@ -21,13 +21,13 @@ The editor supports a small NetworkX-like API:
 default_python_code = """import json
 
 G = nx.Graph()
-G.add_edge(\"Alice\", \"Bob\", weight=2)
-G.add_edge(\"Bob\", \"Carol\")
-G.add_edge(\"Carol\", \"Dave\")
-G.add_edge(\"Alice\", \"Dave\", weight=3)
-G.add_edge(\"Bob\", \"Eve\")
-G.add_edge(\"Eve\", \"Frank\")
-G.add_edge(\"Frank\", \"Carol\")
+G.add_node("Bob")
+G.add_node("Carol")
+G.add_node("Eve")
+G.add_node("Frank")
+G.add_edge("Bob", "Eve", weight = 3)
+G.add_edge("Eve", "Frank")
+G.add_edge("Frank", "Carol")
 
 """
 
@@ -131,6 +131,7 @@ setupEditor = (() => {
     pythonInput = PythonEditorInput.mount(pythonRoot, {
       graphDisplay: graphDisplayAdapter,
       engine: pyEngine,
+      graphEngine: sandboxEngine,
     });
     pythonInput.start();
   }

@@ -43,7 +43,12 @@ class Graph:
                 if (v, u) in seen:
                     continue
                 seen.add((u, v))
-                edges.append((u, v, data.get("weight", 1)))
+                edges.append({
+                    "source": u,
+                    "target": v,
+                    "label": data.get("label", ""),
+                    "weight": data.get("weight", 1),
+                })
         return edges
 
     def degree(self, node=None):
@@ -64,7 +69,7 @@ if "graph_output" in globals():
 elif "G" in globals() and hasattr(G, "edges") and hasattr(G, "nodes"):
     result = {
         "nodes": [{"id": n, **G.node_attrs.get(n, {})} for n in G.nodes()],
-        "edges": [{"source": u, "target": v, "weight": w} for u, v, w in G.edges()]
+        "edges": [edge for edge in G.edges()]
     }
 else:
     result = {"nodes": [], "edges": []}
