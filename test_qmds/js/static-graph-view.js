@@ -88,6 +88,7 @@ export function mountStaticGraphView(container, data, options = {}) {
     .map((e, i) => ({
       id: e.id ?? `e${i}`,
       label: e.label ?? "",
+      weight: e.weight !== undefined ? e.weight : 1,
       source: byId.get(e.source),
       target: byId.get(e.target),
     }))
@@ -145,7 +146,16 @@ export function mountStaticGraphView(container, data, options = {}) {
     .attr("class", "gv-edge-label")
     .attr("x", (d) => (d.source.x + d.target.x) / 2)
     .attr("y", (d) => (d.source.y + d.target.y) / 2 - 6)
-    .text((d) => d.label || "");
+    .text((d) => {
+      if (d.label && d.label !== "") {
+        return d.weight !== undefined && d.weight !== null && d.weight !== 1
+          ? `${d.label} (${d.weight})`
+          : d.label;
+      }
+      return d.weight !== undefined && d.weight !== null && d.weight !== 1
+        ? String(d.weight)
+        : "";
+    });
 
   const nodeSel = nodeLayer
     .selectAll("g.gv-node")

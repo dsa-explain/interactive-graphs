@@ -1,21 +1,3 @@
-/**
- * py-graph-engine.js
- * ---------------------------------------------------------------------
- * Wraps Pyodide plus a small "networkx"-like shim so arbitrary user
- * Python can build a graph and hand back plain { nodes, edges } JSON.
- *
- * This module knows nothing about GraphDisplay - it just runs Python
- * and returns data. The wiring that feeds the result into a
- * GraphDisplay instance lives in python-editor-input.js, which is the
- * piece you would swap out (not this file) if the input mechanism
- * changed from "Python code" to something else.
- *
- * Usage:
- *   import { PyGraphEngine } from "./py-graph-engine.js";
- *   const engine = new PyGraphEngine({ indexURL: ".../pyodide/v0.25.0/full/" });
- *   await engine.init();
- *   const graph = await engine.run(pythonCode); // -> { nodes, edges }
- */
 export class PyGraphEngine {
   constructor({ indexURL, pyodideModuleURL } = {}) {
     this.indexURL = indexURL || "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/";
@@ -30,7 +12,6 @@ export class PyGraphEngine {
     return this.pyodide;
   }
 
-  /** Python source that defines the `nx`-like shim and the run/serialize logic. */
   static get runnerSource() {
     return `
 import json
@@ -62,7 +43,12 @@ class Graph:
                 if (v, u) in seen:
                     continue
                 seen.add((u, v))
-                edges.append((u, v, data.get("weight", 1)))
+                edges.append({
+                    "source": u,
+                    "target": v,
+                    "label": data.get("label", ""),
+                    "weight": data.get("weight", 1),
+                })
         return edges
 
     def degree(self, node=None):
@@ -83,7 +69,7 @@ if "graph_output" in globals():
 elif "G" in globals() and hasattr(G, "edges") and hasattr(G, "nodes"):
     result = {
         "nodes": [{"id": n, **G.node_attrs.get(n, {})} for n in G.nodes()],
-        "edges": [{"source": u, "target": v, "weight": w} for u, v, w in G.edges()]
+        "edges": [edge for edge in G.edges()]
     }
 else:
     result = {"nodes": [], "edges": []}
@@ -92,10 +78,6 @@ json.dumps(result)
 `;
   }
 
-  /**
-   * Runs arbitrary user Python `code` against the graph shim and
-   * returns the parsed { nodes, edges } JSON it produced.
-   */
   async run(code) {
     if (!this.pyodide) {
       throw new Error("PyGraphEngine.init() must complete before run()");
