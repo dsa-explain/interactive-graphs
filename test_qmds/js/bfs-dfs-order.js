@@ -125,12 +125,10 @@ export function mountBfsDfsOrderView(container, options = {}) {
   right.appendChild(feedback);
 
   const bagPanel = document.createElement("div");
-  bagPanel.className = "ht-bag";
   bagPanel.setAttribute("aria-label", "Bag");
   right.appendChild(bagPanel);
 
   const visitPanel = document.createElement("div");
-  visitPanel.className = "ht-track";
   visitPanel.setAttribute("aria-label", "Visit order");
   right.appendChild(visitPanel);
 
@@ -211,10 +209,10 @@ export function mountBfsDfsOrderView(container, options = {}) {
   }
 
   function renderBag() {
-    const header = `<div class="ht-bag-header"><span class="ht-bag-title">TO BE EXPLORED</span></div>`;
+    const header = `<div class="iv-visited"><span class="cb-section-label">ENCOUNTERED, NOTED TO BE EXPLORED</span></div>`;
     let body;
     if (bag.length === 0) {
-      body = `<div class="ht-bag-empty">${
+      body = `<div class="adj-empty">${
         phase === "idle" ? "start a traversal to fill the bag…" : "bag empty"
       }</div>`;
     } else {
@@ -233,11 +231,11 @@ export function mountBfsDfsOrderView(container, options = {}) {
               : index === bag.length - 1
                 ? " bdo-chip-back"
                 : "";
-          return `<button type="button" class="ht-bag-chip bdo-chip${endCls}" data-id="${escapeHtml(id)}"${endHint}>${label}</button>`;
+          return `<button type="button" class="adj-box adj-val iv-visited-chip bdo-chip${endCls}" data-id="${escapeHtml(id)}"${endHint}>${label}</button>`;
         })
         .join("");
     }
-    const footer = `<div class="ht-bag-footer">alphabetical append · click a chip to pop</div>`;
+    const footer = `<div class="adj-footer">alphabetical append · click a chip to pop</div>`;
     bagPanel.innerHTML = `${header}<div class="ht-bag-body">${body}</div>${footer}`;
 
     if (phase === "running") {
@@ -248,18 +246,17 @@ export function mountBfsDfsOrderView(container, options = {}) {
   }
 
   function renderVisitOrder() {
-    const header = `<div class="ht-track-header"><span class="ht-track-title">VISIT ORDER</span></div>`;
+    const header = `<div class="iv-visited"><span class="cb-section-label">VISIT ORDER</span></div>`;
     const body =
       visitOrder.length === 0
-        ? `<div class="ht-track-empty">no nodes visited yet…</div>`
+        ? `<div class="adj-empty">no nodes visited yet…</div>`
         : visitOrder
             .map(
               (id, i) =>
-                `<span class="ht-track-chip" data-id="${escapeHtml(id)}">${i + 1}. ${escapeHtml(nodeLabel(engine, id))}</span>`
+                `<span class="adj-box adj-val iv-visited-chip" data-id="${escapeHtml(id)}">${escapeHtml(nodeLabel(engine, id))}</span>`
             )
             .join("");
-    const footer = `<div class="ht-track-footer">order you popped from the bag</div>`;
-    visitPanel.innerHTML = `${header}<div class="ht-track-body">${body}</div>${footer}`;
+    visitPanel.innerHTML = `${header}<div class="ht-bag-body">${body}</div>`;
   }
 
   function renderFeedback() {
