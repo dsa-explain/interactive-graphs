@@ -166,7 +166,7 @@ export function renderBagPanel(opts = {}) {
   const items = opts.items ?? [];
   const pick = opts.pick ?? null;
   const pickDone = opts.pickDone ?? null;
-  const title = opts.title ?? "TO BE EXPLORED";
+  const title = opts.title ?? "ENCOUNTERED, NOTED TO BE EXPLORED";
   const emptyText = opts.emptyText ?? "bay empty — awaiting rooms…";
   const footer = opts.footer ?? "unordered";
 
@@ -206,7 +206,7 @@ export function renderBagPanel(opts = {}) {
  */
 export function renderTrackingPanel(opts = {}) {
   const items = opts.items ?? [];
-  const title = opts.title ?? "TRACK - HEAT REACHABLE";
+  const title = opts.title ?? "EXPLORED ROOMS";
   const emptyText = opts.emptyText ?? "no rooms logged yet…";
 
   const chips =

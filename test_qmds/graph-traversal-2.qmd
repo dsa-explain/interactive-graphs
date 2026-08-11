@@ -1,5 +1,5 @@
 ---
-title: "Graph Representation 2"
+title: "Graph Traversal Strategies"
 subtitle: "Systematic Graph Traversal"
 ---
 
@@ -447,11 +447,23 @@ Now that we have an intuition for the two strategies, let us explore how we can 
 
 If we take another look at the "Bag" we can see that for the first strategy we are emptying the bag from right to left, and for the second one left to right. 
 
-So instead of a set like last time, we can use a list to record the rooms we encounter. For the first strategy we can remove the last item after each iteration, while for the second one we can remove the first item. Hold on, is there a data structure for these two operations? Yes, it is a stack for the first strategy and a queue for the second one! 
+So instead of a set like last time, we can use a list to record the rooms we encounter. For the first strategy we can remove the last item after each iteration, while for the second one we can remove the first item. 
+
+We mentioned that encountering more than one room in the same room, like A and B together from MedBay, we can pick either of them for both strategies. But if we want to stick to either the front or back, it will make the implementation much easier.
+
+:::{.callout-note}
+
+#### Terminology alert!
+
+The first strategy is going to explore the latest rooms first. In other words, we are going to go to the very deep rooms, then start backtracking. Or do a "Depth" First Search (DFS).
+
+For the second one, we are going to explore the room in the order we encounter them. We note this order in our list. In other words, we are going to explore the entire breadth first before going deeper. Or do a "Breadth" First Search (BFS).
+
+:::
 
 ### DIY
 
-Make your own graph and then try to list the nodes in the order you would visit them using both strategies. For consistency: for selecting between nodes in the same room (like A and B in the previous example), use an alphabetical order to populate the bag. Thus when you pop from the bag, you would pop B before A for the first strategy (i.e. from the end of the list), and A before B for the second one (i.e. from the start of the list).
+Make your own graph and then try to list the nodes in the order you would visit them using both strategies. For consistency: for selecting between nodes in the same room (like A and B in the previous example), we use an alphabetical order to populate the bag. Thus when you pop from the bag, you would pop B before A for the first strategy (i.e. from the end of the list), and A before B for the second one (i.e. from the start of the list).
 
 ::: {.widget-block}
 <div id="bfs-dfs-order"></div>
@@ -469,7 +481,15 @@ bfsDfsOrder = mountBfsDfsOrderView(document.querySelector("#bfs-dfs-order"), {
 
 ### Implement in code!
 
-Drag the blocks to the right place to implement the first strategy. This is going to explore the latest rooms first. In other words, we are going to go to the very deep rooms, then start backtracking. Or do a Depth First Search (DFS).
+:::{.callout-note}
+
+Hold on, is there a data structure for the two types of popping operations? Yes, it is a stack for the first strategy and a queue for the second one! 
+
+<possible link or visualisation of the stack and queue>
+
+:::
+
+Drag the blocks to the right place to implement the first strategy of Depth-First Search (DFS). 
 
 ::: {.panel-grid}
 ::: {.panel}
@@ -521,7 +541,7 @@ heatCodeViz1 = mountHeatCodeViz(document.querySelector("#heat-code-viz"), {
 })
 ```
 
-For the second one, we are going to explore the room in the order we encounter them. We note this order in our list. In other words, we are going to explore the entire breadth first before going deeper. Or do a Breadth First Search (BFS).
+Drag the blocks to the right place to implement the second strategy of Breadth-First Search (BFS). 
 
 ::: {.panel-grid}
 ::: {.panel}

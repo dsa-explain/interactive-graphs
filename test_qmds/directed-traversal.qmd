@@ -1,0 +1,202 @@
+---
+title: "Station Traversal: Rover on a Foreign Planet"
+format: html
+---
+
+## Task 1
+
+You're back at the space station and ready for your first task! You are
+navigating a repair bot in the ship's engine room. The surface is mapped
+as a series of (x, y) coordinates, represented as a matrix, where each
+cell's number is the surface height. You need to reach the electrical grid
+at the orange cell from the entrance at the green cell and find the length
+of the shortest path. Your bot can only move to a neighbouring cell that is
+at the **same height or lower**. Obstacles are marked `-1`. Return -1 if
+there is no path.
+
+Before we traverse the whole grid, we first need a way to ask: *from this
+cell, which cells can the rover legally step onto?* Below, the green cell
+is the rover's current position — the blue cells are the neighbours a
+`get_neighbours` function should return for it (same height or lower,
+not blocked, inside the grid).
+
+::: {.panel-grid}
+::: {.panel}
+**Legal moves, recapped**
+
+- Stay inside the grid.
+- Never step onto an obstacle (`-1`).
+- Only step onto a cell whose height is **less than or equal to** the
+  current cell's height.
+
+For the sample on the right, the rover sits on a `1`. Its neighbour to the
+right is also a `1` (legal), and below is a `1` (legal) — but one step
+below that is `-1` (an obstacle) and blocked. To its right, the diagonal
+neighbour has height `2` and isn't directly reachable in one step anyway
+(the rover only moves up/down/left/right).
+:::
+::: {.panel}
+<div id="sample-maze"></div>
+:::
+:::
+
+```{ojs}
+//| echo: false
+import {
+  mountMazeGrid,
+  mountNeighboursMazeView,
+  mountBfsMazeView,
+  getNeighbours,
+  CELL_STATE,
+  NEIGHBOURS_CODE_BLOCKS,
+  NEIGHBOURS_CODE_OPTIONS,
+  BFS_CODE_BLOCKS,
+  BFS_CODE_OPTIONS,
+} from "./js/maze-helpers.js";
+import { mountCodeBlocksView } from "./js/code-blocks-view.js";
+```
+
+```{ojs}
+//| echo: false
+// Small illustrative matrix — matches the "what is a neighbour" example above.
+sampleMatrix = [
+  [1, 1, 2, 2, 5, 3],
+  [1, 2, -1, 2, 3, 3],
+  [1, 2, 3, 4, 4, 4],
+  [2, 2, 3, 4, 5, 3],
+]
+sampleStart = [0, 0]
+sampleTarget = [3, 5]
+```
+
+```{ojs}
+//| echo: false
+sampleGrid = mountMazeGrid(document.querySelector("#sample-maze"), sampleMatrix, {
+  start: sampleStart,
+  target: sampleTarget,
+  cellSize: 58,
+  legend: [
+    { state: CELL_STATE.START, label: "rover (current cell)" },
+    { state: CELL_STATE.NEIGHBOUR, label: "legal neighbour" },
+    { state: CELL_STATE.OBSTACLE, label: "obstacle" },
+    { state: CELL_STATE.TARGET, label: "target" },
+  ],
+})
+```
+
+```{ojs}
+//| echo: false
+sampleNeighbours = getNeighbours(
+  { matrix: sampleMatrix, rows: sampleMatrix.length, cols: sampleMatrix[0].length },
+  sampleStart[0],
+  sampleStart[1]
+)
+```
+
+```{ojs}
+//| echo: false
+{
+  const overrides = new Map();
+  overrides.set(`${sampleStart[0]},${sampleStart[1]}`, CELL_STATE.START);
+  sampleNeighbours.forEach(([r, c]) => overrides.set(`${r},${c}`, CELL_STATE.NEIGHBOUR));
+  sampleGrid.setOverrides(overrides);
+}
+```
+
+The maze the rover actually needs to solve is bigger — the entrance
+(green) is top-left, the electrical grid (orange) is bottom-right:
+
+```{ojs}
+//| echo: false
+matrix = [
+  [1, 1, 1, 3, 3],
+[1, 0, 1, 3, 3],
+[1, 1, 1, 1, 1],
+[3, 3, 3, -1, 1],
+[3, 3, 3, 1, 1],
+[3, 3, 1, 1, 1],
+[3, 3, 3, 1, 1],
+[3, 3, 3, 1, 1],
+[3, 3, 3, 1, 1],
+]
+mazeStart = [0, 0]
+mazeTarget = [8, 4]
+```
+
+### Q1 — `get_neighbours`
+
+Assemble the steps below so `get_neighbours` returns every cell the rover
+can legally step onto from a given `(row, col)`. Once your plan looks
+right, click any open cell on the grid to try it — the returned neighbours
+light up blue, and are also listed underneath.
+
+::: {.panel-grid}
+::: {.panel}
+<div id="neighbours-blocks"></div>
+:::
+::: {.panel}
+<div id="neighbours-viz" class="cb-viz-placeholder"></div>
+:::
+:::
+
+```{ojs}
+//| echo: false
+neighboursBlocks = mountCodeBlocksView(
+  document.querySelector("#neighbours-blocks"),
+  NEIGHBOURS_CODE_BLOCKS,
+  NEIGHBOURS_CODE_OPTIONS
+)
+```
+
+```{ojs}
+//| echo: false
+neighboursViz = mountNeighboursMazeView(document.querySelector("#neighbours-viz"), matrix, {
+  start: mazeStart,
+  target: mazeTarget,
+  cellSize: 42,
+  getPython: () => neighboursBlocks.toPython(),
+})
+```
+
+### Q2 — Shortest path with BFS
+
+Now let's find the shortest path itself. Assemble the loop body so the
+rover explores the grid breadth-first: pop the next cell from the queue,
+stop if it's the target, find its legal neighbours with `get_neighbours`,
+and enqueue any of them we haven't seen yet.
+
+Press **Play** to watch the search expand one distance layer at a time, or
+**Step** to advance a single layer. Every cell highlighted in the same step
+is the same distance from the start. Once the target is found, the
+shortest path lights up in green.
+
+::: {.panel-grid}
+::: {.panel}
+<div id="bfs-blocks"></div>
+:::
+::: {.panel}
+<div id="bfs-viz" class="cb-viz-placeholder"></div>
+:::
+:::
+
+```{ojs}
+//| echo: false
+bfsBlocks = mountCodeBlocksView(
+  document.querySelector("#bfs-blocks"),
+  BFS_CODE_BLOCKS,
+  BFS_CODE_OPTIONS
+)
+```
+
+```{ojs}
+//| echo: false
+bfsViz = mountBfsMazeView(document.querySelector("#bfs-viz"), matrix, {
+  start: mazeStart,
+  target: mazeTarget,
+  cellSize: 42,
+  getPython: () => bfsBlocks.toPython(),
+})
+```
+
+## Task 2
+### How many different paths could your rover have taken?
