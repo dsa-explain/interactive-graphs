@@ -1,9 +1,6 @@
 ---
 title: "Coding Sandbox"
 subtitle: "Write Python to build a graph and watch the visualization update"
-format:
-  html:
-    embed-resources: true
 ---
 
 This page uses a Pyodide-powered Python editor to build a graph and immediately redraws the graph in the browser. The visualization and toolbar should match the standalone Sandbox page; this document adds the Python editor as an input step alongside the same graph canvas.
