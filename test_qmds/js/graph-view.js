@@ -166,14 +166,21 @@ export function mountGraphView(engine, container, options = {}) {
         return;
       }
       const current = engine.edges.get(sel.id);
-      const label = await openPromptModal({
+      const defaultValue = edgeDisplayValue(current);
+      const value = await openPromptModal({
         title: "Update edge",
         message: "Enter a new label or weight for this edge.",
-        defaultValue: current?.label ?? "",
+        defaultValue,
         placeholder: "Edge label / weight",
         submitLabel: "Update",
       });
-      if (label != null) engine.updateEdge(sel.id, { label });
+      if (value != null) {
+        const patch =
+          value === defaultValue && current?.label === defaultValue && current?.weight === 1
+            ? { label: defaultValue }
+            : parseEdgeValue(value);
+        engine.updateEdge(sel.id, patch);
+      }
     });
 
     const deleteNodeBtn = mkButton("Node", "Delete Node", () => {
@@ -264,6 +271,47 @@ export function mountGraphView(engine, container, options = {}) {
     } else {
       statusEl.textContent = "";
     }
+  }
+
+  function edgeDisplayValue(edge) {
+    if (!edge) return "";
+    const hasWeight = edge.weight !== undefined && edge.weight !== null;
+    if (edge.label && edge.label !== "") {
+      return hasWeight && edge.weight !== 1
+        ? `${edge.label} (${edge.weight})`
+        : edge.label;
+    }
+    return hasWeight && edge.weight !== 1 ? String(edge.weight) : "";
+  }
+
+  function parseEdgeValue(value) {
+    const trimmed = value.trim();
+    if (trimmed === "") return { label: "", weight: 1 };
+
+    const weightMatch = trimmed.match(/^(.+?)\s*\(([-+]?[0-9]*\.?[0-9]+)\)$/);
+    if (weightMatch) {
+      const label = weightMatch[1].trim();
+      const weight = Number(weightMatch[2]);
+      return label
+        ? { label, weight }
+        : { label: "", weight };
+    }
+
+    const colonMatch = trimmed.match(/^(.+?):\s*([-+]?[0-9]*\.?[0-9]+)$/);
+    if (colonMatch) {
+      const label = colonMatch[1].trim();
+      const weight = Number(colonMatch[2]);
+      return label
+        ? { label, weight }
+        : { label: "", weight };
+    }
+
+    const numeric = Number(trimmed);
+    if (trimmed !== "" && !Number.isNaN(numeric)) {
+      return { label: "", weight: numeric };
+    }
+
+    return { label: trimmed, weight: 1 };
   }
 
   function flash(msg) {
@@ -375,6 +423,7 @@ export function mountGraphView(engine, container, options = {}) {
     simLinks = snapshot.edges.map((e) => ({
       id: e.id,
       label: e.label,
+      weight: e.weight,
       source: simNodes.get(e.source),
       target: simNodes.get(e.target),
     }));
@@ -423,7 +472,16 @@ export function mountGraphView(engine, container, options = {}) {
         if (addEdgeMode) return;
         engine.select("edge", d.id);
       });
-    merged.select("text").text((d) => d.label || "");
+    merged.select("text").text((d) => {
+      if (d.label && d.label !== "") {
+        return d.weight !== undefined && d.weight !== null && d.weight !== 1
+          ? `${d.label} (${d.weight})`
+          : d.label;
+      }
+      return d.weight !== undefined && d.weight !== null && d.weight !== 1
+        ? String(d.weight)
+        : "";
+    });
   }
 
   function drawNodes(snapshot) {
@@ -480,12 +538,12 @@ export function mountGraphView(engine, container, options = {}) {
           message: `Connect ${sourceLabel} → ${targetLabel}. Label / weight is optional.`,
           placeholder: "Edge label / weight",
           submitLabel: "Add",
-        }).then((label) => {
-          if (label == null) {
+        }).then((value) => {
+          if (value == null) {
             updateStatus();
             return;
           }
-          engine.addEdge({ source, target, label: label || "" });
+          engine.addEdge({ source, target, ...parseEdgeValue(value) });
           addEdgeMode = false;
           if (addEdgeBtn) addEdgeBtn.classList.remove("gv-btn-active");
           updateStatus();
