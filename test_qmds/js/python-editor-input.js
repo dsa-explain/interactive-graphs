@@ -1,38 +1,20 @@
-/**
- * python-editor-input.js
- * ---------------------------------------------------------------------
- * An "input step": translates a user action (clicking "Run Python")
- * into calls on a GraphDisplay instance. This is the piece you would
- * replace with, say, a button-based UI or a block editor - GraphDisplay
- * itself never has to change.
- *
- * It also demonstrates requirement (2): a "Show current JSON" toggle
- * that reads back exactly what GraphDisplay is showing, via
- * `graphDisplay.toJSON()`, so you can always confirm the editor's
- * output and the rendered graph agree.
- *
- * Usage:
- *   import { PythonEditorInput } from "./python-editor-input.js";
- *   const input = PythonEditorInput.mount(rootElement, { graphDisplay, engine });
- *   await input.start();
- */
 export class PythonEditorInput {
-  constructor({ engine, graphDisplay, editor, runButton, resetButton, jsonButton, jsonOutput, status }) {
+  constructor({ engine, graphDisplay, editor, runButton, resetButton, syncButton, jsonButton, jsonOutput, status }) {
     this.engine = engine;
     this.graphDisplay = graphDisplay;
     this.editor = editor;
     this.runButton = runButton;
     this.resetButton = resetButton;
+    this.syncButton = syncButton;
     this.jsonButton = jsonButton;
     this.jsonOutput = jsonOutput;
     this.status = status;
     this.defaultCode = editor.value.trim();
+    this.lastGeneratedCode = editor.value;
+    this.isDirty = false;
+    this.ignoreEditorChange = false;
   }
 
-  /**
-   * Finds the standard elements (by `data-role`) inside `root` and wires
-   * them up. `root` is scoped so multiple widgets can coexist on one page.
-   */
   static mount(root, { graphDisplay, engine }) {
     const byRole = role => root.querySelector(`[data-role="${role}"]`);
     const input = new PythonEditorInput({
@@ -41,6 +23,7 @@ export class PythonEditorInput {
       editor: byRole("python-editor"),
       runButton: byRole("run-code"),
       resetButton: byRole("reset-code"),
+      syncButton: byRole("sync-code"),
       jsonButton: byRole("show-json"),
       jsonOutput: byRole("json-output"),
       status: byRole("status")
@@ -52,7 +35,12 @@ export class PythonEditorInput {
   bindEvents() {
     this.runButton?.addEventListener("click", () => this.runAndApply());
     this.resetButton?.addEventListener("click", () => this.reset());
+    this.syncButton?.addEventListener("click", () => this._syncGraphToCode());
     this.jsonButton?.addEventListener("click", () => this.toggleJSON());
+    this.editor?.addEventListener("input", () => {
+      if (this.ignoreEditorChange) return;
+      this.isDirty = this.editor.value !== this.lastGeneratedCode;
+    });
   }
 
   async start() {
@@ -76,15 +64,64 @@ export class PythonEditorInput {
 
   reset() {
     this.editor.value = this.defaultCode;
+    this.isDirty = this.editor.value !== this.lastGeneratedCode;
     this._setStatus("Code reset. Run Python to update the graph.");
   }
 
-  /** Shows/hides a pretty-printed dump of graphDisplay.toJSON() - the JSON actually on screen. */
   toggleJSON() {
     if (!this.jsonOutput) return;
     this.jsonOutput.hidden = !this.jsonOutput.hidden;
     if (!this.jsonOutput.hidden) this._renderJSON();
     if (this.jsonButton) this.jsonButton.textContent = this.jsonOutput.hidden ? "Show current JSON" : "Hide current JSON";
+  }
+
+
+  _syncGraphToCode() {
+    if (!this.editor) return;
+    const graph = this.graphDisplay.toJSON();
+    const code = this._generatePythonCode(graph);
+    if (code === this.editor.value) {
+      this.lastGeneratedCode = code;
+      this.isDirty = false;
+      return;
+    }
+    this.ignoreEditorChange = true;
+    this.editor.value = code;
+    this.ignoreEditorChange = false;
+    this.lastGeneratedCode = code;
+    this.isDirty = false;
+    if (this.jsonOutput && !this.jsonOutput.hidden) this._renderJSON();
+  }
+
+  _generatePythonCode(graph) {
+    const parts = ["G = nx.Graph()"];
+    const nodeLines = [];
+    const edgeLines = [];
+
+    for (const node of graph.nodes || []) {
+      const id = JSON.stringify(node.id);
+      if (node.label !== undefined && node.label !== node.id) {
+        nodeLines.push(`G.add_node(${JSON.stringify(node.label)})`);
+      } else {
+        nodeLines.push(`G.add_node(${id})`);
+      }
+    }
+
+    for (const edge of graph.edges || []) {
+      const source = JSON.stringify(edge.source);
+      const target = JSON.stringify(edge.target);
+      const attrs = [];
+      if (edge.label !== undefined && edge.label !== "") {
+        attrs.push(`label=${JSON.stringify(edge.label)}`);
+      }
+      if (edge.weight !== undefined && edge.weight !== 1) {
+        attrs.push(`weight=${edge.weight}`);
+      }
+      const attrText = attrs.length > 0 ? `, ${attrs.join(", ")}` : "";
+      edgeLines.push(`G.add_edge(${source}, ${target}${attrText})`);
+    }
+
+    return [...parts, ...nodeLines, ...edgeLines, ""].join("\n");
   }
 
   _renderJSON() {

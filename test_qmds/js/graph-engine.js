@@ -46,6 +46,7 @@ export class GraphEngine {
       source: edge.source,
       target: edge.target,
       label: edge.label ?? "",
+      weight: edge.weight !== undefined ? edge.weight : 1,
     });
     return id;
   }
