@@ -453,7 +453,10 @@ export function mountGraphView(engine, container, options = {}) {
 
     const enter = sel.enter().append("g").attr("class", "gv-edge");
     enter.append("line").attr("class", "gv-edge-line");
-    enter.append("text").attr("class", "gv-edge-label");
+    enter
+      .append("text")
+      .attr("class", "gv-edge-label")
+      .attr("text-anchor", "middle");
 
     const merged = enter.merge(sel);
     merged.attr("data-id", (d) => d.id);
