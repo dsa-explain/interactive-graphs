@@ -3,9 +3,45 @@ title: "Directed and Weighted Graph"
 subtitle: "How arrows and edge weights change graph meaning"
 ---
 
-A directed graph has edges that point in one direction only. The arrow shows the edge's source and target, so `A → B` is not the same as `B → A`.
+### Undirected graph
+
+So far, every graph you have seen has been an **undirected graph**. Here is a simple graph you have seen before.
+
+::: {.static-graph-inline}
+<div id="undirected-example"></div>
+:::
+
+```{python}
+#| echo: false
+udg_nodes = [
+    {"id": "A", "label": "A"},
+    {"id": "B", "label": "B"},
+    {"id": "C", "label": "C"},
+]
+udg_edges = [
+    {"id": "e0", "source": "A", "target": "B", "label": ""},
+    {"id": "e1", "source": "B", "target": "C", "label": ""},
+]
+
+ojs_define(udg_nodes = udg_nodes, udg_edges = udg_edges)
+```
+
+```{ojs}
+//| echo: false
+import { mountStaticGraphView } from "./js/static-graph-view.js";
+
+udgView = mountStaticGraphView(
+  document.querySelector("#undirected-example"),
+  { nodes: udg_nodes, edges: udg_edges },
+  { width: 280, height: 180, directed: false }
+);
+```
+
+In this graph, the edges are undirected. Since there is an edge between `A` and `B`, you can travel from `A` to `B` or from `B` to `A`. The edges have no direction.
 
 ### Directed graph example
+
+Let's take a look at a very similar graph.
 
 ::: {.static-graph-inline}
 <div id="directed-example"></div>
@@ -21,35 +57,104 @@ dg_nodes = [
 dg_edges = [
     {"id": "e0", "source": "A", "target": "B", "label": ""},
     {"id": "e1", "source": "B", "target": "C", "label": ""},
-    {"id": "e2", "source": "A", "target": "C", "label": ""},
 ]
+
 ojs_define(dg_nodes = dg_nodes, dg_edges = dg_edges)
 ```
 
 ```{ojs}
 //| echo: false
-//| results: hide
-import { mountStaticGraphView } from "./js/static-graph-view.js";
-
-mountStaticGraphView(
+dgView = mountStaticGraphView(
   document.querySelector("#directed-example"),
   { nodes: dg_nodes, edges: dg_edges },
   {
-    width: 380,
-    height: 260,
-    directed: true,
-    caption: "A directed graph: edges only flow in one direction",
+    width: 280,
+    height: 180,
+    directed: true
   }
 );
 ```
 
-`A → B` is an arrow that means the connection goes from `A` to `B` only. Directed graphs are useful for one-way roads, data flow, and precedence relationships.
+This graph looks similar to the directed graph, except that the edges have arrows! This represents **directed graphs**. In a directed graph, the edges have a specifieddirection. So, even though `A` and `B` are connected like before, you can only travel from `A` to `B`, not from `B` to `A`. The same is true for the edge between `B` and `C`.
+
+A few examples of directed graphs are social networks, where people follow each other who don't necessarily follow back, and the World Wide Web, where web pages link to each other but not necessarily in both directions.
+
+### Directed neighbours
+
+In a directed graph, the neighbours of a node are the nodes its outgoing
+edges point to. Select a node below to highlight those outgoing edges and
+list the nodes that can be reached in one step. An incoming edge does not
+make its source a neighbour of the selected node.
+
+```{python}
+#| echo: false
+dnb_nodes = [
+    {"id": "A", "label": "A"},
+    {"id": "B", "label": "B"},
+    {"id": "C", "label": "C"},
+    {"id": "D", "label": "D"},
+    {"id": "E", "label": "E"},
+]
+dnb_edges = [
+    {"id": "e0", "source": "A", "target": "B", "label": ""},
+    {"id": "e1", "source": "A", "target": "C", "label": ""},
+    {"id": "e2", "source": "B", "target": "D", "label": ""},
+    {"id": "e3", "source": "C", "target": "B", "label": ""},
+    {"id": "e4", "source": "D", "target": "E", "label": ""},
+    {"id": "e5", "source": "E", "target": "A", "label": ""},
+    {"id": "e6", "source": "B", "target": "A", "label": ""}
+]
+
+ojs_define(dnb_nodes = dnb_nodes, dnb_edges = dnb_edges)
+```
+
+::: {.panel-grid}
+::: {.panel}
+<div id="directed-neighbours-graph"></div>
+:::
+::: {.panel}
+<div id="directed-neighbours-panel"></div>
+:::
+:::
+
+```{ojs}
+//| echo: false
+import { GraphEngine } from "./js/graph-engine.js";
+import { mountGraphView } from "./js/graph-view.js";
+import { mountNeighboursView } from "./js/neighbours-view.js";
+
+dnbEngine = new GraphEngine(
+  { nodes: dnb_nodes, edges: dnb_edges },
+  { directed: true }
+);
+```
+
+```{ojs}
+//| echo: false
+dnbView = mountGraphView(
+  dnbEngine,
+  document.querySelector("#directed-neighbours-graph"),
+  {
+    width: 560,
+    height: 440,
+    showToolbar: false,
+    highlightNeighbours: true,
+    caption: "Select a node to see where its outgoing edges lead",
+  }
+);
+dnbPanel = mountNeighboursView(
+  dnbEngine,
+  document.querySelector("#directed-neighbours-panel")
+);
+```
 
 ## Weighted Graphs
 
-A weighted graph gives each edge a number called a weight. That number can represent distance, cost, strength, or any value that changes how the graph is used.
+Another graph concept to consider is an **edge weight**. In a weighted graph, each edge has a number associated with it called a weight. The weight can represent distance, cost, strength, or any value that changes how the graph is used.
 
 ### Undirected weighted graph
+
+Revisiting our simple graph, here is what it looks like when we add weights to the edges.
 
 ::: {.static-graph-inline}
 <div id="weighted-undirected"></div>
@@ -65,29 +170,30 @@ wu_nodes = [
 wu_edges = [
     {"id": "e0", "source": "A", "target": "B", "label": "4"},
     {"id": "e1", "source": "B", "target": "C", "label": "2"},
-    {"id": "e2", "source": "A", "target": "C", "label": "5"},
 ]
 ojs_define(wu_nodes = wu_nodes, wu_edges = wu_edges)
 ```
 
 ```{ojs}
 //| echo: false
-//| results: hide
-mountStaticGraphView(
+weightedUndirectedView = mountStaticGraphView(
   document.querySelector("#weighted-undirected"),
   { nodes: wu_nodes, edges: wu_edges },
   {
-    width: 380,
-    height: 260,
-    directed: false,
-    caption: "An undirected weighted graph: each edge has the same weight both ways",
+    width: 280,
+    height: 180,
+    directed: false
   }
 );
 ```
 
 In this undirected weighted graph, the edge `A — B` has weight `4`, and that value applies in both directions.
 
+An example of an undirected weighted graph is a road map, where the edges represent roads and the weights represent distances. The distance from `A` to `B` is the same as the distance from `B` to `A`.
+
 ### Directed weighted graph
+
+Combining the two ideas, we can have a **directed weighted graph**. In this type of graph, each edge has both a direction and a weight. Here is an example.
 
 ::: {.static-graph-inline}
 <div id="weighted-directed"></div>
@@ -102,25 +208,107 @@ wd_nodes = [
 ]
 wd_edges = [
     {"id": "e0", "source": "A", "target": "B", "label": "3"},
-    {"id": "e1", "source": "B", "target": "C", "label": "1"},
-    {"id": "e2", "source": "A", "target": "C", "label": "2"},
+    {"id": "e1", "source": "B", "target": "C", "label": "1"}
 ]
 ojs_define(wd_nodes = wd_nodes, wd_edges = wd_edges)
 ```
 
 ```{ojs}
 //| echo: false
-//| results: hide
-mountStaticGraphView(
+//| output: false
+weightedDirectedView = mountStaticGraphView(
   document.querySelector("#weighted-directed"),
   { nodes: wd_nodes, edges: wd_edges },
   {
-    width: 380,
-    height: 260,
-    directed: true,
-    caption: "A directed weighted graph: arrows carry numeric weights",
+    width: 280,
+    height: 180,
+    directed: true
   }
 );
 ```
 
-A directed weighted graph combines both ideas: each edge has a direction and a numeric weight. The edge `A → B` with weight `3` is not the same as `B → A`.
+A directed weighted graph combines both ideas: each edge has a direction and a numeric weight. The edge `A → B` with weight `3` only applies in one direction, it is not possible to travel from `B` to `A` using that edge. 
+
+An example of a directed weighted graph is a flight map, where the edges represent flights and the weights represent the cost of the flight. The cost from `A` to `B` may be different than the cost from `B` to `A`, and there may not even be a flight in one direction.
+
+## Check your understanding: shortest path
+
+From the previous page, you are familar with graph traversal. You already know that a shortest path connects two nodes using the fewest edges. When edges have weights, "shortest" instead means the valid path whose edge weights have the smallest total. Remember that you may only follow an edge in the direction of its arrow.
+
+::: {.static-graph-inline}
+<div id="shortest-path-question-graph"></div>
+:::
+
+```{python}
+#| echo: false
+spq_nodes = [
+    {"id": "A", "label": "A", "x": 40, "y": 110},
+    {"id": "B", "label": "B", "x": 140, "y": 40},
+    {"id": "C", "label": "C", "x": 140, "y": 180},
+    {"id": "D", "label": "D", "x": 280, "y": 110},
+]
+spq_edges = [
+    {"id": "e0", "source": "A", "target": "B", "label": "2"},
+    {"id": "e1", "source": "A", "target": "C", "label": "5"},
+    {"id": "e2", "source": "B", "target": "C", "label": "1"},
+    {"id": "e3", "source": "B", "target": "D", "label": "6"},
+    {"id": "e4", "source": "C", "target": "D", "label": "2"},
+]
+ojs_define(spq_nodes = spq_nodes, spq_edges = spq_edges)
+```
+
+```{ojs}
+//| echo: false
+//| output: false
+shortestPathQuestionView = mountStaticGraphView(
+  document.querySelector("#shortest-path-question-graph"),
+  { nodes: spq_nodes, edges: spq_edges },
+  { width: 320, height: 220, directed: true }
+);
+```
+
+::: {.mc-question #shortest-path-question}
+<fieldset>
+<legend>Which is the shortest path from <strong>A</strong> to <strong>D</strong>?</legend>
+
+<label><input type="radio" name="shortest-path-answer" value="abd"> A → B → D, with total weight 8</label>
+<label><input type="radio" name="shortest-path-answer" value="acd"> A → C → D, with total weight 7</label>
+<label><input type="radio" name="shortest-path-answer" value="abcd"> A → B → C → D, with total weight 5</label>
+<label><input type="radio" name="shortest-path-answer" value="acbd"> A → C → B → D, with total weight 12</label>
+
+<button type="button" class="mc-check">Check answer</button>
+<p class="mc-feedback" aria-live="polite"></p>
+</fieldset>
+:::
+
+```{ojs}
+//| echo: false
+//| output: false
+shortestPathQuestion = document.querySelector("#shortest-path-question");
+shortestPathCheck = shortestPathQuestion.querySelector(".mc-check");
+shortestPathFeedback = shortestPathQuestion.querySelector(".mc-feedback");
+
+shortestPathCheck.addEventListener("click", () => {
+  const selected = shortestPathQuestion.querySelector(
+    'input[name="shortest-path-answer"]:checked'
+  );
+
+  shortestPathFeedback.className = "mc-feedback";
+  if (!selected) {
+    shortestPathFeedback.textContent = "Choose an answer first.";
+    return;
+  }
+
+  if (selected.value === "abcd") {
+    shortestPathFeedback.classList.add("mc-correct");
+    shortestPathFeedback.textContent =
+      "Correct. A → B → C → D has total weight 2 + 1 + 2 = 5.";
+  } else {
+    shortestPathFeedback.classList.add("mc-incorrect");
+    shortestPathFeedback.textContent =
+      selected.value === "acbd"
+        ? "Not quite. There is no directed edge from C to B. Follow the arrows and compare the totals again."
+        : "Not quite. This is a valid path, but another valid path has a smaller total weight.";
+  }
+});
+```

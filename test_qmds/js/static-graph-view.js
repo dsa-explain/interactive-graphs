@@ -144,7 +144,8 @@ export function mountStaticGraphView(container, data, options = {}) {
     .append("text")
     .attr("class", "gv-edge-label")
     .attr("x", (d) => (d.source.x + d.target.x) / 2)
-    .attr("y", (d) => (d.source.y + d.target.y) / 2 - 6)
+    .attr("y", (d) => (d.source.y + d.target.y) / 2)
+    .attr("dominant-baseline", "middle")
     .text((d) => d.label || "");
 
   const nodeSel = nodeLayer

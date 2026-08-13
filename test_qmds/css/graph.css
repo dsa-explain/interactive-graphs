@@ -358,6 +358,10 @@ h1, h2, h3, .title {
 
 .gv-static .gv-edge-label {
   fill: var(--graphite);
+  stroke: var(--paper);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+  paint-order: stroke fill;
 }
 
 .gv-static .gv-caption {
@@ -990,4 +994,68 @@ h1, h2, h3, .title {
 .callout-note,
 .callout-tip p {
   color: var(--ink);
+}
+
+/* ---------- multiple-choice checks ---------- */
+
+.mc-question {
+  max-width: 640px;
+  margin: 1rem 0 2rem;
+  padding: 1rem 1.1rem;
+  background: var(--highlight-box);
+  border: var(--border-w-thick) solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.mc-question fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.mc-question legend {
+  margin-bottom: 0.8rem;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.mc-question label {
+  display: block;
+  margin: 0.45rem 0;
+  cursor: pointer;
+}
+
+.mc-question input {
+  margin-right: 0.4rem;
+  accent-color: var(--coral);
+}
+
+.mc-check {
+  margin-top: 0.75rem;
+  padding: 0.45rem 0.7rem;
+  color: var(--ink);
+  background: var(--coral);
+  border: var(--border-w) solid var(--line);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mc-check:hover {
+  background: var(--paper-edge);
+}
+
+.mc-feedback {
+  min-height: 1.5em;
+  margin: 0.75rem 0 0;
+  font-weight: 600;
+}
+
+.mc-feedback.mc-correct {
+  color: #1c7a34;
+}
+
+.mc-feedback.mc-incorrect {
+  color: #9a6400;
 }
