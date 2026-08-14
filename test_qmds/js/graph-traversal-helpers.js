@@ -230,6 +230,38 @@ export function renderTrackingPanel(opts = {}) {
   `;
 }
 
+/**
+ * Orange chip strip for rooms collected in `danger_rooms`.
+ * @param {{items?: string[], title?: string, emptyText?: string, newest?: string[]}} opts
+ */
+export function renderDangerPanel(opts = {}) {
+  const items = opts.items ?? [];
+  const newest = new Set((opts.newest ?? []).map(String));
+  const title = opts.title ?? "DANGER ROOMS";
+  const emptyText = opts.emptyText ?? "no dangerous rooms listed yet…";
+
+  const chips =
+    items.length === 0
+      ? `<div class="ht-track-empty">${escapeHtml(emptyText)}</div>`
+      : items
+          .map((id) => {
+            const fresh = newest.has(String(id));
+            const cls = fresh ? " ht-danger-chip-new" : "";
+            return `<span class="ht-danger-chip${cls}" data-id="${escapeHtml(id)}">${escapeHtml(roomChipLabel(id))}</span>`;
+          })
+          .join("");
+
+  return `
+    <div class="ht-danger-panel" aria-label="Danger rooms">
+      <div class="ht-danger-header">
+        <span class="ht-danger-title">${escapeHtml(title)}</span>
+      </div>
+      <div class="ht-danger-body">${chips}</div>
+      <div class="ht-danger-footer">rooms connected to the Admin leak</div>
+    </div>
+  `;
+}
+
 function escapeHtml(s) {
   return String(s)
     .replace(/&/g, "&amp;")
@@ -324,6 +356,11 @@ export function mountStationGraphView(container, data, options = {}) {
   const height = options.height ?? 260;
   const highlight = options.highlight ?? {};
   const blink = blinkIdsFromHighlight(highlight);
+  const dangerIds = new Set(
+    [...(highlight.danger ?? highlight.dangerRooms ?? [])]
+      .map(String)
+      .filter(Boolean)
+  );
   const pathEdges = new Set(
     [...(highlight.pathEdges ?? [])].map(String).filter(Boolean)
   );
@@ -391,6 +428,7 @@ export function mountStationGraphView(container, data, options = {}) {
   byId.forEach((n) => {
     const classes = ["ht-node"];
     const isCurrent = highlight.current != null && String(highlight.current) === n.id;
+    if (dangerIds.has(n.id)) classes.push("ht-node-danger");
     if (isCurrent) classes.push("ht-node-current");
     else if (blink.has(n.id)) classes.push("ht-node-blink");
     if (selectedId === n.id || edgeSource === n.id) classes.push("ht-node-selected");
@@ -703,6 +741,15 @@ export function findRoomPId(nodes) {
     const id = String(n.id).toLowerCase();
     const label = String(n.label ?? n.id).toLowerCase().trim();
     if (id === "p" || label === "p" || label === "room p") return n.id;
+  }
+  return null;
+}
+
+export function findAdminId(nodes) {
+  for (const n of nodes) {
+    const id = String(n.id).toLowerCase();
+    const label = String(n.label ?? n.id).toLowerCase().trim();
+    if (id === "ad" || id === "admin" || label === "admin") return n.id;
   }
   return null;
 }
@@ -1532,6 +1579,469 @@ export function mountHeatCodeViz(container, options = {}) {
   return {
     play,
     step: stepForward,
+    reset,
+    destroy: () => stopPlayback(),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Danger-rooms typed exercise: Python editor + Play/Pause line stepper.
+// Visualises only `danger_rooms` (orange rooms + chip list). No bag/tracking.
+// ---------------------------------------------------------------------------
+
+/** Starter code: adjacency list of the station graph plus an empty danger list. */
+export function dangerRoomsStarterCode(data) {
+  const graph = data ?? createStationGraphData();
+  return `G = ${buildLabelAdjLiteral(graph)}
+
+danger_rooms = []
+
+# Traverse from "Admin" until there are no rooms left to visit.
+# Record every reachable room in danger_rooms.
+# Use print() to debug — output appears below the editor.
+`;
+}
+
+function buildDangerHarness(userSrc) {
+  const srcLit = JSON.stringify(userSrc ?? "");
+  return `
+import json
+import sys
+import io
+import random
+import traceback
+
+_user_src = ${srcLit}
+_MAX_EVENTS = 400
+_frames = []
+_error = None
+_pending_line = None
+_stdout = io.StringIO()
+_stderr = io.StringIO()
+
+def _norm_rooms(val):
+    if val is None:
+        return []
+    if isinstance(val, (list, tuple)):
+        return [str(x) for x in val]
+    if isinstance(val, (set, frozenset)):
+        return [str(x) for x in val]
+    try:
+        return [str(x) for x in list(val)]
+    except Exception:
+        return []
+
+def _emit(line, rooms, done=False):
+    _frames.append({
+        "line": line,
+        "danger_rooms": list(rooms),
+        "done": bool(done),
+        "stdout": _stdout.getvalue(),
+        "stderr": _stderr.getvalue(),
+    })
+
+def _tracer(frame, event, arg):
+    global _pending_line
+    if event == "call":
+        return _tracer if frame.f_code.co_filename == "<user>" else None
+    if event != "line":
+        return _tracer
+    if frame.f_code.co_filename != "<user>":
+        return None
+    if len(_frames) >= _MAX_EVENTS:
+        raise RuntimeError("TOO_MANY_ITERS")
+    rooms = _norm_rooms(frame.f_globals.get("danger_rooms"))
+    if _pending_line is not None:
+        _emit(_pending_line, rooms)
+    _pending_line = frame.f_lineno
+    return _tracer
+
+_old_out, _old_err = sys.stdout, sys.stderr
+_ns = {"random": random, "__name__": "__main__"}
+try:
+    sys.stdout = _stdout
+    sys.stderr = _stderr
+    _code = compile(_user_src, "<user>", "exec")
+    sys.settrace(_tracer)
+    try:
+        exec(_code, _ns)
+    finally:
+        sys.settrace(None)
+    rooms = _norm_rooms(_ns.get("danger_rooms"))
+    if _pending_line is not None:
+        _emit(_pending_line, rooms)
+    _emit(None, rooms, done=True)
+except RuntimeError as e:
+    if str(e) == "TOO_MANY_ITERS":
+        _error = "TOO_MANY_ITERS"
+        rooms = _norm_rooms(_ns.get("danger_rooms"))
+        _emit(None, rooms, done=True)
+    else:
+        _error = type(e).__name__ + ": " + str(e)
+        traceback.print_exc(file=_stderr)
+except Exception as e:
+    _error = type(e).__name__ + ": " + str(e)
+    traceback.print_exc(file=_stderr)
+    rooms = _norm_rooms(_ns.get("danger_rooms"))
+    if _pending_line is not None:
+        _emit(_pending_line, rooms)
+finally:
+    sys.stdout = _old_out
+    sys.stderr = _old_err
+
+json.dumps({
+    "frames": _frames,
+    "error": _error,
+    "stdout": _stdout.getvalue(),
+    "stderr": _stderr.getvalue(),
+})
+`.trim();
+}
+
+function isSkippableSourceLine(src, lineNumber) {
+  if (lineNumber == null) return false;
+  const line = (src.split("\n")[lineNumber - 1] ?? "").trim();
+  return line === "" || line.startsWith("#");
+}
+
+function newestRoomIds(prev, curr) {
+  const seen = new Set((prev ?? []).map(String));
+  return (curr ?? []).filter((id) => !seen.has(String(id)));
+}
+
+function formatCapturedOutput(stdout, stderr) {
+  const out = String(stdout ?? "");
+  const err = String(stderr ?? "");
+  if (out && err) return `${out}${out.endsWith("\n") ? "" : "\n"}${err}`;
+  return out || err;
+}
+
+/**
+ * Right-hand viz for the typed danger-rooms exercise: station graph, orange
+ * `danger_rooms` chips, and Play / Pause. Locks the Python editor while playing.
+ *
+ * @param {HTMLElement} container
+ * @param {{
+ *   editor: { getCode: () => string, lock: () => void, unlock: () => void, highlightLine: (n: number|null) => void, clearLineHighlight?: () => void },
+ *   getCode?: () => string,
+ *   width?: number, height?: number,
+ *   stepDelayMs?: number, skipDelayMs?: number,
+ *   data?: {nodes: Array, edges: Array},
+ * }} options
+ */
+export function mountDangerRoomsViz(container, options = {}) {
+  if (!container) return null;
+
+  const width = options.width ?? 420;
+  const height = options.height ?? 280;
+  const stepDelayMs = options.stepDelayMs ?? 700;
+  const skipDelayMs = options.skipDelayMs ?? 160;
+  const editor = options.editor ?? null;
+  const getCode = options.getCode ?? (() => editor?.getCode?.() ?? "");
+  const data = options.data ?? createStationGraphData({ width, height });
+  const adminId = findAdminId(data.nodes);
+
+  container.innerHTML = "";
+  container.classList.remove("cb-viz-placeholder");
+  container.classList.add("iv-root", "dr-viz-root");
+
+  const heading = document.createElement("div");
+  heading.className = "adj-heading";
+  heading.textContent = "Station map";
+  container.appendChild(heading);
+
+  const graphMount = document.createElement("div");
+  graphMount.className = "ht-code-graph";
+  container.appendChild(graphMount);
+
+  const panels = document.createElement("div");
+  panels.className = "ht-anim-panels";
+  container.appendChild(panels);
+
+  const status = document.createElement("div");
+  status.className = "ht-play-status";
+  container.appendChild(status);
+
+  const controls = document.createElement("div");
+  controls.className = "ht-quiz-controls";
+  container.appendChild(controls);
+
+  let frames = [];
+  let frameIndex = -1;
+  let playing = false;
+  let playTimer = null;
+  let compiling = false;
+  let statusOverride = null;
+  let lastOutput = { text: "", isError: false };
+
+  function clearPlayTimer() {
+    if (playTimer != null) {
+      clearTimeout(playTimer);
+      playTimer = null;
+    }
+  }
+
+  function stopPlayback() {
+    playing = false;
+    clearPlayTimer();
+  }
+
+  function currentFrame() {
+    if (frameIndex < 0 || frameIndex >= frames.length) return null;
+    return frames[frameIndex];
+  }
+
+  function prevDangerIds() {
+    if (frameIndex <= 0) return [];
+    return frames[frameIndex - 1]?.dangerIds ?? [];
+  }
+
+  function idleState() {
+    return {
+      line: null,
+      dangerIds: [],
+      newest: [],
+      done: false,
+      stdout: "",
+      stderr: "",
+      message: 'Write a traversal starting from "Admin", then press Play.',
+    };
+  }
+
+  function render() {
+    const frame = currentFrame() ?? idleState();
+    const newest = frame.newest ?? newestRoomIds(prevDangerIds(), frame.dangerIds);
+    const highlight = {
+      danger: frame.dangerIds ?? [],
+      current: newest[0] ?? (frame.line == null && !frame.done ? adminId : null),
+    };
+
+    mountStationGraphView(graphMount, data, {
+      width,
+      height,
+      highlight,
+      caption: adminId ? "Start from Admin" : undefined,
+    });
+
+    panels.innerHTML = renderDangerPanel({
+      items: frame.dangerIds ?? [],
+      newest,
+    });
+
+    if (statusOverride) {
+      status.textContent = statusOverride;
+      status.classList.toggle("ht-play-status-warn", true);
+    } else {
+      status.textContent = frame.message;
+      status.classList.toggle("ht-play-status-warn", false);
+    }
+
+    if (editor) {
+      if (frame.line != null) editor.highlightLine(frame.line);
+      else editor.clearLineHighlight?.();
+      const hasFrame = currentFrame() != null;
+      const live = formatCapturedOutput(frame.stdout, frame.stderr);
+      if (hasFrame) {
+        editor.setStdout?.(live, { isError: !!frame.stderr });
+      } else if (lastOutput.text) {
+        editor.setStdout?.(lastOutput.text, { isError: lastOutput.isError });
+      } else {
+        editor.clearStdout?.();
+      }
+    }
+
+    renderControls();
+  }
+
+  function toVizFrames(src, rawFrames) {
+    const out = [];
+    let prevIds = [];
+    for (const ev of rawFrames ?? []) {
+      if (isSkippableSourceLine(src, ev.line)) continue;
+      const dangerIds = (ev.danger_rooms ?? [])
+        .map((label) => roomLabelToId(data, label) ?? String(label))
+        .filter(Boolean);
+      const newest = newestRoomIds(prevIds, dangerIds);
+      const done = !!ev.done;
+      let message;
+      if (done) {
+        message = dangerIds.length
+          ? `Done — ${dangerIds.length} dangerous room${dangerIds.length === 1 ? "" : "s"} listed.`
+          : "Done — danger_rooms is still empty. Did you append rooms as you visited them?";
+      } else if (newest.length) {
+        message = `Added ${newest.map(roomChipLabel).join(", ")}.`;
+      } else if (ev.line != null) {
+        message = `Running line ${ev.line}…`;
+      } else {
+        message = "";
+      }
+      out.push({
+        line: ev.line ?? null,
+        dangerIds,
+        newest,
+        done,
+        unchanged: newest.length === 0 && !done,
+        stdout: ev.stdout ?? "",
+        stderr: ev.stderr ?? "",
+        message,
+      });
+      prevIds = dangerIds;
+    }
+    return out;
+  }
+
+  async function compileFrames() {
+    const userSrc = (getCode() || "").trim();
+    if (!userSrc) {
+      statusOverride = "The editor is empty — write a traversal first.";
+      frames = [];
+      frameIndex = -1;
+      return false;
+    }
+    if (!/\bdanger_rooms\b/.test(userSrc)) {
+      statusOverride = "Use the variable danger_rooms to track dangerous rooms.";
+      frames = [];
+      frameIndex = -1;
+      return false;
+    }
+
+    compiling = true;
+    statusOverride = null;
+    status.textContent = "Loading Python runtime…";
+    status.classList.remove("ht-play-status-warn");
+    renderControls();
+
+    try {
+      const pyodide = await getHeatPyodide();
+      status.textContent = "Running your code…";
+      const rawJson = await pyodide.runPythonAsync(buildDangerHarness(userSrc));
+      const payload = JSON.parse(typeof rawJson === "string" ? rawJson : String(rawJson));
+      const captured = formatCapturedOutput(payload.stdout, payload.stderr);
+      lastOutput = { text: captured, isError: !!payload?.error };
+
+      if (payload?.error === "TOO_MANY_ITERS") {
+        statusOverride =
+          "Loop ran too long — did you forget to stop when the bag is empty?";
+        frames = toVizFrames(userSrc, payload.frames ?? []);
+        frameIndex = frames.length ? 0 : -1;
+        if (!frames.length && captured) editor?.setStdout?.(captured, { isError: true });
+        return frames.length > 0;
+      }
+      if (payload?.error) {
+        statusOverride = "Error running code: " + payload.error;
+        frames = toVizFrames(userSrc, payload.frames ?? []);
+        frameIndex = frames.length ? 0 : -1;
+        if (!frames.length) editor?.setStdout?.(captured || payload.error, { isError: true });
+        return frames.length > 0;
+      }
+
+      frames = toVizFrames(userSrc, payload.frames ?? []);
+      frameIndex = -1;
+      statusOverride = null;
+      if (!frames.length) {
+        statusOverride = "Nothing to play — add some code below danger_rooms = [].";
+        if (captured) editor?.setStdout?.(captured);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error(err);
+      statusOverride = "Error running code: " + String(err);
+      frames = [];
+      frameIndex = -1;
+      lastOutput = { text: String(err), isError: true };
+      editor?.setStdout?.(String(err), { isError: true });
+      return false;
+    } finally {
+      compiling = false;
+    }
+  }
+
+  function delayForFrame(frame) {
+    return frame?.unchanged ? skipDelayMs : stepDelayMs;
+  }
+
+  async function play() {
+    const atEnd = frames.length > 0 && frameIndex >= frames.length - 1;
+    const needCompile = !frames.length || atEnd || frameIndex < 0;
+    if (needCompile) {
+      editor?.lock();
+      const ok = await compileFrames();
+      if (!ok) {
+        editor?.unlock();
+        render();
+        return;
+      }
+      frameIndex = 0;
+    }
+    editor?.lock();
+    playing = true;
+    render();
+
+    const tick = () => {
+      if (!playing) return;
+      if (frameIndex >= frames.length - 1) {
+        stopPlayback();
+        render();
+        return;
+      }
+      frameIndex += 1;
+      render();
+      if (playing && frameIndex < frames.length - 1) {
+        playTimer = setTimeout(tick, delayForFrame(frames[frameIndex]));
+      } else {
+        stopPlayback();
+        render();
+      }
+    };
+    playTimer = setTimeout(tick, delayForFrame(currentFrame()));
+  }
+
+  function pause() {
+    stopPlayback();
+    render();
+  }
+
+  function reset() {
+    stopPlayback();
+    frames = [];
+    frameIndex = -1;
+    statusOverride = null;
+    lastOutput = { text: "", isError: false };
+    editor?.unlock();
+    editor?.clearLineHighlight?.();
+    editor?.clearStdout?.();
+    render();
+  }
+
+  function renderControls() {
+    controls.innerHTML = "";
+
+    const playBtn = document.createElement("button");
+    playBtn.type = "button";
+    playBtn.className = "ht-nav-btn";
+    playBtn.textContent = compiling ? "Loading…" : playing ? "Pause" : "Play";
+    playBtn.disabled = compiling;
+    playBtn.onclick = () => {
+      if (playing) pause();
+      else play();
+    };
+
+    const resetBtn = document.createElement("button");
+    resetBtn.type = "button";
+    resetBtn.className = "ht-nav-btn ht-nav-btn-ghost";
+    resetBtn.textContent = "Reset";
+    resetBtn.onclick = () => reset();
+
+    controls.append(playBtn, resetBtn);
+  }
+
+  render();
+  getHeatPyodide().catch(() => {});
+
+  return {
+    play,
+    pause,
     reset,
     destroy: () => stopPlayback(),
   };

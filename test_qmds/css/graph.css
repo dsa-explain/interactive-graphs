@@ -2361,3 +2361,227 @@ button.ht-bag-chip.bdo-chip-back {
 .mz-status {
   margin: 0;
 }
+
+/* ---------------------------------------------------------------------------
+   Danger Rooms viz — orange node highlight + code line display
+   --------------------------------------------------------------------------- */
+
+.ht-node-danger .ht-node-rect {
+  fill: #fed7aa;
+  stroke: #f97316;
+  stroke-width: 2.5px;
+}
+
+.ht-node-danger .ht-node-label {
+  fill: #9a3412;
+  font-weight: 600;
+}
+
+.ht-node-danger.ht-node-current .ht-node-rect {
+  stroke: #c2410c;
+  stroke-width: 3px;
+}
+
+.ht-danger-panel {
+  background: #fff7ed;
+  border: 2px solid #fdba74;
+  border-radius: 12px;
+  overflow: hidden;
+  font-size: 0.85em;
+  margin-top: 12px;
+}
+
+.ht-danger-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  background: #ffedd5;
+  border-bottom: 2px solid #fdba74;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.ht-danger-title {
+  flex: 1;
+  font-weight: 700;
+  color: #9a3412;
+}
+
+.ht-danger-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px;
+  min-height: 44px;
+  align-items: center;
+}
+
+.ht-danger-footer {
+  padding: 6px 10px 8px;
+  font-size: 11px;
+  color: #c2410c;
+  border-top: 1px solid #fdba74;
+}
+
+.ht-danger-chip {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #fed7aa;
+  border: 1.5px solid #f97316;
+  color: #9a3412;
+  font-size: 0.82em;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.ht-danger-chip-new {
+  background: #f97316;
+  border-color: #c2410c;
+  color: #fff7ed;
+  animation: ht-chip-blink 1s ease-in-out infinite;
+}
+
+.dr-editor-root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.dr-editor-root h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.dr-code-display {
+  font-family: var(--font-mono), ui-monospace, "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.83em;
+  line-height: 1.65;
+  padding: 10px 12px;
+  margin: 0;
+  border-radius: 8px;
+  background: var(--ht-bg, #f8fafc);
+  border: 1px solid var(--ht-border, #e2e8f0);
+  min-height: 360px;
+  max-height: 520px;
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+.dr-line {
+  display: block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  white-space: pre;
+  transition: background 0.15s;
+}
+
+.dr-line-active {
+  background: #fef9c3;
+  outline: 1px solid #eab308;
+}
+
+.dr-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-mono), ui-monospace, "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.85em;
+  line-height: 1.6;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--ht-border, #e2e8f0);
+  background: var(--ht-bg, #f8fafc);
+  color: var(--ink, #19162b);
+  resize: vertical;
+  min-height: 360px;
+}
+
+.dr-editor-locked .dr-textarea,
+.dr-textarea[readonly] {
+  background: #eeebe4;
+  cursor: not-allowed;
+}
+
+.dr-editor-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.dr-editor-status {
+  font-size: 0.85em;
+  color: #64748b;
+  min-height: 1.2em;
+}
+
+.dr-stdout-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dr-stdout-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--muted, #6a6986);
+}
+
+.dr-stdout {
+  margin: 0;
+  min-height: 88px;
+  max-height: 180px;
+  overflow: auto;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--ht-border, #e2e8f0);
+  background: #1e293b;
+  color: #e2e8f0;
+  font-family: var(--font-mono), ui-monospace, "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.78em;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.dr-stdout-empty {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.dr-stdout-error {
+  background: #3f1d1d;
+  border-color: #f87171;
+  color: #fecaca;
+}
+
+.dr-viz-root .ht-anim-panels {
+  grid-template-columns: 1fr;
+}
+
+.ht-anim-top {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+@media (max-width: 600px) {
+  .ht-anim-top {
+    flex-direction: column;
+  }
+
+  .dr-code-display,
+  .dr-textarea {
+    min-height: 240px;
+    max-height: 360px;
+  }
+}

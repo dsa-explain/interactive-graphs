@@ -193,7 +193,13 @@ html`<div class="gt-panel-wrap">
 </div>`
 ```
 
-Now in the above traversal, we made 2 random choices which coincidentally led us to the end nofe. In real graphs, we do not know how the full graph looks like unless we fully explore the graph. So we need to be systematic in our traversal. Before we do that, lets have a short list of definitions.
+Now in the above traversal:
+
+1. We made 2 random choices which coincidentally led us to the end node. In real graphs, we do not know how the full graph looks like unless we fully explore the graph. So we need to have system to SELECT THE NEXT NODE.
+2. While we visited B from A, we left out C. After we left A, we lost the knowledge of C's existence. We need to have system to RECORD ALL UNVISITED NODES so we can visit them later.
+3. And we already noted that we need to record all the nodes we DID VISIT.
+ 
+Before we do that, lets have a short list of definitions.
 
 ### 1. State
 
@@ -218,6 +224,10 @@ The simplest, we can have a "bag" from which we randomly select the next state w
 This is simply the list of nodes we have visited and the edges we have used. 
 
 Let's do an exercise to identify the essential components of a graph traversal.
+
+### 5. Picking the Next Node
+
+Once we have a list of unvisited nodes, we need to pick one to visit next. We can do this randomly or based on an algorithm.
 
 ## Exercise: Heat Spread
 
@@ -255,20 +265,20 @@ heat_quiz_questions = [
     id: 2,
     question: {
       prompt:
-        'What do we "track"?',
+        'How do we track the rooms we NEED TO VISIT?',
       visibility: 3,
       bag: [],
     },
     answer: {
-      text: "We track all rooms that the heat can reach. So at the start, the heat can reach the Cafeteria, so we will track the Cafeteria.",
+      text: "We will keep tracking rooms as we encounter them. At first, we only know of the existence of the Cafeteria so we will track it.",
       visibility: 3,
       highlight: {
         start: "C",
         end: "P",
         current: "C",
       },
-      bag: [],
-      tracking: ["C"],
+      bag: ["C"],
+      tracking: [],
       trackPick: ["C"],
     },
   },
@@ -277,22 +287,47 @@ heat_quiz_questions = [
     question: {
       prompt: "For our traversal, what is the start state?",
       visibility: 3,
-      tracking: ["C"],
+      bag: ["C"],
     },
     answer: {
-      text: "The Cafeteria — that's where the heater is. We want to explore it so we bag it.",
+      text: "We now start our traversal. We look at the list of unvisited nodes and pick one. In this case, we only have Cafeteria which is also our start node.",
       visibility: 3,
       highlight: { start: "C", end: "P", current: "C" },
       bag: ["C"],
-      tracking: ["C"],
+      bagPick: "C",
+      tracking: [],
       note: "Heat starts spreading from the Cafeteria.",
     },
   },
-  {
+    {
     id: 4,
     question: {
       prompt:
-        "Now we start exploring from the Cafeteria. At this point which rooms can be heated?",
+        "Now we \"pick\" Cafeteria, we know that heat can reach here. What to track in this case?",
+      visibility: 3,
+      highlight: {
+        current: "C",
+      },
+      bag: ["C"],
+      bagPick: "C",
+    },
+    answer: {
+      text: "Since we are starting at the Cafeteria, heat can reach here. We track it.",
+      visibility: 3,
+      tracking: ["C"],
+      highlight: {
+        current: "C",
+      },
+      bag: ["C"],
+      bagPick: "C",
+      note: "We can also choose to track these when we put them IN the bag.",
+    },
+  },
+  {
+    id: 5,
+    question: {
+      prompt:
+        "Now that we have fully visited Cafeteria, what are the next rooms we need to note down for future exploration?",
       visibility: 1,
       tracking: ["C"],
       highlight: {
@@ -302,39 +337,15 @@ heat_quiz_questions = [
       bagPick: "C",
     },
     answer: {
-      text: "MedBay and Crew Quarters are the neighbours, thus the heat can reach them, so we will track them.",
-      visibility: 1,
+      text: "MedBay and Crew Quarters are the neighbours, so we will track them in the bag. We also remove the Cafeteria from the bag because we have already explored it.",
+      visibility: 1, 
       highlight: {
         neighbours: ["M", "CQ"],
       },
-      bag: ["C"],
-      bagPick: "C",
-      tracking: ["C","M", "CQ"],
-      trackPick: ["M", "CQ"],
-      note: "We can also choose to track these when we put them IN the bag, or pull them OUT of the bag. This is the simplest method: tracking AS SOON AS we encounter them.",
-    },
-  },
-  {
-    id: 5,
-    question: {
-      prompt:
-        'Now we\'ve fully explored the Cafeteria. What are the next rooms we need to explore?',
-      visibility: 1,
-      tracking: ["C","M", "CQ"],
-      bag: ["C"],
-      bagPickDone: "C",
-    },
-    answer: {
-      text: "We need to explore both MedBay and Crew Quarters. We also remove the Cafeteria from the bag because we have already explored it.",
-      visibility: 1,
-      highlight: {
-        neighbours: ["M", "CQ"],
+      bag: ["M", "CQ"],
+      tracking: ["C"],
+      trackPick: ["C"],
       },
-      bag: ["C","M", "CQ"],
-      bagPickDone: "C",
-      tracking: ["C","M", "CQ"],
-      note: "The bag holds rooms we have not explored yet.",
-    },
   },
   {
     id: 6,
@@ -343,10 +354,10 @@ heat_quiz_questions = [
         "How do we pick the next room to continue the traversal?",
       visibility: 1,
       bag: ["M", "CQ"],
-      tracking: ["C","M", "CQ"],
+      tracking: ["C"],
     },
     answer: {
-      text: "We randomly pick one room from the bag.",
+      text: "We randomly pick one room from the bag. We also track it as \"heat reachable\".",
       visibility: 1,
       highlight: {
         end: "P",
@@ -354,24 +365,24 @@ heat_quiz_questions = [
       },
       bag: ["M", "CQ"],
       bagPick: "M",
-      tracking: ["C","M", "CQ"],
+      tracking: ["C", "M"],
       note: "Random pick from the bag = unordered traversal.",
     },
   },
   {
     id: 7,
     question: {
-      prompt: "What do we track and bag as we move to the MedBay?",
+      prompt: "What do bag as we move to the MedBay?",
       visibility: 4,
       bag: ["M","CQ"],
       bagPick: "M",
-      tracking: ["C","M", "CQ"],
+      tracking: ["C","M"],
       highlight: {
         current: "M",
       },
     },
     answer: {
-      text: "We track MedBay's neighbours (heat can reach them) and we bag MedBay's neighbours (we need to traverse them). \n\n We notice that Cafeteria has already been tracked so we do not add it to the bag again.",
+      text: "We bag MedBay's neighbours as we need to traverse them. \n\n We notice that Cafeteria has already been tracked so we do not add it to the bag again.",
       visibility: 4,
       highlight: {
         current: "M",
@@ -380,7 +391,7 @@ heat_quiz_questions = [
       },
       bag: ["M","CQ", "A"],
       bagPickDone: "M",
-      tracking: ["C","M", "CQ","A"],
+      tracking: ["C","M"],
       note: "Tracking = all reachable rooms / Bag = rooms we have to visit in the future",
     },
   },
@@ -391,7 +402,7 @@ heat_quiz_questions = [
       visibility: 4,
       bag: ["CQ", "A"],
       bagPick: "A",
-      tracking: ["C","M", "CQ","A"],
+      tracking: ["C","M","A"],
       highlight: {
         current: "A",
       }
@@ -406,8 +417,8 @@ heat_quiz_questions = [
         visited: ["C", "M", "A", "P"],
       },
       bag: ["CQ"],
-      tracking: ["C", "M", "CQ", "A", "P"],
-      note: "Goal reached: stop as soon as P is encountered.",
+      tracking: ["C", "M", "A", "P"],
+      note: "Goal reached: stop as soon as P is encountered. We can abandon the remaining unvisited nodes for this particular application.",
     },
   },
 ];
@@ -492,6 +503,58 @@ Code exercise:
 
 Question: Oh no! There is a breach in the admin room window and all air is leaking out. The space station is on lockdown. All rooms connected to the admin room vents are dangerous. Can you list out all these rooms?
 
+You will be getting the adjacency list of the graph "G" as input.
+
 Hint: You can start traversing from the admin room. This time the stop condition is when the bag is empty.
+
+Note: Use the variable `danger_rooms` to track the rooms that are dangerous. This list will be visualised.
+
+Type a traversal in the editor, then press **Play**. The graph highlights rooms in `danger_rooms` in orange as each line of your code runs.
+
+::: {.panel-grid}
+::: {.panel}
+<div id="danger-editor"></div>
+:::
+::: {.panel}
+<div id="danger-viz" class="cb-viz-placeholder"></div>
+:::
+:::
+
+```{ojs}
+//| echo: false
+import { PythonEditorInput } from "./js/python-editor-input.js";
+import {
+  createStationGraphData,
+  dangerRoomsStarterCode,
+  mountDangerRoomsViz,
+} from "./js/graph-traversal-helpers.js";
+```
+
+```{ojs}
+//| echo: false
+dangerStation = createStationGraphData({ width: 420, height: 280 })
+```
+
+```{ojs}
+//| echo: false
+dangerEditor = PythonEditorInput.mountPlayable(
+  document.querySelector("#danger-editor"),
+  {
+    heading: "Python",
+    defaultCode: dangerRoomsStarterCode(dangerStation),
+  }
+)
+```
+
+```{ojs}
+//| echo: false
+dangerViz = mountDangerRoomsViz(document.querySelector("#danger-viz"), {
+  width: 420,
+  height: 280,
+  editor: dangerEditor,
+  data: dangerStation,
+})
+```
+
 
 
