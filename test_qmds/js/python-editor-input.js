@@ -25,6 +25,7 @@ export class PythonEditorInput {
     this.isDirty = false;
     this.ignoreEditorChange = false;
     this.locked = false;
+    this.onClearStdout = null;
   }
 
   static mount(root, { graphDisplay, engine }) {

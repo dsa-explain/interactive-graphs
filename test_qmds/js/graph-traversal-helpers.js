@@ -1831,9 +1831,11 @@ export function mountDangerRoomsViz(container, options = {}) {
     if (statusOverride) {
       status.textContent = statusOverride;
       status.classList.toggle("ht-play-status-warn", true);
+      status.classList.toggle("ht-play-status-ok", false);
     } else {
       status.textContent = frame.message;
-      status.classList.toggle("ht-play-status-warn", false);
+      status.classList.toggle("ht-play-status-warn", frame.correct === false);
+      status.classList.toggle("ht-play-status-ok", frame.correct === true);
     }
 
     if (editor) {
@@ -1863,11 +1865,17 @@ export function mountDangerRoomsViz(container, options = {}) {
         .filter(Boolean);
       const newest = newestRoomIds(prevIds, dangerIds);
       const done = !!ev.done;
+      const expectedIds = data.nodes.map((n) => n.id);
+      const unique = new Set(dangerIds);
+      const correct =
+        dangerIds.length === expectedIds.length &&
+        unique.size === dangerIds.length &&
+        expectedIds.every((id) => unique.has(id));
       let message;
       if (done) {
-        message = dangerIds.length
-          ? `Done — ${dangerIds.length} dangerous room${dangerIds.length === 1 ? "" : "s"} listed.`
-          : "Done — danger_rooms is still empty. Did you append rooms as you visited them?";
+        message = correct
+          ? "Congratulations you got the correct output!"
+          : "The output doesn't look correct.";
       } else if (newest.length) {
         message = `Added ${newest.map(roomChipLabel).join(", ")}.`;
       } else if (ev.line != null) {
@@ -1880,6 +1888,7 @@ export function mountDangerRoomsViz(container, options = {}) {
         dangerIds,
         newest,
         done,
+        correct: done ? correct : null,
         unchanged: newest.length === 0 && !done,
         stdout: ev.stdout ?? "",
         stderr: ev.stderr ?? "",
@@ -2007,10 +2016,8 @@ export function mountDangerRoomsViz(container, options = {}) {
     frames = [];
     frameIndex = -1;
     statusOverride = null;
-    lastOutput = { text: "", isError: false };
     editor?.unlock();
     editor?.clearLineHighlight?.();
-    editor?.clearStdout?.();
     render();
   }
 

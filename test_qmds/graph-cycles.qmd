@@ -1,0 +1,297 @@
+---
+title: "Cycles in Graphs"
+subtitle: "Detecting Cycles in Graphs"
+---
+
+Now that we have an idea of directed and undirected graphs, we can explore a fundamental concept: "does this graph have a cycle?" You can quickly notice that this question needs a *different check* depending on whether edges have direction.
+
+- **Undirected cycle:** a path that starts and ends at the same node. But for an undirected graph, we can simply reuse the edge we just came from! That does not constitute a cycle. So we need to define that a cycle is a path that starts and ends at the same node without reusing an edge, or length ≥ 3. In better words, if we end up at the same node through 2 different paths, we have a cycle.
+- **Directed cycle:** a path that starts and ends at the same node. This removes the constraint of length ≥ 3, because in directed graphs, going back using the same edge DOES mean a cycle. In this case, visiting the same node twice through two different paths is not necessarily a cycle. It will only be a cycle if we end up back at the same node.
+
+Suggested visual: same 3 example graphs shown as both directed and undirected versions, side by side, with cycle/no-cycle labeled under each.
+
+*(Placeholder: 1 diagram/animation comparing directed vs undirected cycle cases)*
+
+---
+
+## 2. Sandbox / Guided Walkthrough
+
+We will use DFS for cycle detection, because we want to commit to a single traversal fully until we encounter a node we have already visited. DFS is perfect for this.
+
+**Format:** interactive graph widget, toggle between undirected mode and directed mode on related example graphs, step through the detection algorithm.
+
+Suggested structure:
+
+**Part A — Undirected cycle detection (DFS-based)**
+
+In an undirected graph, landing on a node we have already visited *often* means a cycle — but not always. The edge we just came from always leads back to the **parent**, and that is *not* a cycle. So while we mark nodes as visited, we also remember the parent of the current node. The rule is:
+
+> neighbour is visited **and** neighbour ≠ parent → cycle found.
+
+We'll detect cycles with DFS (a stack). Work through the questions below on the square graph A–B–C–D. Press **Reveal answer** (or pick a choice) to uncover each answer and see it highlighted on the graph, visited set, stack, and parent.
+
+::: {.static-graph-inline}
+<div id="undirected-cycle-quiz"></div>
+:::
+
+```{ojs}
+//| echo: false
+import { mountCycleQuiz, CYCLE_DEMO_GRAPH } from "./js/cycle-helpers.js";
+
+cycleGraph = CYCLE_DEMO_GRAPH
+
+// DFS walk we'll quiz against (push neighbours reverse-alphabetical so B is explored before D):
+//   start A → push D, then B → pop B (parent A) → see A as parent (ignore) → push C
+//   → pop C (parent B) → push D → pop D (parent C) → see A visited and ≠ parent → cycle!
+
+undirected_cycle_questions = [
+  {
+    id: 1,
+    prompt: "Where should we start the DFS for undirected cycle detection?",
+    note: "If the graph had several connected components, we would run DFS from each unvisited node. This square is connected, so one start is enough.",
+    question: {
+      highlight: {},
+      visited: [],
+      stack: [],
+      parent: null,
+    },
+    answer: {
+      text: "Any node works — cycle detection does not need a special \"source\". We'll start at A so the walk stays consistent across the next questions.",
+      highlight: { current: "A", start: "A" },
+      visited: ["A"],
+      stack: ["A"],
+      stackPick: "A",
+      parent: null,
+      parentMap: { A: null },
+    },
+  },
+  {
+    id: 2,
+    prompt: "What do we need to track for undirected cycle detection?",
+    note: "Visited alone is not enough — without the parent we would falsely flag the edge we just came from as a cycle.",
+    question: {
+      highlight: { current: "A", start: "A" },
+      visited: ["A"],
+      stack: ["A"],
+      stackPick: "A",
+      parent: null,
+      parentMap: { A: null },
+    },
+    answer: {
+      text: "Three things: the visited set, the current node (via the stack), and a parent pointer for whoever we came from. The cycle rule compares a neighbour against that parent.",
+      highlight: { current: "A", start: "A", neighbours: ["B", "D"] },
+      visited: ["A"],
+      stack: ["A"],
+      stackPick: "A",
+      parent: null,
+      parentMap: { A: null },
+    },
+    options: [
+      {
+        id: "visited_only",
+        label: "Only the visited set",
+        correct: false,
+        feedback: "Visited is necessary, but without a parent we'd treat the back-edge to the previous node as a cycle.",
+      },
+      {
+        id: "visited_parent_stack",
+        label: "Visited set, stack (current), and parent",
+        correct: true,
+        feedback: "Yes — visited + parent let us apply the rule, and the stack drives DFS order.",
+      },
+      {
+        id: "path_only",
+        label: "Only the full path from start to current",
+        correct: false,
+        feedback: "A full path can help intuition, but the algorithm only needs the immediate parent of the current node.",
+      },
+    ],
+  },
+  {
+    id: 3,
+    prompt: "From A we look at neighbours B and D. How do we push them onto the stack so DFS pops the next node correctly?",
+    note: "DFS is LIFO: the last node pushed is the first one popped. Neighbour order among B and D is arbitrary; we push D then B so the next pop is B.",
+    question: {
+      highlight: { current: "A", start: "A", neighbours: ["B", "D"] },
+      visited: ["A"],
+      stack: ["A"],
+      stackPickDone: "A",
+      parent: null,
+      parentMap: { A: null },
+    },
+    answer: {
+      text: "Push each unvisited neighbour with parent = A. Stack is LIFO, so after pushing D then B the rightmost entry (B) is next to pop.",
+      highlight: { current: "A", start: "A", neighbours: ["B", "D"], pathEdges: ["A—B", "D—A"] },
+      visited: ["A"],
+      stack: ["D", "B"],
+      stackPick: "B",
+      parentMap: { A: null, B: "A", D: "A" },
+    },
+    options: [
+      {
+        id: "queue_front",
+        label: "Enqueue at the front — next explore is whoever was pushed first",
+        correct: false,
+        feedback: "That would be BFS (FIFO). DFS uses a stack: last in, first out.",
+      },
+      {
+        id: "stack_lifo",
+        label: "Push onto a stack — next pop is the most recently pushed neighbour",
+        correct: true,
+        feedback: "Correct. We push D then B; B is on top and is explored next.",
+      },
+      {
+        id: "push_visited",
+        label: "Push every neighbour, even ones already visited",
+        correct: false,
+        feedback: "Only unvisited neighbours go on the stack. Visited ones are checked against the parent rule instead.",
+      },
+    ],
+  },
+  {
+    id: 4,
+    prompt: "We pop B (parent = A). One neighbour of B is A, which is already visited. Is this a cycle?",
+    note: "The edge B—A is exactly the edge we arrived on. Ignoring the parent is what makes undirected cycle detection different from a naive \"visited ⇒ cycle\" check.",
+    question: {
+      highlight: { current: "B", previous: "A", neighbours: ["A", "C"], visited: ["A", "B"], pathEdges: ["A—B"] },
+      visited: ["A", "B"],
+      stack: ["D", "B"],
+      stackPick: "B",
+      parent: "A",
+      parentMap: { A: null, B: "A", D: "A" },
+    },
+    answer: {
+      text: "No — A is the parent of B, so we ignore this edge. We only keep exploring unvisited neighbours (here, C).",
+      highlight: { current: "B", previous: "A", neighbours: ["C"], visited: ["A", "B"], pathEdges: ["A—B"] },
+      visited: ["A", "B"],
+      stack: ["D", "C"],
+      stackPick: "C",
+      parent: "A",
+      parentMap: { A: null, B: "A", C: "B", D: "A" },
+    },
+    options: [
+      {
+        id: "yes_cycle",
+        label: "Yes — A is visited, so we found a cycle",
+        correct: false,
+        feedback: "A is visited, but A is B's parent. That back-edge is expected in an undirected graph and is not a cycle.",
+      },
+      {
+        id: "no_parent",
+        label: "No — A is the parent, so we ignore it",
+        correct: true,
+        feedback: "Right. Rule: visited neighbour is only a cycle when it is not the parent.",
+      },
+      {
+        id: "stop",
+        label: "Stop the whole DFS — something went wrong",
+        correct: false,
+        feedback: "Nothing went wrong; keep going. Push C (unvisited) and continue.",
+      },
+    ],
+  },
+  {
+    id: 5,
+    prompt: "We continue: pop C (parent B), then pop D (parent C). From D we see neighbour A — already visited, and A is not D's parent. What do we conclude?",
+    note: "The closing edge is D—A. Together with A→B→C→D that edge completes the cycle A–B–C–D–A.",
+    question: {
+      highlight: {
+        current: "D",
+        previous: "C",
+        neighbours: ["A", "C"],
+        visited: ["A", "B", "C", "D"],
+        pathEdges: ["A—B", "B—C", "C—D"],
+      },
+      visited: ["A", "B", "C", "D"],
+      stack: ["D"],
+      stackPick: "D",
+      parent: "C",
+      parentMap: { A: null, B: "A", C: "B", D: "C" },
+    },
+    answer: {
+      text: "Cycle found! A is visited and A ≠ parent(D)=C, so the edge D—A closes a loop.",
+      highlight: {
+        current: "D",
+        previous: "C",
+        neighbours: ["A"],
+        visited: ["A", "B", "C", "D"],
+        pathEdges: ["A—B", "B—C", "C—D", "D—A"],
+      },
+      visited: ["A", "B", "C", "D"],
+      stack: [],
+      parent: "C",
+      parentMap: { A: null, B: "A", C: "B", D: "C" },
+    },
+    options: [
+      {
+        id: "ignore_again",
+        label: "Ignore it — every visited neighbour is a parent edge",
+        correct: false,
+        feedback: "Only the immediate parent is ignored. A is not D's parent (C is), so this edge really does close a cycle.",
+      },
+      {
+        id: "cycle_found",
+        label: "Cycle found — visited neighbour that is not the parent",
+        correct: true,
+        feedback: "Exactly. neighbour visited ∧ neighbour ≠ parent ⇒ cycle.",
+      },
+      {
+        id: "push_a",
+        label: "Push A onto the stack and keep exploring",
+        correct: false,
+        feedback: "A is already visited, so we do not push it. We apply the cycle rule instead.",
+      },
+    ],
+  },
+]
+
+undirectedCycleQuiz = mountCycleQuiz(document.querySelector("#undirected-cycle-quiz"), {
+  width: 360,
+  height: 260,
+  graph: cycleGraph,
+  questions: undirected_cycle_questions,
+})
+```
+
+**Part B — Directed cycle detection (DFS + recursion stack / "3-color" method)**
+
+In directed graphs we CAN land on the same node without the graph having a cycle. Only if we end up back on the same path BEFORE ending the current traversal, we have a cycle. 
+
+When we are traversing, we can imagine the current path we are taking as "active". If we end up back on the "active" path, we have a cycle.
+
+1. Same-shaped example graph, now directed.
+2. Track three states per node: unvisited (white), in-progress / on current path (gray), fully done (black).
+3. Highlight the rule: if you follow an edge to a **gray** node → cycle found. If you follow an edge to a **black** node → not a cycle (just a valid non-cyclic cross reference), continue.
+4. Step-through controls (Next Step / Reset) showing color changes live.
+5. Toggle: same node layout switched between directed/undirected to directly compare "cycle here" vs "no cycle here" outcomes.
+
+**Things the sandbox should make visually obvious:**
+- Why "already visited" isn't enough for directed graphs — need the 3-state distinction.
+- The A→B→A two-node cycle case as a minimal example.
+- A graph that's cyclic when undirected but acyclic when directed (e.g., edges all pointing "forward" in a DAG that would form a cycle if direction were ignored) — this is the most important misconception to break.
+
+*(Placeholder: interactive widget embed here)*
+
+---
+
+## 3. Sample Question
+
+**Format:** present a graph (could reuse the sandbox's or a fresh one), ask student to answer for both interpretations:
+
+Suggested question set (ramp difficulty):
+1. **Easy:** Given a small undirected graph, does it contain a cycle? (Direct application of Part A rule.)
+2. **Easy–Medium:** Same node/edge set, but now directed — does it contain a cycle? (Direct application of Part B rule; answer often differs from #1.)
+3. **Medium:** Given a directed graph, identify which specific edge, if reversed, would remove the cycle. (Tests whether they understand *which* edge closes the loop, not just yes/no.)
+4. **Trickier:** Give a graph that is cyclic as undirected but a valid DAG as directed (or vice versa is impossible — flag that this asymmetry only goes one way: directed-acyclic-but-undirected-cyclic is possible, the reverse is not, since any directed cycle is trivially a cycle when direction is dropped). Ask student to explain *why* in one sentence, not just answer yes/no.
+
+**Feedback design:**
+- If wrong on the directed case, check if they used "visited" instead of "on current path/gray" — this is the most likely error mode, call it out specifically.
+- If wrong on the undirected case, check if they mistakenly flagged the parent-return edge as a cycle.
+- For the "explain why" question, look for whether they mention that dropping direction can only add potential cycles, never remove them.
+
+---
+
+## Notes / Open Decisions
+- [ ] Decide whether to introduce Union-Find as an alternative undirected cycle detection method here, or save it for a later lesson (recommend: save it — keep this lesson to the DFS-based approach for a clean 1:1 comparison with the directed method).
+- [ ] Decide whether "topological sort" gets a teaser mention here (directed acyclic graphs are the precondition for it) or waits for its own lesson (recommend: one-line mention only, e.g. "acyclic directed graphs unlock something called topological sort — more on that later").
+- [ ] Reuse the same base graph shape across both directed/undirected explanations for continuity, so the *only* variable changing is edge direction.

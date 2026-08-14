@@ -1576,6 +1576,12 @@ h1, h2, h3, .title {
   color: #9a4d24;
 }
 
+.ht-play-status-ok {
+  background: #ecfdf3;
+  border-color: #86efac;
+  color: #166534;
+}
+
 /* station graph canvas */
 .ht-graph-root {
   background:
@@ -2451,6 +2457,7 @@ button.ht-bag-chip.bdo-chip-back {
   padding: 1rem;
   margin: 0;
   box-sizing: border-box;
+  background: #ffffff;
 }
 
 .dr-editor-root h3 {
@@ -2527,13 +2534,25 @@ button.ht-bag-chip.bdo-chip-back {
   gap: 4px;
 }
 
+.dr-stdout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .dr-stdout-label {
   font-family: var(--font-mono);
   font-size: 0.68rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-weight: 700;
-  color: var(--muted, #6a6986);
+  color: var(--muted, #ffffff);
+}
+
+.dr-stdout-clear {
+  padding: 3px 10px;
+  font-size: 12px;
 }
 
 .dr-stdout {
@@ -2544,8 +2563,8 @@ button.ht-bag-chip.bdo-chip-back {
   padding: 8px 10px;
   border-radius: 8px;
   border: 1px solid var(--ht-border, #e2e8f0);
-  background: #1e293b;
-  color: #e2e8f0;
+  background: #e4edfc;
+  color: #153d72;
   font-family: var(--font-mono), ui-monospace, "Cascadia Code", "Fira Code", monospace;
   font-size: 0.78em;
   line-height: 1.5;
@@ -2554,7 +2573,7 @@ button.ht-bag-chip.bdo-chip-back {
 }
 
 .dr-stdout-empty {
-  color: #94a3b8;
+  color: #4573b0;
   font-style: italic;
 }
 
