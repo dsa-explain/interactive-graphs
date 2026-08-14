@@ -17,6 +17,8 @@ website:
         contents:
           - href: test_qmds/neighbours.qmd
             text: Neighbours
+          - href: test_qmds/coding_sandbox.qmd
+            text: Coding Sandbox
           - href: test_qmds/sandbox.qmd
             text: Sandbox
           - href: test_qmds/graph-representation.qmd
