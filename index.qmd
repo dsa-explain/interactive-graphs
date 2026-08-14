@@ -7,4 +7,6 @@ subtitle: "An interactive tour of graphs and the ways we represent them"
 - **[Sandbox](test_qmds/sandbox.qmd)** -- a blank canvas with the full toolbar: add and delete nodes and edges, update labels, and select things to see them highlighted.
 - **[Neighbours](test_qmds/neighbours.qmd)** -- click a node to see exactly who it's connected to.
 - **[Graph Representation](test_qmds/graph-representation.qmd)** -- Two different ways to representgraphs: watch a graph turn into rows of `[key]: [neighbour] [neighbour]` boxes, starting with a single row before seeing the whole list or the same graph as a grid of 0s and 1s, again starting with a single row before the full N x N matrix.
-
+- **[Graph Traversal](test_qmds/graph-traversal.qmd)** -- Introduction to graph traversal.
+- **[Traversal Strategies](test_qmds/graph-traversal-2.qmd)** -- Explore a graph using different traversal strategies.
+- **[Graph Connectivity](test_qmds/count-islands.qmd)** -- Practice question count the number of islands in a graph.
