@@ -13,6 +13,11 @@ function cellValue(snapshot, rowId, colId) {
   return edge ? { on: true, edge } : { on: false, edge: null };
 }
 
+function edgeWeightLabel(edge) {
+  if (!edge) return "0";
+  return edge.weight !== undefined && edge.weight !== null ? String(edge.weight) : "1";
+}
+
 function headCell(label, selected) {
   const el = document.createElement("div");
   el.className = "mat-cell mat-head" + (selected ? " adj-selected" : "");
@@ -20,14 +25,14 @@ function headCell(label, selected) {
   return el;
 }
 
-function dataCell(on, isEdgeSelected, isCrosshair) {
+function dataCell(on, text, isEdgeSelected, isCrosshair) {
   const el = document.createElement("div");
   el.className =
     "mat-cell mat-data" +
     (on ? " mat-on" : " mat-off") +
     (isCrosshair ? " mat-crosshair" : "") +
     (isEdgeSelected ? " adj-edge-selected" : "");
-  el.textContent = on ? "1" : "0";
+  el.textContent = text;
   return el;
 }
 
@@ -72,8 +77,8 @@ export function mountAdjacencyMatrixSingle(engine, container) {
 
     grid.appendChild(headCell(rowNode.label, true));
     snapshot.nodes.forEach((n) => {
-      const { on } = cellValue(snapshot, rowId, n.id);
-      grid.appendChild(dataCell(on, false, n.id === rowId));
+      const { on, edge } = cellValue(snapshot, rowId, n.id);
+      grid.appendChild(dataCell(on, edgeWeightLabel(edge), false, n.id === rowId));
     });
 
     body.appendChild(grid);
@@ -128,7 +133,7 @@ export function mountAdjacencyMatrix(engine, container) {
         const { on, edge } = cellValue(snapshot, rowNode.id, colNode.id);
         const isCrosshair = rowNode.id === selectedNodeId || colNode.id === selectedNodeId;
         const isEdgeSelected = !!(selectedEdge && edge && edge.id === selectedEdge.id);
-        grid.appendChild(dataCell(on, isEdgeSelected, isCrosshair));
+        grid.appendChild(dataCell(on, edgeWeightLabel(edge), isEdgeSelected, isCrosshair));
       });
     });
 

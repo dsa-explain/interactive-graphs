@@ -27,8 +27,12 @@ website:
             text: Graph Traversal
           - href: test_qmds/graph-traversal-2.qmd
             text: Traversal Strategies
+          - href: test_qmds/directed-traversal.qmd
+            text: Directed Graph Traversal
           - href: test_qmds/count-islands.qmd
             text: Graph Connectivity
+          - href: test_qmds/graph-cycles.qmd
+            text: Cycles in Graphs
 
 format:
   html:

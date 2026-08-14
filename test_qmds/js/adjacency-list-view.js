@@ -8,8 +8,9 @@
 function neighbourIds(snapshot, nodeId, directed) {
   const out = [];
   snapshot.edges.forEach((e) => {
-    if (e.source === nodeId) out.push(e.target);
-    else if (!directed && e.target === nodeId) out.push(e.source);
+    if (e.source === nodeId) out.push({ id: e.target, weight: e.weight, edgeId: e.id });
+    else if (!directed && e.target === nodeId)
+      out.push({ id: e.source, weight: e.weight, edgeId: e.id });
   });
   return out;
 }
@@ -76,9 +77,16 @@ export function mountAdjacencyListSingle(engine, container) {
       none.textContent = "no neighbours";
       row.appendChild(none);
     } else {
-      neighbours.forEach((nid) => {
-        const n = snapshot.nodes.find((x) => x.id === nid);
-        row.appendChild(valBox(n ? n.label : nid));
+      neighbours.forEach((neighbor) => {
+        const n = snapshot.nodes.find((x) => x.id === neighbor.id);
+        const label = n ? n.label : neighbor.id;
+        row.appendChild(
+          valBox(
+            neighbor.weight !== undefined && neighbor.weight !== 1
+              ? `${label} (${neighbor.weight})`
+              : label
+          )
+        );
       });
     }
 
@@ -144,17 +152,22 @@ export function mountAdjacencyList(engine, container) {
         none.textContent = "\u2013";
         row.appendChild(none);
       } else {
-        neighbours.forEach((nid) => {
-          const n = snapshot.nodes.find((x) => x.id === nid);
-          const box = valBox(n ? n.label : nid);
+        neighbours.forEach((neighbor) => {
+          const n = snapshot.nodes.find((x) => x.id === neighbor.id);
+          const label = n ? n.label : neighbor.id;
+          const box = valBox(
+            neighbor.weight !== undefined && neighbor.weight !== 1
+              ? `${label} (${neighbor.weight})`
+              : label
+          );
 
           const belongsToSelectedEdge =
             selectedEdge &&
-            ((selectedEdge.source === node.id && selectedEdge.target === nid) ||
-              (!snapshot.directed && selectedEdge.target === node.id && selectedEdge.source === nid));
+            ((selectedEdge.source === node.id && selectedEdge.target === neighbor.id) ||
+              (!snapshot.directed && selectedEdge.target === node.id && selectedEdge.source === neighbor.id));
           if (belongsToSelectedEdge) box.classList.add("adj-edge-selected");
 
-          if (selectedNodeId !== null && nid === selectedNodeId) {
+          if (selectedNodeId !== null && neighbor.id === selectedNodeId) {
             box.classList.add("adj-node-selected");
           }
 
