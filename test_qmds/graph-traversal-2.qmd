@@ -586,3 +586,57 @@ heatCodeViz2 = mountHeatCodeViz(document.querySelector("#heat-code-viz-2"), {
   },
 })
 ```
+
+## Grid traversal: Flood Fill
+
+We have seen how we can traverse a graph using both DFS and BFS. Now let's apply this to a graph that does not look like the nodes and edges we have seen so far, but follows the same rules: A 2d grid.
+
+:::{.panel}
+
+Q - What are the neighbours of a cell in a grid?
+
+A - The neighbours of a cell in a grid are the cells that are adjacent to it.
+
+:::
+
+You are given a 2d image. Implement the "bucket-fill" where you can select a single cell and fill the entire area connected to it with the same color.
+
+The image is a 2D list of hex colour strings (`pixel_array`). Click a pixel on the right to choose the start cell, pick a fill colour, then implement `floodFill(pixel_array, start, color)`. Modify the grid **in place** — neighbours are the four adjacent cells. Press **Play** to watch the image update as your code paints it.
+
+::: {.panel-grid}
+::: {.panel}
+<div id="flood-fill-editor"></div>
+:::
+::: {.panel}
+<div id="flood-fill-viz" class="cb-viz-placeholder"></div>
+:::
+:::
+
+```{ojs}
+//| echo: false
+import { PythonEditorInput } from "./js/python-editor-input.js";
+import {
+  PIXEL_ARRAY,
+  floodFillStarterCode,
+  mountFloodFillViz,
+} from "./js/flood-fill.js";
+```
+
+```{ojs}
+//| echo: false
+floodEditor = PythonEditorInput.mountPlayable(
+  document.querySelector("#flood-fill-editor"),
+  {
+    heading: "Python",
+    defaultCode: floodFillStarterCode(),
+  }
+)
+```
+
+```{ojs}
+//| echo: false
+floodViz = mountFloodFillViz(document.querySelector("#flood-fill-viz"), {
+  editor: floodEditor,
+  pixelArray: PIXEL_ARRAY,
+})
+```

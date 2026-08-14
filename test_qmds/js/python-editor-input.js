@@ -26,6 +26,7 @@ export class PythonEditorInput {
     this.ignoreEditorChange = false;
     this.locked = false;
     this.onClearStdout = null;
+    this._activeLine = null;
   }
 
   static mount(root, { graphDisplay, engine }) {
@@ -115,6 +116,7 @@ export class PythonEditorInput {
 
   lock() {
     this.locked = true;
+    this._activeLine = null;
     this.root?.classList.add("dr-editor-locked");
     if (this.editor) {
       this.editor.readOnly = true;
@@ -130,6 +132,7 @@ export class PythonEditorInput {
 
   unlock() {
     this.locked = false;
+    this._activeLine = null;
     this.root?.classList.remove("dr-editor-locked");
     this.clearLineHighlight();
     if (this.codeDisplay) this.codeDisplay.hidden = true;
@@ -144,11 +147,15 @@ export class PythonEditorInput {
   /** 1-based line number; pass null to clear. */
   highlightLine(lineNumber) {
     if (!this.locked) this.lock();
+    if (this._activeLine === lineNumber) return;
+    this._activeLine = lineNumber;
     this._syncCodeDisplay(lineNumber);
   }
 
   clearLineHighlight() {
     if (!this.codeDisplay || this.codeDisplay.hidden) return;
+    if (this._activeLine == null) return;
+    this._activeLine = null;
     this._syncCodeDisplay(null);
   }
 
