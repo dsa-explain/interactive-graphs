@@ -14,31 +14,11 @@ of the shortest path. Your bot can only move to a neighbouring cell that is
 at the **same height or lower**. Obstacles are marked `-1`. Return -1 if
 there is no path.
 
-Before we traverse the whole grid, we first need a way to ask: *from this
+In this case, we do not have a predefined "adjacency list" of the grid. So before we traverse the whole grid, we first need a way to ask: *from this
 cell, which cells can the rover legally step onto?* Below, the green cell
 is the rover's current position — the blue cells are the neighbours a
 `get_neighbours` function should return for it (same height or lower,
 not blocked, inside the grid).
-
-::: {.panel-grid}
-::: {.panel}
-**Legal moves, recapped**
-
-- Stay inside the grid.
-- Never step onto an obstacle (`-1`).
-- Only step onto a cell whose height is **less than or equal to** the
-  current cell's height.
-
-For the sample on the right, the rover sits on a `1`. Its neighbour to the
-right is also a `1` (legal), and below is a `1` (legal) — but one step
-below that is `-1` (an obstacle) and blocked. To its right, the diagonal
-neighbour has height `2` and isn't directly reachable in one step anyway
-(the rover only moves up/down/left/right).
-:::
-::: {.panel}
-<div id="sample-maze"></div>
-:::
-:::
 
 ```{ojs}
 //| echo: false
@@ -55,56 +35,6 @@ import {
 } from "./js/maze-helpers.js";
 import { mountCodeBlocksView } from "./js/code-blocks-view.js";
 ```
-
-```{ojs}
-//| echo: false
-// Small illustrative matrix — matches the "what is a neighbour" example above.
-sampleMatrix = [
-  [1, 1, 2, 2, 5, 3],
-  [1, 2, -1, 2, 3, 3],
-  [1, 2, 3, 4, 4, 4],
-  [2, 2, 3, 4, 5, 3],
-]
-sampleStart = [0, 0]
-sampleTarget = [3, 5]
-```
-
-```{ojs}
-//| echo: false
-sampleGrid = mountMazeGrid(document.querySelector("#sample-maze"), sampleMatrix, {
-  start: sampleStart,
-  target: sampleTarget,
-  cellSize: 58,
-  legend: [
-    { state: CELL_STATE.START, label: "rover (current cell)" },
-    { state: CELL_STATE.NEIGHBOUR, label: "legal neighbour" },
-    { state: CELL_STATE.OBSTACLE, label: "obstacle" },
-    { state: CELL_STATE.TARGET, label: "target" },
-  ],
-})
-```
-
-```{ojs}
-//| echo: false
-sampleNeighbours = getNeighbours(
-  { matrix: sampleMatrix, rows: sampleMatrix.length, cols: sampleMatrix[0].length },
-  sampleStart[0],
-  sampleStart[1]
-)
-```
-
-```{ojs}
-//| echo: false
-{
-  const overrides = new Map();
-  overrides.set(`${sampleStart[0]},${sampleStart[1]}`, CELL_STATE.START);
-  sampleNeighbours.forEach(([r, c]) => overrides.set(`${r},${c}`, CELL_STATE.NEIGHBOUR));
-  sampleGrid.setOverrides(overrides);
-}
-```
-
-The maze the rover actually needs to solve is bigger — the entrance
-(green) is top-left, the electrical grid (orange) is bottom-right:
 
 ```{ojs}
 //| echo: false
@@ -158,11 +88,19 @@ neighboursViz = mountNeighboursMazeView(document.querySelector("#neighbours-viz"
 })
 ```
 
-### Q2 — Shortest path with BFS
+### Q2 — Shortest path
 
-Now let's find the shortest path itself. Assemble the loop body so the
-rover explores the grid breadth-first: pop the next cell from the queue,
-stop if it's the target, find its legal neighbours with `get_neighbours`,
+Now let's find the shortest path itself. 
+
+:::{.panel}
+
+Q - Which algorithm would you use to find the shortest path?
+
+Answer: BFS is perfect for this, because it explores the grid level by level. Nodes in the same level are at the same distance from the start. So if we encounter the target node, we can be sure that we have found the shortest path.
+
+:::
+
+Assemble the loop body so the rover explores the grid breadth-first: pop the next cell from the queue, stop if it's the target, find its legal neighbours with `get_neighbours`,
 and enqueue any of them we haven't seen yet.
 
 Press **Play** to watch the search expand one distance layer at a time, or
@@ -200,3 +138,5 @@ bfsViz = mountBfsMazeView(document.querySelector("#bfs-viz"), matrix, {
 
 ## Task 2
 ### How many different paths could your rover have taken?
+
+This time you will write the entire code from scratch. You will recieve the grid G as a 2D matrix. 
