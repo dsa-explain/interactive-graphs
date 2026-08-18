@@ -144,6 +144,7 @@ export function mountStaticGraphView(container, data, options = {}) {
   edgeSel
     .append("text")
     .attr("class", "gv-edge-label")
+    .attr("text-anchor", "middle")
     .attr("x", (d) => (d.source.x + d.target.x) / 2)
     .attr("y", (d) => (d.source.y + d.target.y) / 2 - 6)
     .text((d) => {
