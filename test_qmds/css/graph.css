@@ -2292,6 +2292,161 @@ button.ht-bag-chip.bdo-chip-back {
   margin: 0;
 }
 
+/* ---------- notebook maze (nbz-*), 0/1 coin maze in maze-helpers.js ---------- */
+
+.nbz-root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.nbz-caption {
+  font-size: 0.85rem;
+  color: var(--muted-on-paper);
+}
+
+.nbz-scene {
+  overflow-x: auto;
+}
+
+.nbz-board {
+  display: grid;
+  gap: 0;
+  background: #fffdf7;
+  border: 2px solid #2b2b2b;
+  width: max-content;
+}
+
+.nbz-cell {
+  width: var(--nbz-cell-size, 32px);
+  height: var(--nbz-cell-size, 32px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: calc(var(--nbz-cell-size, 32px) * 0.38);
+  border: 1px solid #cfc6a8;
+  background: #fffdf7;
+  color: #2b2b2b;
+  user-select: none;
+  position: relative;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.nbz-cell.nbz-wall {
+  background: repeating-linear-gradient(
+    45deg,
+    #2b2b2b,
+    #2b2b2b 3px,
+    #3c3c3c 3px,
+    #3c3c3c 6px
+  );
+  color: #e8e4d8;
+}
+
+.nbz-cell[data-state="current"] {
+  background: #e8734a;
+  color: #fffdf7;
+}
+
+.nbz-cell[data-state="neighbour"] {
+  background: #6fae6f;
+  color: #fffdf7;
+}
+
+.nbz-cell[data-state="visited"],
+.nbz-cell[data-state="path"] {
+  background: #6a8fc9;
+  color: #fffdf7;
+}
+
+.nbz-cell-marker::after {
+  content: attr(data-marker);
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  font-size: 0.5rem;
+  font-weight: 700;
+  opacity: 0.75;
+  font-family: var(--font-mono);
+}
+
+.nbz-cell-selectable {
+  cursor: pointer;
+}
+
+.nbz-cell-selectable:hover {
+  background: #efe9d8;
+}
+
+.nbz-cell.nbz-wall.nbz-cell-selectable:hover {
+  filter: brightness(1.15);
+}
+
+.nbz-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 1rem;
+  font-size: 0.78rem;
+  color: var(--graphite);
+}
+
+.nbz-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nbz-legend-swatch {
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+  display: inline-block;
+  border: 1px solid #cfc6a8;
+  background: #fffdf7;
+}
+
+.nbz-legend-swatch[data-state="current"] { background: #e8734a; border-color: #e8734a; }
+.nbz-legend-swatch[data-state="neighbour"] { background: #6fae6f; border-color: #6fae6f; }
+.nbz-legend-swatch[data-state="visited"] { background: #6a8fc9; border-color: #6a8fc9; }
+.nbz-legend-swatch[data-state="obstacle"] {
+  background: repeating-linear-gradient(
+    45deg,
+    #2b2b2b,
+    #2b2b2b 2px,
+    #3c3c3c 2px,
+    #3c3c3c 4px
+  );
+  border-color: #2b2b2b;
+}
+
+.nbz-panel {
+  background: var(--highlight-box);
+  padding: 0.9rem 1rem 1.1rem;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.nbz-panel .ht-anim-panels {
+  margin-top: 0;
+}
+
+.nbz-panel .ht-bag-chip,
+.nbz-panel .ht-track-chip {
+  font-size: 11px;
+}
+
+.nbz-panel .ht-bag-body,
+.nbz-panel .ht-track-body {
+  max-height: 6.75rem;
+  overflow-y: auto;
+  align-content: flex-start;
+  align-items: flex-start;
+}
+
 /* ---------------------------------------------------------------------------
    Danger Rooms viz — orange node highlight + code line display
    --------------------------------------------------------------------------- */

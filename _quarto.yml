@@ -29,6 +29,8 @@ website:
             text: Graph Traversal
           - href: test_qmds/graph-traversal-2.qmd
             text: Traversal Strategies
+          - href: test_qmds/traversal-undirected-practice.qmd
+            text: Undirected Graph Traversal Practice
           - href: test_qmds/directed-traversal.qmd
             text: Directed Graph Traversal
           - href: test_qmds/count-islands.qmd
@@ -45,4 +47,4 @@ format:
       body-width: 1000px
     embed-resources: false
 
-jupyter: dsa_explain
+jupyter: dsa

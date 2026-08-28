@@ -1,0 +1,238 @@
+---
+title: "Graph Traversal Practice"
+subtitle: "Undirected Graph Traversal"
+---
+
+We have seen how we can traverse a graph using both DFS and BFS. Now let's apply this to a graph that does not look like the nodes and edges we have seen so far, but follows the same rules: A 2d grid.
+
+:::{.panel}
+
+Q - What are the neighbours of a cell in a grid?
+
+A - The neighbours of a cell in a grid are the cells that are adjacent to it.
+
+:::
+
+### Exercise: Maze traversal
+
+You are given a maze. The maze is a 2d grid of 0 and 1. Man-Pac starts at the top left (**S**) and wants to reach the bottom right (**T**). The 1s are coins he can collect as he moves through the grid; the 0s are walls.
+
+::: {.static-graph-inline}
+<div id="manpac-maze-preview"></div>
+:::
+
+In this case we do not have an adjacency list or matrix — the input itself is the grid. Before we can traverse, we need a way to ask: *from this cell, which cells can Man-Pac step onto?*
+
+#### 1. Find valid neighbours
+
+Assemble the steps below so `get_neighbours` returns every adjacent coin cell (a 1 that is up, down, left, or right — not a wall, and inside the grid). Once your plan looks right, click any coin cell on the maze to try it — the returned neighbours light up green, and are also listed underneath.
+
+::: {.panel-grid}
+::: {.panel}
+<div id="manpac-neighbours-blocks"></div>
+:::
+::: {.panel}
+<div id="manpac-neighbours-viz" class="cb-viz-placeholder"></div>
+:::
+:::
+
+Now we are ready to start the traversals. In this case we also need to keep track of the **distance from start**. How do we do that?
+
+:::{.callout-note}
+We can track the distance whenever we are recording the visited nodes. When we move from the current cell to a neighbour, we add 1 to the distance.
+:::
+
+`get_neighbours` is now available. Using the same loop as before — pick from the bag, record each neighbour's distance in `tracking`, and stop as soon as the current cell **or one of its neighbours** is the target. `path_distance = tracking[target]` is the length of the path you found.
+
+#### 2. BFS — queue
+
+Explore layer by layer: pick the **first** cell in the bag (`pop(0)`). Press **Play** to watch the search, or **Step** to advance one line. The current cell is orange, newly tracked neighbours are green, and already-tracked cells are blue — with their distance from the start written on the cell.
+
+::: {.panel-grid}
+::: {.panel}
+<div id="manpac-bfs-blocks"></div>
+:::
+::: {.panel}
+<div id="manpac-bfs-viz" class="cb-viz-placeholder"></div>
+:::
+:::
+
+#### 3. DFS — stack
+
+Explore as deep as possible first: pick the **last** cell in the bag (`pop()`). Same blocks, different end of the bag.
+
+::: {.panel-grid}
+::: {.panel}
+<div id="manpac-dfs-blocks"></div>
+:::
+::: {.panel}
+<div id="manpac-dfs-viz" class="cb-viz-placeholder"></div>
+:::
+:::
+
+```{ojs}
+//| echo: false
+import { mountCodeBlocksView } from "./js/code-blocks-view.js";
+import {
+  MANPAC_MAZE,
+  MANPAC_START,
+  MANPAC_TARGET,
+  MANPAC_NEIGHBOURS_CODE_BLOCKS,
+  MANPAC_NEIGHBOURS_CODE_OPTIONS,
+  MANPAC_BFS_CODE_BLOCKS,
+  MANPAC_BFS_CODE_OPTIONS,
+  MANPAC_DFS_CODE_BLOCKS,
+  MANPAC_DFS_CODE_OPTIONS,
+  mountNotebookMazeGrid,
+  mountManpacNeighboursView,
+  mountManpacTraversalView,
+} from "./js/maze-helpers.js";
+```
+
+```{ojs}
+//| echo: false
+manpacPreview = mountNotebookMazeGrid(
+  document.querySelector("#manpac-maze-preview"),
+  MANPAC_MAZE,
+  {
+    start: MANPAC_START,
+    target: MANPAC_TARGET,
+    cellSize: 28,
+    caption: "S = start (top left), T = target (bottom right). 1 = coin / open, 0 = wall.",
+  }
+)
+```
+
+```{ojs}
+//| echo: false
+manpacNeighboursBlocks = mountCodeBlocksView(
+  document.querySelector("#manpac-neighbours-blocks"),
+  MANPAC_NEIGHBOURS_CODE_BLOCKS,
+  MANPAC_NEIGHBOURS_CODE_OPTIONS
+)
+```
+
+```{ojs}
+//| echo: false
+manpacNeighboursViz = mountManpacNeighboursView(
+  document.querySelector("#manpac-neighbours-viz"),
+  MANPAC_MAZE,
+  {
+    start: MANPAC_START,
+    target: MANPAC_TARGET,
+    cellSize: 30,
+    getPython: () => manpacNeighboursBlocks.toPython(),
+  }
+)
+```
+
+```{ojs}
+//| echo: false
+manpacBfsBlocks = mountCodeBlocksView(
+  document.querySelector("#manpac-bfs-blocks"),
+  MANPAC_BFS_CODE_BLOCKS,
+  MANPAC_BFS_CODE_OPTIONS
+)
+```
+
+```{ojs}
+//| echo: false
+manpacBfsViz = mountManpacTraversalView(
+  document.querySelector("#manpac-bfs-viz"),
+  MANPAC_MAZE,
+  {
+    start: MANPAC_START,
+    target: MANPAC_TARGET,
+    heading: "BFS traversal",
+    bagFooter: "ordered list — pop from the left (queue)",
+    cellSize: 28,
+    stepDelayMs: 400,
+    getPython: () => manpacBfsBlocks.toPython(),
+    onStep: (frame) => {
+      if (frame?.blockId) manpacBfsBlocks.highlight(frame.blockId);
+      else manpacBfsBlocks.clearHighlight();
+    },
+  }
+)
+```
+
+```{ojs}
+//| echo: false
+manpacDfsBlocks = mountCodeBlocksView(
+  document.querySelector("#manpac-dfs-blocks"),
+  MANPAC_DFS_CODE_BLOCKS,
+  MANPAC_DFS_CODE_OPTIONS
+)
+```
+
+```{ojs}
+//| echo: false
+manpacDfsViz = mountManpacTraversalView(
+  document.querySelector("#manpac-dfs-viz"),
+  MANPAC_MAZE,
+  {
+    start: MANPAC_START,
+    target: MANPAC_TARGET,
+    heading: "DFS traversal",
+    bagFooter: "ordered list — pop from the right (stack)",
+    cellSize: 28,
+    stepDelayMs: 400,
+    getPython: () => manpacDfsBlocks.toPython(),
+    onStep: (frame) => {
+      if (frame?.blockId) manpacDfsBlocks.highlight(frame.blockId);
+      else manpacDfsBlocks.clearHighlight();
+    },
+  }
+)
+```
+
+
+### Exercise: Flood Fill
+
+You are given a 2d image. Implement the "bucket-fill" where you can select a single cell and fill the entire area connected to it with the same color.
+
+The image is a 2D list of hex colour strings (`pixel_array`). A section of the pixel array is shown here:
+
+<5 x 10 grid with hex values written in each cell>
+
+Click a pixel on the right to choose the start cell, pick a fill colour, then implement `floodFill(pixel_array, start, color)`. Modify the grid **in place** — neighbours are the four adjacent cells. Press **Play** to watch the image update as your code paints it.
+
+Hint: This time the "neighbours" are adjacent cells that have the **same** colour. This time you are free to either use a separate function to find the neighbours, or do it inline.
+
+::: {.panel-grid}
+::: {.panel}
+<div id="flood-fill-editor"></div>
+:::
+::: {.panel}
+<div id="flood-fill-viz" class="cb-viz-placeholder"></div>
+:::
+:::
+
+```{ojs}
+//| echo: false
+import { PythonEditorInput } from "./js/python-editor-input.js";
+import {
+  PIXEL_ARRAY,
+  floodFillStarterCode,
+  mountFloodFillViz,
+} from "./js/flood-fill.js";
+```
+
+```{ojs}
+//| echo: false
+floodEditor = PythonEditorInput.mountPlayable(
+  document.querySelector("#flood-fill-editor"),
+  {
+    heading: "Python",
+    defaultCode: floodFillStarterCode(),
+  }
+)
+```
+
+```{ojs}
+//| echo: false
+floodViz = mountFloodFillViz(document.querySelector("#flood-fill-viz"), {
+  editor: floodEditor,
+  pixelArray: PIXEL_ARRAY,
+})
+```
