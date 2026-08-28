@@ -443,27 +443,37 @@ mountTraversalQuiz(document.querySelector("#dfs-quiz"), { questions: dfs_quiz_qu
 mountTraversalQuiz(document.querySelector("#bfs-quiz"), { questions: bfs_quiz_questions });
 ```
 
-Now that we have an intuition for the two strategies, let us explore how we can implement them in code. How do we record the order? Careful observation reveals that for the first strategy, we fully explore the newest rooms we encounter first. While in the second one we explore the rooms in the order we encounter them. 
+Now that we have an intuition for the two strategies, let us explore how we can implement them in code. How do we record the order? 
 
-If we take another look at the "Bag" we can see that for the first strategy we are emptying the bag from right to left, and for the second one left to right. 
+For the first strategy -> We keep going "deeper" until we reach the end. We explore the rooms as we encounter them. In other words, we explore the DEPTH first before coming back to the breadth. Thus it is called Depth-First Search (DFS).
 
-So instead of a set like last time, we can use a list to record the rooms we encounter. For the first strategy we can remove the last item after each iteration, while for the second one we can remove the first item. 
+For the second strategy -> We explore the rooms in "layers". We explore the closer ones FIRST. In other words, we explore the BREADTH first before going deeper. Thus it is called Breadth-First Search (BFS).
 
-We mentioned that encountering more than one room in the same room, like A and B together from MedBay, we can pick either of them for both strategies. But if we want to stick to either the front or back, it will make the implementation much easier.
+We need to now select the order of rooms we will pick from the bag. 
+
+1. If we want to explore deeper -> we will pick the latest rooms we just visited, i.e. put in the bag LAST. The strategy will be Last-In-First-Out (LIFO).
+2. If we want to explore breadth -> we will pick the rooms IN THE ORDER we put them in the bag. The strategy will be First-In-First-Out (FIFO).
+
+!! NOTE !!: This strategy still does not determine if we encounter 2 rooms at the same time, i.e. two neighbours, what should be the order. But that does not matter as there can be MULTIPLE DFS or BFS paths at the same time. This strategy ensures we will get ONE of the DFS or BFS paths.
+
+E.g.
+<examples of 2 dfs>
 
 :::{.callout-note}
 
 #### Terminology alert!
 
-The first strategy is going to explore the latest rooms first. In other words, we are going to go to the very deep rooms, then start backtracking. Or do a "Depth" First Search (DFS).
-
-For the second one, we are going to explore the room in the order we encounter them. We note this order in our list. In other words, we are going to explore the entire breadth first before going deeper. Or do a "Breadth" First Search (BFS).
+We can simply use lists to record the rooms, but we have already encountered the concepts of LIFO and FIFO. We can use thus a stack for the first strategy and a queue for the second one.
 
 :::
 
+### Exercise: Find DFS and BFS paths in the graphs!
+
+<few exercises>
+
 ### DIY
 
-Make your own graph and then try to list the nodes in the order you would visit them using both strategies. For consistency: for selecting between nodes in the same room (like A and B in the previous example), we use an alphabetical order to populate the bag. Thus when you pop from the bag, you would pop B before A for the first strategy (i.e. from the end of the list), and A before B for the second one (i.e. from the start of the list).
+Make your own graph and then try to list the nodes in the order you would visit them using both strategies. You are free to select the order of nodes as you like, and the BFS and DFS according to our previous strategies of FIFO and LIFO will be highlighted for you. There can be more BFS/DFS paths apart from the FIFO and LIFO ones.
 
 ::: {.widget-block}
 <div id="bfs-dfs-order"></div>
@@ -480,14 +490,6 @@ bfsDfsOrder = mountBfsDfsOrderView(document.querySelector("#bfs-dfs-order"), {
 ```
 
 ### Implement in code!
-
-:::{.callout-note}
-
-Hold on, is there a data structure for the two types of popping operations? Yes, it is a stack for the first strategy and a queue for the second one! 
-
-<possible link or visualisation of the stack and queue>
-
-:::
 
 Drag the blocks to the right place to implement the first strategy of Depth-First Search (DFS). 
 
@@ -584,59 +586,5 @@ heatCodeViz2 = mountHeatCodeViz(document.querySelector("#heat-code-viz-2"), {
     if (frame?.blockId) heatCodeBlocks2.highlight(frame.blockId);
     else heatCodeBlocks2.clearHighlight();
   },
-})
-```
-
-## Grid traversal: Flood Fill
-
-We have seen how we can traverse a graph using both DFS and BFS. Now let's apply this to a graph that does not look like the nodes and edges we have seen so far, but follows the same rules: A 2d grid.
-
-:::{.panel}
-
-Q - What are the neighbours of a cell in a grid?
-
-A - The neighbours of a cell in a grid are the cells that are adjacent to it.
-
-:::
-
-You are given a 2d image. Implement the "bucket-fill" where you can select a single cell and fill the entire area connected to it with the same color.
-
-The image is a 2D list of hex colour strings (`pixel_array`). Click a pixel on the right to choose the start cell, pick a fill colour, then implement `floodFill(pixel_array, start, color)`. Modify the grid **in place** — neighbours are the four adjacent cells. Press **Play** to watch the image update as your code paints it.
-
-::: {.panel-grid}
-::: {.panel}
-<div id="flood-fill-editor"></div>
-:::
-::: {.panel}
-<div id="flood-fill-viz" class="cb-viz-placeholder"></div>
-:::
-:::
-
-```{ojs}
-//| echo: false
-import { PythonEditorInput } from "./js/python-editor-input.js";
-import {
-  PIXEL_ARRAY,
-  floodFillStarterCode,
-  mountFloodFillViz,
-} from "./js/flood-fill.js";
-```
-
-```{ojs}
-//| echo: false
-floodEditor = PythonEditorInput.mountPlayable(
-  document.querySelector("#flood-fill-editor"),
-  {
-    heading: "Python",
-    defaultCode: floodFillStarterCode(),
-  }
-)
-```
-
-```{ojs}
-//| echo: false
-floodViz = mountFloodFillViz(document.querySelector("#flood-fill-viz"), {
-  editor: floodEditor,
-  pixelArray: PIXEL_ARRAY,
 })
 ```
