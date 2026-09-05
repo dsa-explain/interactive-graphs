@@ -83,6 +83,8 @@ import {
   MANPAC_BFS_CODE_OPTIONS,
   MANPAC_DFS_CODE_BLOCKS,
   MANPAC_DFS_CODE_OPTIONS,
+  MANPAC_DFS_REC_CODE_BLOCKS,
+  MANPAC_DFS_REC_CODE_OPTIONS,
   mountNotebookMazeGrid,
   mountManpacNeighboursView,
   mountManpacTraversalView,
@@ -181,6 +183,54 @@ manpacDfsViz = mountManpacTraversalView(
     onStep: (frame) => {
       if (frame?.blockId) manpacDfsBlocks.highlight(frame.blockId);
       else manpacDfsBlocks.clearHighlight();
+    },
+  }
+)
+```
+
+### Exercise: DFS using recursion
+
+You might have recalled that in python recursive functions use a stack implementation, where the function that is called latest is the first to be executed. In other words, if we pass off the "dfs" to the children of current node, and keep doing it until we encounter the end, we can get a similar dfs traversal rather than actually implementing a stack. Let us try a recursive dfs implementation for the above problem.
+
+Same neighbours, same distance tracking, same stop-when-you-find-T — but instead of `bag.pop()`, the current cell is the argument of `dfs(node)`, and instead of pushing neighbours onto a bag you **call `dfs` on each of them**. The Python call stack is the stack. Press **Play** or **Step** to watch the search; the panel on the right is the call stack (latest call on the right).
+
+::: {.panel-grid}
+::: {.panel}
+<div id="manpac-dfs-rec-blocks"></div>
+:::
+::: {.panel}
+<div id="manpac-dfs-rec-viz" class="cb-viz-placeholder"></div>
+:::
+:::
+
+```{ojs}
+//| echo: false
+manpacDfsRecBlocks = mountCodeBlocksView(
+  document.querySelector("#manpac-dfs-rec-blocks"),
+  MANPAC_DFS_REC_CODE_BLOCKS,
+  MANPAC_DFS_REC_CODE_OPTIONS
+)
+```
+
+```{ojs}
+//| echo: false
+manpacDfsRecViz = mountManpacTraversalView(
+  document.querySelector("#manpac-dfs-rec-viz"),
+  MANPAC_MAZE,
+  {
+    start: MANPAC_START,
+    target: MANPAC_TARGET,
+    heading: "Recursive DFS",
+    bagFooter: "call stack — latest call on the right",
+    bagTitle: "CALL STACK",
+    bagEmptyText: "call stack empty — awaiting dfs(start)…",
+    recursive: true,
+    cellSize: 28,
+    stepDelayMs: 400,
+    getPython: () => manpacDfsRecBlocks.toPython(),
+    onStep: (frame) => {
+      if (frame?.blockId) manpacDfsRecBlocks.highlight(frame.blockId);
+      else manpacDfsRecBlocks.clearHighlight();
     },
   }
 )

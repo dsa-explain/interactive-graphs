@@ -1257,19 +1257,80 @@ export const MANPAC_DFS_CODE_OPTIONS = manpacLoopOptions(
   MANPAC_TARGET
 );
 
+export const MANPAC_DFS_REC_CODE_BLOCKS = [
+  {
+    id: "track_neighbours",
+    code:
+      "neighbours = get_neighbours(node)\n" +
+      "for n in neighbours:\n" +
+      "    tracking[n] = tracking[node] + 1",
+    label: "find unvisited neighbours and record each one's distance from start",
+  },
+  {
+    id: "check_goal",
+    code:
+      "if node == target or target in neighbours:\n" +
+      "    goal_reached = True\n" +
+      "    path_distance = tracking[target]\n" +
+      "    return",
+    label: "if this cell is the target or we just found it next door, record the distance and return",
+  },
+  {
+    id: "recurse",
+    code: "for n in neighbours:\n    dfs(n)",
+    label: "hand the search to each neighbour (the call stack is the stack)",
+  },
+];
+
+export const MANPAC_DFS_REC_CODE_OPTIONS = {
+  heading: "Recursive DFS steps",
+  workspaceLabel: "Function body — def dfs(node):",
+  preplaced: [],
+  solutionOrder: ["track_neighbours", "check_goal", "recurse"],
+  lockedBefore: [
+    {
+      code:
+        `start = (${MANPAC_START[0]}, ${MANPAC_START[1]})\n` +
+        `target = (${MANPAC_TARGET[0]}, ${MANPAC_TARGET[1]})\n` +
+        "tracking = dict()\n\n" +
+        "tracking[start] = 0\n" +
+        "goal_reached = False\npath_distance = None",
+    },
+  ],
+  lockedContainer: { code: "def dfs(node):" },
+  lockedAfter: [{ code: "dfs(start)" }],
+};
+
 function instrumentManpacPython(src) {
+  const recursive = /^\s*def\s+dfs\s*\(/m.test(src);
   const lines = src.split("\n");
   const out = [];
   let pendingTrackProbeIndent = null;
+  let lastWasGetNeighbours = false;
+  let dfsDefIndent = null;
+  let dfsExitPending = false;
+
+  function closeDfsIfLeaving(nextIndent) {
+    if (!dfsExitPending || dfsDefIndent == null) return;
+    if (nextIndent.length <= dfsDefIndent.length) {
+      out.push(`${dfsDefIndent}    _exit_dfs()`);
+      dfsExitPending = false;
+    }
+  }
+
+  function injectStop(ind) {
+    out.push(`${ind}if _found_target(node, neighbours):`);
+    out.push(`${ind}    _mark_found(node, neighbours)`);
+    if (recursive) out.push(`${ind}    _exit_dfs()`);
+    out.push(`${ind}    ${recursive ? "return" : "break"}`);
+  }
 
   function flushTrackProbe(nextIndent) {
     if (pendingTrackProbeIndent == null) return;
     if (nextIndent.length <= pendingTrackProbeIndent.length) {
       const ind = pendingTrackProbeIndent;
       out.push(`${ind}_probe("track_neighbours")`);
-      out.push(`${ind}if _found_target(node, neighbours):`);
-      out.push(`${ind}    _mark_found(node, neighbours)`);
-      out.push(`${ind}    break`);
+      injectStop(ind);
       pendingTrackProbeIndent = null;
     }
   }
@@ -1277,7 +1338,10 @@ function instrumentManpacPython(src) {
   for (const line of lines) {
     const trimmed = line.trimEnd();
     const indent = (trimmed.match(/^(\s*)/) || ["", ""])[1];
-    if (trimmed.trim()) flushTrackProbe(indent);
+    if (trimmed.trim()) {
+      flushTrackProbe(indent);
+      closeDfsIfLeaving(indent);
+    }
 
     if (/^\s*bag\s*=\s*list\(\)\s*$/.test(trimmed)) {
       out.push(`${indent}bag = _TraceList("bag")`);
@@ -1296,14 +1360,52 @@ function instrumentManpacPython(src) {
       out.push(`${indent}    _guard_iter()`);
       continue;
     }
+    if (/^\s*def\s+dfs\s*\(\s*node\s*\)\s*:\s*$/.test(trimmed)) {
+      out.push(trimmed);
+      out.push(`${indent}    node = _enter_dfs(node)`);
+      out.push(`${indent}    if _found_target(node, []):`);
+      out.push(`${indent}        _mark_found(node, [])`);
+      out.push(`${indent}        _exit_dfs()`);
+      out.push(`${indent}        return`);
+      dfsDefIndent = indent;
+      dfsExitPending = true;
+      continue;
+    }
     if (/^\s*if\s+node\s*==\s*target(\s+or\s+target\s+in\s+neighbours)?\s*:\s*$/.test(trimmed)) {
       out.push(`${indent}_probe("check_goal")`);
       out.push(`${indent}if _found_target(node, neighbours):`);
       continue;
     }
-    if (/^\s*for n in neighbours:\s*$/.test(trimmed)) {
+    if (/^\s*neighbours\s*=\s*get_neighbours\s*\(\s*node\s*\)\s*$/.test(trimmed)) {
       out.push(trimmed);
-      pendingTrackProbeIndent = indent;
+      out.push(`${indent}_state["neighbours"] = list(neighbours)`);
+      lastWasGetNeighbours = true;
+      continue;
+    }
+    if (/^\s*for n in neighbours:\s*$/.test(trimmed)) {
+      if (lastWasGetNeighbours) {
+        out.push(trimmed);
+        pendingTrackProbeIndent = indent;
+        lastWasGetNeighbours = false;
+      } else if (recursive) {
+        out.push(`${indent}_probe("recurse")`);
+        out.push(trimmed);
+      } else {
+        out.push(trimmed);
+        pendingTrackProbeIndent = indent;
+      }
+      continue;
+    }
+    if (recursive && /^\s*return\s*$/.test(trimmed)) {
+      out.push(`${indent}_exit_dfs()`);
+      out.push(trimmed);
+      continue;
+    }
+    if (recursive && /^\s*dfs\s*\(\s*n\s*\)\s*$/.test(trimmed)) {
+      out.push(trimmed);
+      out.push(`${indent}if _state.get("reached"):`);
+      out.push(`${indent}    _exit_dfs()`);
+      out.push(`${indent}    return`);
       continue;
     }
 
@@ -1320,10 +1422,6 @@ function instrumentManpacPython(src) {
       out.push(`${indent}if _found_target(node, []):`);
       out.push(`${indent}    _mark_found(node, [])`);
       out.push(`${indent}    break`);
-    }
-
-    if (/^\s*neighbours\s*=\s*get_neighbours\s*\(\s*node\s*\)\s*$/.test(trimmed)) {
-      out.push(`${indent}_state["neighbours"] = list(neighbours)`);
     }
 
     if (/^\s*tracking\s*\+=\s*neighbours\s*$/.test(trimmed)) {
@@ -1346,10 +1444,12 @@ function instrumentManpacPython(src) {
     if (pendingTrackProbeIndent != null) {
       const ind = pendingTrackProbeIndent;
       out.push(`${ind}_probe("track_neighbours")`);
-      out.push(`${ind}if _found_target(node, neighbours):`);
-      out.push(`${ind}    _mark_found(node, neighbours)`);
-      out.push(`${ind}    break`);
+      injectStop(ind);
     }
+
+  if (dfsExitPending && dfsDefIndent != null) {
+    out.push(`${dfsDefIndent}    _exit_dfs()`);
+  }
 
   return out.join("\n");
 }
@@ -1489,6 +1589,22 @@ def _guard_iter():
     if _state["iters"] > _MAX_ITERS:
         raise RuntimeError("TOO_MANY_ITERS")
 
+def _enter_dfs(node):
+    node = tuple(node) if isinstance(node, (list, tuple)) else node
+    _state["node"] = node
+    _state["neighbours"] = []
+    if _state["bag"] is None:
+        _state["bag"] = _TraceList("bag")
+    _state["bag"].append(node)
+    _guard_iter()
+    _probe("pick")
+    return node
+
+def _exit_dfs():
+    bag = _state.get("bag")
+    if isinstance(bag, list) and bag:
+        bag.pop()
+
 def _is_seen(n):
     tracking = _state["tracking"]
     if tracking is None:
@@ -1603,7 +1719,8 @@ function parseTrackingItems(raw) {
   return items;
 }
 
-function eventsToManpacFrames(events, start, target) {
+function eventsToManpacFrames(events, start, target, style = {}) {
+  const recursive = !!style.recursive;
   const frames = [];
   let prevBag = start ? [start] : [];
   let stopAfterReach = false;
@@ -1634,7 +1751,9 @@ function eventsToManpacFrames(events, start, target) {
 
     let message = "";
     if (blockId === "pick") {
-      message = `Picked ${cellLabel(node)} from the bag${distLabel(node)}.`;
+      message = recursive
+        ? `dfs(${cellLabel(node)})${distLabel(node)} — current call.`
+        : `Picked ${cellLabel(node)} from the bag${distLabel(node)}.`;
     } else if (blockId === "check_goal") {
       message = reached
         ? `Found the target — path distance = ${pathDistance ?? distOf(target) ?? distOf(node) ?? "?"}. Stop.`
@@ -1652,15 +1771,23 @@ function eventsToManpacFrames(events, start, target) {
       }
     } else if (blockId === "bag_neighbours") {
       message = "Added neighbours to the bag.";
+    } else if (blockId === "recurse") {
+      message = neighbours.length
+        ? `Recursing on neighbours: ${neighbours.map((n) => cellLabel(n)).join(", ")}.`
+        : "No neighbours to recurse on — returning.";
     } else if (done) {
       const dist = pathDistance ?? distOf(target);
       message = reached
         ? `Done — reached the bottom right. Path distance = ${dist ?? "?"}.`
-        : "Done — bag empty, target not reached.";
+        : recursive
+          ? "Done — search returned, target not reached."
+          : "Done — bag empty, target not reached.";
     }
 
     const showNeighbours =
-      blockId === "track_neighbours" || blockId === "bag_neighbours";
+      blockId === "track_neighbours" ||
+      blockId === "bag_neighbours" ||
+      blockId === "recurse";
 
     const nodeKey = node ? cellKey(node[0], node[1]) : null;
     const missingCurrent =
@@ -1670,7 +1797,8 @@ function eventsToManpacFrames(events, start, target) {
       (blockId === "pick" ||
         blockId === "check_goal" ||
         blockId === "track_neighbours" ||
-        blockId === "bag_neighbours");
+        blockId === "bag_neighbours" ||
+        blockId === "recurse");
 
     const displayBag = showGhost
       ? bagDisplayWithGhostCells(prevBag, bagCells, node)
@@ -1691,7 +1819,9 @@ function eventsToManpacFrames(events, start, target) {
     });
 
     prevBag =
-      blockId === "bag_neighbours" || done ? bagCells : displayBag;
+      blockId === "bag_neighbours" || blockId === "recurse" || done
+        ? bagCells
+        : displayBag;
 
     const hitTarget =
       (node && target && sameCell(node, target)) ||
@@ -1703,10 +1833,10 @@ function eventsToManpacFrames(events, start, target) {
   return frames;
 }
 
-function renderManpacBagPanel({ items, pick, pickDone, footer }) {
+function renderManpacBagPanel({ items, pick, pickDone, footer, title, emptyText }) {
   const chips =
     items.length === 0
-      ? `<div class="ht-bag-empty">bag empty — awaiting cells…</div>`
+      ? `<div class="ht-bag-empty">${escapeHtml(emptyText ?? "bag empty — awaiting cells…")}</div>`
       : items
           .map((cell) => {
             const done = pickDone && sameCell(cell, pickDone);
@@ -1726,7 +1856,7 @@ function renderManpacBagPanel({ items, pick, pickDone, footer }) {
   return `
     <div class="ht-bag" aria-label="Bag">
       <div class="ht-bag-header">
-        <span class="ht-bag-title">ENCOUNTERED, NOTED TO BE EXPLORED</span>
+        <span class="ht-bag-title">${escapeHtml(title ?? "ENCOUNTERED, NOTED TO BE EXPLORED")}</span>
       </div>
       <div class="ht-bag-body">${chips}</div>
       <div class="ht-bag-footer">${escapeHtml(footer)}</div>
@@ -1785,6 +1915,9 @@ export function mountManpacTraversalView(container, matrix, options = {}) {
   const getPython = options.getPython ?? (() => "");
   const onStep = options.onStep ?? (() => {});
   const bagFooter = options.bagFooter ?? "ordered list";
+  const bagTitle = options.bagTitle ?? "ENCOUNTERED, NOTED TO BE EXPLORED";
+  const bagEmptyText = options.bagEmptyText ?? "bag empty — awaiting cells…";
+  const recursive = !!options.recursive;
   const stepDelayMs = options.stepDelayMs ?? 900;
 
   container.innerHTML = "";
@@ -1853,14 +1986,16 @@ export function mountManpacTraversalView(container, matrix, options = {}) {
       blockId: null,
       node: null,
       neighbours: [],
-      bag: [start],
+      bag: recursive ? [] : [start],
       bagPick: null,
       bagPickDone: null,
       tracking: [{ cell: start, dist: 0 }],
       reached: false,
       done: false,
       pathDistance: null,
-      message: "Assemble the loop body, then press Play or Step to run your code.",
+      message: recursive
+        ? "Assemble the function body, then press Play or Step to run your code."
+        : "Assemble the loop body, then press Play or Step to run your code.",
     };
   }
 
@@ -1892,6 +2027,8 @@ export function mountManpacTraversalView(container, matrix, options = {}) {
         pick: frame.bagPick ?? null,
         pickDone: frame.bagPickDone ?? null,
         footer: bagFooter,
+        title: bagTitle,
+        emptyText: bagEmptyText,
       }) + renderManpacTrackingPanel(trackingItems);
 
     if (statusOverride) {
@@ -1911,13 +2048,21 @@ export function mountManpacTraversalView(container, matrix, options = {}) {
   async function compileFrames() {
     const userSrc = (getPython() || "").trim();
     if (!userSrc) {
-      statusOverride = "Your plan is empty — drag the steps into the loop first.";
+      statusOverride = recursive
+        ? "Your plan is empty — drag the steps into the function first."
+        : "Your plan is empty — drag the steps into the loop first.";
       frames = [];
       frameIndex = -1;
       return false;
     }
     if (/while\s+bag\s*:\s*\n\s*pass\s*$/.test(userSrc) || /while\s+bag\s*:\s*$/.test(userSrc)) {
       statusOverride = "The loop body is empty — drop the steps inside `while bag:`.";
+      frames = [];
+      frameIndex = -1;
+      return false;
+    }
+    if (/def\s+dfs\s*\([^)]*\)\s*:\s*\n\s*pass\b/.test(userSrc)) {
+      statusOverride = "The function body is empty — drop the steps inside `def dfs(node):`.";
       frames = [];
       frameIndex = -1;
       return false;
@@ -1939,7 +2084,7 @@ export function mountManpacTraversalView(container, matrix, options = {}) {
       if (payload?.error === "TOO_MANY_ITERS") {
         statusOverride =
           "Loop ran too long — did you forget to track cells, or break on the target?";
-        frames = eventsToManpacFrames(payload.events ?? [], start, target);
+        frames = eventsToManpacFrames(payload.events ?? [], start, target, { recursive });
         frameIndex = frames.length ? 0 : -1;
         return frames.length > 0;
       }
@@ -1950,7 +2095,7 @@ export function mountManpacTraversalView(container, matrix, options = {}) {
         return false;
       }
 
-      frames = eventsToManpacFrames(payload.events ?? [], start, target);
+      frames = eventsToManpacFrames(payload.events ?? [], start, target, { recursive });
       frameIndex = -1;
       statusOverride = null;
       return frames.length > 0;

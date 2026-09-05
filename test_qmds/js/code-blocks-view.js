@@ -99,6 +99,7 @@ export function planToPython(plan, opts = {}) {
  *   solutionOrder?: string[],
  *   lockedBefore?: Array<{code: string, label?: string}>,
  *   lockedContainer?: {code: string, label?: string},
+ *   lockedAfter?: Array<{code: string, label?: string}>,
  * }} [options]
  */
 export function mountCodeBlocksView(container, blocks = DEFAULT_BLOCKS, options = {}) {
@@ -122,6 +123,7 @@ export function mountCodeBlocksView(container, blocks = DEFAULT_BLOCKS, options 
   const solutionOrder = options.solutionOrder ?? null;
   const lockedBefore = options.lockedBefore ?? [];
   const lockedContainer = options.lockedContainer ?? null;
+  const lockedAfter = options.lockedAfter ?? [];
 
   // Stable shuffle order for the palette (re-applied after each render).
   const paletteOrder = defs.map((d) => d.id);
@@ -202,6 +204,10 @@ export function mountCodeBlocksView(container, blocks = DEFAULT_BLOCKS, options 
   } else {
     rightCol.appendChild(workspace);
   }
+
+  lockedAfter.forEach((def) => {
+    rightCol.appendChild(createLockedBlockElement(def));
+  });
 
   const controls = document.createElement("div");
   controls.className = "cb-controls";
@@ -518,7 +524,8 @@ export function mountCodeBlocksView(container, blocks = DEFAULT_BLOCKS, options 
     getPlan,
     /**
      * Full runnable Python: locked preamble + (optional) locked container
-     * wrapping the workspace body. Empty container bodies become `pass`.
+     * wrapping the workspace body, then locked after. Empty container
+     * bodies become `pass`.
      * @param {{indent?: number}} [opts]
      * @returns {string}
      */
@@ -544,6 +551,11 @@ export function mountCodeBlocksView(container, blocks = DEFAULT_BLOCKS, options 
       } else if (body) {
         parts.push(body);
       }
+
+      lockedAfter.forEach((def) => {
+        const src = (def.code || def.label || "").trim();
+        if (src) parts.push(src);
+      });
 
       return parts.join("\n\n");
     },
