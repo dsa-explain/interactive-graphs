@@ -452,12 +452,94 @@ For the second strategy -> We explore the rooms in "layers". We explore the clos
 We need to now select the order of rooms we will pick from the bag. 
 
 1. If we want to explore deeper -> we will pick the latest rooms we just visited, i.e. put in the bag LAST. The strategy will be Last-In-First-Out (LIFO).
+
+```{ojs}
+//| echo: false
+import { treeNodes, computeDFSFrames, makeFrameGenerator, renderViz } from "./js/static-graph-view.js"
+
+dfsFrames = computeDFSFrames(treeNodes)
+frameDFS = makeFrameGenerator(dfsFrames, 1100)
+renderViz(frameDFS, treeNodes, d3, html)
+```
+
 2. If we want to explore breadth -> we will pick the rooms IN THE ORDER we put them in the bag. The strategy will be First-In-First-Out (FIFO).
+
+```{ojs}
+//| echo: false
+import { computeBFSFrames } from "./js/static-graph-view.js"
+
+bfsFrames = computeBFSFrames(treeNodes)
+frameBFS = makeFrameGenerator(bfsFrames, 1100)
+renderViz(frameBFS, treeNodes, d3, html)
+```
 
 !! NOTE !!: This strategy still does not determine if we encounter 2 rooms at the same time, i.e. two neighbours, what should be the order. But that does not matter as there can be MULTIPLE DFS or BFS paths at the same time. This strategy ensures we will get ONE of the DFS or BFS paths.
 
 E.g.
-<examples of 2 dfs>
+```{ojs}
+//| echo: false
+// Simple tree: A—B, A—C, B—D, B—E, C—F
+graphEdgesGraph3 = ([
+  { id: "A—B", source: "A", target: "B" },
+  { id: "A—C", source: "A", target: "C" },
+  { id: "B—D", source: "B", target: "D" },
+  { id: "B—E", source: "B", target: "E" },
+  { id: "C—F", source: "C", target: "F" },
+])
+
+layoutGraph3 = ({
+  A: { x: 150, y: 40 },
+  B: { x: 80,  y: 130 },
+  C: { x: 220, y: 130 },
+  D: { x: 40,  y: 220 },
+  E: { x: 120, y: 220 },
+  F: { x: 220, y: 220 },
+})
+
+nodeGraph3 = (id, order = null) => ({
+  id,
+  label: id,
+  order,
+  x: layoutGraph3[id].x,
+  y: layoutGraph3[id].y,
+})
+
+// DFS #1: visit neighbors in alphabetical order
+// A(1) → B(2) → D(3), E(4) → C(5) → F(6)
+dfs1OrderGraph3 = ({ A: 1, B: 2, D: 3, E: 4, C: 5, F: 6 })
+
+// DFS #2: visit neighbors in reverse-alphabetical order
+// A(1) → C(2) → F(3) → B(4) → E(5) → D(6)
+dfs2OrderGraph3 = ({ A: 1, C: 2, F: 3, B: 4, E: 5, D: 6 })
+
+nodesDfs1Graph3 = Object.keys(layoutGraph3).map(id => nodeGraph3(id, dfs1OrderGraph3[id]))
+nodesDfs2Graph3 = Object.keys(layoutGraph3).map(id => nodeGraph3(id, dfs2OrderGraph3[id]))
+
+viewof graphsSideBySideGraph3 = {
+  const container = html`<div style="display:flex; gap:40px; flex-wrap:wrap;">
+    <div>
+      <h4 style="text-align:center;">DFS: choose left branch first</h4>
+      <div id="graph-dfs1-graph3"></div>
+    </div>
+    <div>
+      <h4 style="text-align:center;">DFS: choose right branch first</h4>
+      <div id="graph-dfs2-graph3"></div>
+    </div>
+  </div>`;
+
+  mountStaticGraphView(container.querySelector("#graph-dfs1-graph3"), {
+    nodes: nodesDfs1Graph3,
+    edges: graphEdgesGraph3,
+  });
+
+  mountStaticGraphView(container.querySelector("#graph-dfs2-graph3"), {
+    nodes: nodesDfs2Graph3,
+    edges: graphEdgesGraph3,
+  });
+
+  return container;
+}
+```
 
 :::{.callout-note}
 
@@ -465,29 +547,9 @@ E.g.
 
 We can simply use lists to record the rooms, but we have already encountered the concepts of LIFO and FIFO. We can use thus a stack for the first strategy and a queue for the second one.
 
+<img src="./img/STACK_QUEUE.png" alt="visualization of stack and queue" width="400" style="padding: 10px;">
+
 :::
-
-### Exercise: Find DFS and BFS paths in the graphs!
-
-<few exercises>
-
-### DIY
-
-Make your own graph and then try to list the nodes in the order you would visit them using both strategies. You are free to select the order of nodes as you like, and the BFS and DFS according to our previous strategies of FIFO and LIFO will be highlighted for you. There can be more BFS/DFS paths apart from the FIFO and LIFO ones.
-
-::: {.widget-block}
-<div id="bfs-dfs-order"></div>
-:::
-
-```{ojs}
-//| echo: false
-import { mountBfsDfsOrderView } from "./js/bfs-dfs-order.js";
-
-bfsDfsOrder = mountBfsDfsOrderView(document.querySelector("#bfs-dfs-order"), {
-  width: 480,
-  height: 380,
-})
-```
 
 ### Implement in code!
 
@@ -586,5 +648,39 @@ heatCodeViz2 = mountHeatCodeViz(document.querySelector("#heat-code-viz-2"), {
     if (frame?.blockId) heatCodeBlocks2.highlight(frame.blockId);
     else heatCodeBlocks2.clearHighlight();
   },
+})
+```
+
+
+### Exercise: Find BFS and DFS traversal orders!
+
+For each graph below, the **start node is highlighted** in orange. Try to trace both the BFS (queue) and DFS (stack) traversal orders yourself before selecting an answer — you can click on nodes to mark them as you go.
+
+::: {.widget-block}
+<div id="traversal-order-quiz"></div>
+:::
+
+```{ojs}
+//| echo: false
+import { mountTraversalOrderQuiz } from "./js/traversal-questions-helpers.js";
+
+mountTraversalOrderQuiz(document.querySelector("#traversal-order-quiz"))
+```
+
+### DIY
+
+Make your own graph and then try to list the nodes in the order you would visit them using both strategies. You are free to select the order of nodes as you like, and the BFS and DFS according to our previous strategies of FIFO and LIFO will be highlighted for you. There can be more BFS/DFS paths apart from the FIFO and LIFO ones.
+
+::: {.widget-block}
+<div id="bfs-dfs-order"></div>
+:::
+
+```{ojs}
+//| echo: false
+import { mountBfsDfsOrderView } from "./js/bfs-dfs-order.js";
+
+bfsDfsOrder = mountBfsDfsOrderView(document.querySelector("#bfs-dfs-order"), {
+  width: 480,
+  height: 380,
 })
 ```
