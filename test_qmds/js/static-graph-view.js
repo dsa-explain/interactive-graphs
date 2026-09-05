@@ -298,13 +298,13 @@ export function mountStaticGraphView(container, data, options = {}) {
 // and doesn't have access to Observable's implicit stdlib.
 
 export const treeNodes = {
-  A: { children: ["B", "C"], color: "#eab308", pos: [40, 120] },
-  B: { children: ["D"],      color: "#22c55e", pos: [160, 60] },
-  C: { children: ["E"],      color: "#22c55e", pos: [160, 180] },
-  D: { children: ["F"],      color: "#f97316", pos: [280, 60] },
-  E: { children: ["G"],      color: "#f97316", pos: [280, 180] },
-  F: { children: [],        color: "#3b82f6", pos: [400, 60] },
-  G: { children: [],        color: "#3b82f6", pos: [400, 180] }
+  A: { children: ["B", "C"], color: "#FCB686", pos: [40, 120] },
+  B: { children: ["D"],      color: "#A8D5BA", pos: [160, 60] },
+  C: { children: ["E"],      color: "#A8D5BA", pos: [160, 180] },
+  D: { children: ["F"],      color: "#A9CBE8", pos: [280, 60] },
+  E: { children: ["G"],      color: "#A9CBE8", pos: [280, 180] },
+  F: { children: [],        color: "#F6D58A", pos: [400, 60] },
+  G: { children: [],        color: "#F6D58A", pos: [400, 180] }
 };
 
 // Given a pop order, build the step-by-step frames:
@@ -399,10 +399,15 @@ export function renderViz(frame, nodes, d3, html) {
       .attr("cx", d => d[1].pos[0])
       .attr("cy", d => d[1].pos[1])
       .attr("r", 16)
-      .attr("fill", d => revealed.has(d[0]) ? d[1].color : "#d1d5db");
+      .attr("fill", d => revealed.has(d[0]) ? d[1].color : "#d1d5db")
+      .attr("stroke", d => d3.color(revealed.has(d[0]) ? d[1].color : "#d1d5db").darker(1))
+      .attr("stroke-width", 2);
 
   const boxSize = 26, gap = 6;
-  function row(items, dimSet, highlightIdxs) {
+
+  // leftIdx/rightIdx (optional) get a half-open bracket outline ("[" and "]")
+  // instead of a full box border, marking the start/end of the active window.
+  function row(items, dimSet, leftIdx = -1, rightIdx = -1) {
     const svg = d3.create("svg")
       .attr("width", Math.max(1, items.length) * (boxSize + gap))
       .attr("height", boxSize + 4);
@@ -410,29 +415,60 @@ export function renderViz(frame, nodes, d3, html) {
     svg.selectAll("rect")
       .data(items)
       .join("rect")
-        .attr("x", (d, i) => i * (boxSize + gap))
+        .attr("x", (d, i) => i * (boxSize + gap) + 2)
         .attr("y", 2)
         .attr("width", boxSize)
         .attr("height", boxSize)
         .attr("rx", 4)
         .attr("fill", d => nodes[d].color)
-        .attr("opacity", d => dimSet.has(d) ? 0.3 : 1)
-        .attr("stroke", (d, i) => highlightIdxs.includes(i) ? "#111827" : "none")
-        .attr("stroke-width", 2);
+        .attr("stroke", d => d3.color(nodes[d].color).darker(1))
+        .attr("stroke-width", 1.5)
+        .attr("opacity", d => dimSet.has(d) ? 0.3 : 1);
+
+    const bracketArm = 6;
+    const brackets = [];
+    if (leftIdx >= 0) brackets.push({ i: leftIdx, side: "left" });
+    if (rightIdx >= 0) brackets.push({ i: rightIdx, side: "right" });
+
+    svg.append("g")
+      .selectAll("path")
+      .data(brackets)
+      .join("path")
+        .attr("d", d => {
+          const y = 2;
+          if (d.side === "left") {
+            const x = d.i * (boxSize + gap) + 2;
+            return `M ${x + bracketArm} ${y} L ${x} ${y} L ${x} ${y + boxSize} L ${x + bracketArm} ${y + boxSize}`;
+          } else {
+            const xr = d.i * (boxSize + gap) + boxSize + 2;
+            return `M ${xr - bracketArm} ${y} L ${xr} ${y} L ${xr} ${y + boxSize} L ${xr - bracketArm} ${y + boxSize}`;
+          }
+        })
+        .attr("fill", "none")
+        .attr("stroke", "#111827")
+        .attr("stroke-width", 2.5);
 
     return svg.node();
   }
 
-  return html`<div style="display:flex; gap:40px; align-items:center; flex-wrap:wrap; font-family:sans-serif;">
+  return html`<div style="display:flex; gap:40px; align-items:center; flex-wrap:wrap; font-family:'Cascadia Code','Cascadia Mono',monospace;">
     <div>${tree.node()}</div>
     <div style="display:flex; flex-direction:column; gap:16px;">
       <div>
         <div style="font-size:12px; color:#374151; margin-bottom:4px;">encounter</div>
-        ${row(frame.encounter, frame.dim, [firstActive, lastActive])}
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:11px; color:#6b7280;">start</span>
+          ${row(frame.encounter, frame.dim, firstActive, lastActive)}
+          <span style="font-size:11px; color:#6b7280;">end</span>
+        </div>
       </div>
       <div>
         <div style="font-size:12px; color:#374151; margin-bottom:4px;">traversal (pop order)</div>
-        ${row(frame.traversal, new Set(), [])}
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:11px; color:#6b7280;">start</span>
+          ${row(frame.traversal, new Set())}
+          <span style="font-size:11px; color:#6b7280;">end</span>
+        </div>
       </div>
     </div>
   </div>`;
