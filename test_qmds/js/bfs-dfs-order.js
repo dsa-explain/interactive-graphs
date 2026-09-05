@@ -209,34 +209,35 @@ export function mountBfsDfsOrderView(container, options = {}) {
   }
 
   function renderBag() {
-    const header = `<div class="iv-visited"><span class="cb-section-label">ENCOUNTERED, NOTED TO BE EXPLORED</span></div>`;
+    const header = `<span class="cb-section-label">ENCOUNTERED, NOTED TO BE EXPLORED</span>`;
     let body;
     if (bag.length === 0) {
       body = `<div class="adj-empty">${
-        phase === "idle" ? "start a traversal to fill the bag…" : "bag empty"
+        phase === "idle" ? "- EMPTY -" : "bag empty"
       }</div>`;
     } else {
+      const defaultBorder = "1.5px solid rgba(0,0,0,0.35)";
       body = bag
         .map((id, index) => {
           const label = escapeHtml(nodeLabel(engine, id));
-          const endHint =
-            index === 0
-              ? " title=\"Front of list — BFS pops here\""
-              : index === bag.length - 1
-                ? " title=\"End of list — DFS pops here\""
-                : "";
-          const endCls =
-            index === 0
-              ? " bdo-chip-front"
-              : index === bag.length - 1
-                ? " bdo-chip-back"
-                : "";
-          return `<button type="button" class="adj-box adj-val iv-visited-chip bdo-chip${endCls}" data-id="${escapeHtml(id)}"${endHint}>${label}</button>`;
+          const isFront = index === 0;
+          const isBack = index === bag.length - 1;
+          const endHint = isFront
+            ? " title=\"Front of list — BFS pops here\""
+            : isBack
+              ? " title=\"End of list — DFS pops here\""
+              : "";
+          const endCls = isFront ? " bdo-chip-front" : isBack ? " bdo-chip-back" : "";
+          const bracketStyle = isFront
+            ? ` style="border-top:${defaultBorder};border-bottom:${defaultBorder};border-left:2.5px solid #000000;border-right:${defaultBorder};"`
+            : isBack
+              ? ` style="border-top:${defaultBorder};border-bottom:${defaultBorder};border-right:2.5px solid #000000;border-left:${defaultBorder};"`
+              : ` style="border:${defaultBorder};"`;
+          return `<button type="button" class="adj-box adj-val iv-visited-chip bdo-chip${endCls}" data-id="${escapeHtml(id)}"${endHint}${bracketStyle}>${label}</button>`;
         })
         .join("");
     }
-    const footer = `<div class="adj-footer">alphabetical append · click a chip to pop</div>`;
-    bagPanel.innerHTML = `${header}<div class="ht-bag-body">${body}</div>${footer}`;
+    bagPanel.innerHTML = `${header}<div style="display:flex;align-items:center;gap:8px;margin-top:8px;"><span style="font-size:11px;color:#6b7280;">start</span><div class="ht-bag-body" style="flex:1;border-top:1.5px solid rgba(0,0,0,0.35);border-bottom:1.5px solid rgba(0,0,0,0.35);">${body}</div><span style="font-size:11px;color:#6b7280;">end</span></div>`;
 
     if (phase === "running") {
       bagPanel.querySelectorAll("button.bdo-chip").forEach((btn) => {
@@ -246,17 +247,17 @@ export function mountBfsDfsOrderView(container, options = {}) {
   }
 
   function renderVisitOrder() {
-    const header = `<div class="iv-visited"><span class="cb-section-label">VISIT ORDER</span></div>`;
+    const header = `<span class="cb-section-label">VISIT ORDER</span>`;
     const body =
       visitOrder.length === 0
-        ? `<div class="adj-empty">no nodes visited yet…</div>`
+        ? `<div class="adj-empty">- EMPTY -</div>`
         : visitOrder
             .map(
               (id, i) =>
-                `<span class="adj-box adj-val iv-visited-chip" data-id="${escapeHtml(id)}">${escapeHtml(nodeLabel(engine, id))}</span>`
+                `<span class="adj-box adj-val iv-visited-chip" data-id="${escapeHtml(id)}" style="border:1.5px solid rgba(0,0,0,0.35);">${escapeHtml(nodeLabel(engine, id))}</span>`
             )
             .join("");
-    visitPanel.innerHTML = `${header}<div class="ht-bag-body">${body}</div>`;
+    visitPanel.innerHTML = `${header}<div style="display:flex;align-items:center;gap:8px;margin-top:8px;"><span style="font-size:11px;color:#6b7280;">start</span><div class="ht-bag-body" style="flex:1;border-top:1.5px solid rgba(0,0,0,0.35);border-bottom:1.5px solid rgba(0,0,0,0.35);">${body}</div><span style="font-size:11px;color:#6b7280;">end</span></div>`;
   }
 
   function renderFeedback() {
