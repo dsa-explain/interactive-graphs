@@ -211,6 +211,13 @@ h1, h2, h3, .title {
   min-height: 1.1em;
 }
 
+.gv-toolbar-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: 0.25rem;
+}
+
 .gv-status-flash {
   color: var(--coral);
 }
@@ -220,6 +227,18 @@ h1, h2, h3, .title {
   font-size: 0.72rem;
   color: #a9a8bd;
   padding: 0.5rem 0.7rem 0;
+}
+
+.gv-caption-warn {
+  color: var(--coral);
+}
+
+.gv-caption-cycle {
+  color: var(--coral);
+}
+
+.gv-caption-ok {
+  color: #86efac;
 }
 
 .gv-canvas {
@@ -306,6 +325,113 @@ h1, h2, h3, .title {
   stroke: #fdfeff;
   stroke-width: 2.5px;
   filter: brightness(0.92);
+}
+
+.gv-node-circle.gv-color-white {
+  fill: #ffffff;
+  stroke: var(--ink);
+  stroke-width: 2px;
+  filter: none;
+}
+
+.gv-node-circle.gv-color-blue {
+  fill: var(--neighbour-node);
+  stroke: var(--neighbour-node-stroke);
+  stroke-width: 2px;
+  filter: none;
+}
+
+.gv-node-circle.gv-color-black {
+  fill: var(--ink);
+  stroke: #fdfeff;
+  stroke-width: 2.5px;
+  filter: none;
+}
+
+.gv-node-circle.gv-color-orange {
+  fill: var(--coral);
+  stroke: var(--ink);
+  stroke-width: 2.5px;
+  filter: none;
+}
+
+.gv-node-circle.gv-color-focus {
+  stroke: var(--coral);
+  stroke-width: 3px;
+}
+
+.gv-node:has(.gv-color-black) .gv-node-label {
+  fill: #fdfeff;
+}
+
+.dcs-root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin: 0.25rem 0 0.5rem;
+}
+
+.dcs-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.1rem;
+  font-size: 0.82rem;
+  color: var(--muted-on-paper);
+}
+
+.dcs-leg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dcs-leg-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  flex-shrink: 0;
+}
+
+.dcs-feedback {
+  min-height: 1.4em;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.35;
+  border: 1px solid transparent;
+}
+
+.dcs-feedback-idle {
+  background: #f8fafc;
+  color: var(--graphite);
+  border-color: #e2e8f0;
+}
+
+.dcs-feedback-warn {
+  background: #fff7ed;
+  color: #9a3412;
+  border-color: #fdba74;
+}
+
+.dcs-feedback-cycle {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fca5a5;
+}
+
+.dcs-feedback-ok {
+  background: #f0fdf4;
+  color: #14532d;
+  border-color: #86efac;
+}
+
+.dcs-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 .gv-node-circle.gv-visited.gv-selected,
@@ -1371,6 +1497,159 @@ h1, h2, h3, .title {
   color: var(--muted-on-paper);
   min-width: 90px;
   text-align: center;
+}
+
+/* directed-cycle walkthrough (dcw-*) */
+.dcw-body {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(230px, 280px);
+  gap: 22px;
+  align-items: start;
+}
+
+.dcw-left .gt-info {
+  width: auto;
+  min-width: 0;
+  margin-top: 8px;
+}
+
+@media (max-width: 760px) {
+  .dcw-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dcw-side {
+  background: var(--ink);
+  border-radius: var(--radius-md);
+  padding: 16px 16px 20px;
+  min-height: 300px;
+}
+
+.dcw-active-label,
+.dcw-stack-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a9a8bd;
+  margin-bottom: 8px;
+}
+
+.dcw-active-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 48px;
+}
+
+.dcw-arrow {
+  color: #5b8def;
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.dcw-nbrs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dcw-tile {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 15px;
+  border: 2px solid transparent;
+  box-sizing: border-box;
+}
+
+.dcw-tile-white {
+  background: #ffffff;
+  color: var(--ink);
+  border-color: #d4d2e2;
+}
+
+.dcw-tile-blue {
+  background: #4d74e8;
+  color: #ffffff;
+}
+
+.dcw-tile-black {
+  background: #4a4a4a;
+  color: #ffffff;
+}
+
+.dcw-tile-orange {
+  background: var(--coral);
+  color: var(--ink);
+}
+
+.dcw-tile-focus {
+  border-color: #f07a2a;
+  box-shadow: 0 0 0 2px #f07a2a;
+}
+
+.dcw-message {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  min-height: 3.4em;
+}
+
+.dcw-message-white {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f4f3fb;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.dcw-message-blue {
+  background: rgba(254, 182, 134, 0.16);
+  color: var(--coral);
+  border: 1px solid rgba(254, 182, 134, 0.45);
+}
+
+.dcw-message-black {
+  background: rgba(255, 255, 255, 0.06);
+  color: #d8d6e8;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dcw-stack-wrap {
+  margin-top: 22px;
+}
+
+.dcw-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.dcw-stack-row {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.dcw-code-stack-host {
+  margin: 0.4rem 0 0.6rem;
+}
+
+.dcw-stack-empty {
+  color: #7c7a93;
+  font-size: 12px;
+  font-style: italic;
 }
 
 /* ---------- heat / station traversal quiz (light playful) ---------- */
@@ -2783,4 +3062,376 @@ button.ht-bag-chip.bdo-chip-back {
   outline: 2px solid #fbbf24;
   outline-offset: -2px;
   z-index: 3;
+}
+
+/* ---------- cycle detection quiz — edge & node statuses ---------- */
+
+/* Active edge: currently being explored from current node (orange) */
+.gv-static .gv-edge-line.gv-edge-active {
+  stroke: #ff9f6b;
+  stroke-width: 2.8px;
+  stroke-opacity: 1;
+}
+
+/* Cycle edge: the back-edge that closes the cycle (red) */
+.gv-static .gv-edge-line.gv-edge-cycle {
+  stroke: #ef4444;
+  stroke-width: 3px;
+  stroke-opacity: 1;
+}
+
+/* Visited-neighbour node: a neighbour already in the visited set (lavender) */
+.gv-node-circle.gv-visited-neighbour {
+  fill: #d8d4ef;
+  stroke: var(--ink, #19162b);
+  stroke-width: 2px;
+}
+
+/* Suppress the dim filter when visited + visited-neighbour overlap */
+.gv-node-circle.gv-visited.gv-visited-neighbour {
+  filter: none;
+  stroke: var(--ink, #19162b);
+}
+
+/* Edge chips in the EDGES tracking panel */
+.cy-edge-chip {
+  background: #dbeafe;
+  color: #1e40af;
+  border-color: #93c5fd !important;
+}
+
+/* ---------- cycle quiz graph legend ---------- */
+
+.cy-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  padding: 5px 2px 2px;
+  font-size: 10.5px;
+  color: var(--ht-muted, #6d8494);
+  font-family: var(--font-mono, monospace);
+}
+
+.cy-leg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cy-leg-swatch {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.cy-leg-line {
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* ---------- cycle quiz v2 (cyq2-*) — bag-based cycle-detection step quiz ----------
+   Self-contained: does not reuse the gv- or ht-bag-chip colour classes, but
+   the *look* is intentionally borrowed from graph-view.js's dark ink canvas +
+   amber/coral nodes, and neighbours-view.js's paper panel + adj-box chips, so
+   this quiz reads as part of the same visual system as the rest of the site. */
+
+.cyq2-quiz-side {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.cyq2-graph-root {
+  background: var(--ink);
+  background-image: radial-gradient(var(--ink-grid) 1px, transparent 1px);
+  background-size: 22px 22px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.cyq2-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* nodes — same amber/coral/ink palette as graph-view.js's .gv-node-circle */
+.cyq2-node-circle {
+  fill: var(--amber);
+  stroke: var(--amber-stroke);
+  stroke-width: 2px;
+  transition: fill 0.15s ease, stroke 0.15s ease, filter 0.15s ease;
+}
+
+.cyq2-node-glow {
+  fill: none;
+  stroke: #fbbf24;
+  stroke-width: 3px;
+  stroke-dasharray: 4 3;
+  animation: cyq2-glow-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes cyq2-glow-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 1; }
+}
+
+/* current (bagPick) — same coral "selected" treatment as .gv-selected */
+.cyq2-node-current {
+  fill: var(--coral);
+  stroke: #fdfeff;
+  stroke-width: 2.5px;
+}
+
+.cyq2-node-visited-nbr {
+  fill: #fb923c;
+  stroke: var(--line);
+}
+
+.cyq2-node-unvisited-nbr {
+  fill: #c4b5fd;
+  stroke: var(--line);
+}
+
+/* Visited: grayed out very slightly, white outline — mirrors .gv-visited */
+.cyq2-node-visited {
+  stroke: #fdfeff;
+  filter: brightness(0.92);
+}
+
+.cyq2-node-label {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 12px;
+  fill: var(--ink);
+  pointer-events: none;
+}
+
+/* edges — same translucent-white base + accent colours as .gv-edge-line */
+.cyq2-edge {
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 1.6px;
+}
+
+.cyq2-edge-active {
+  stroke: #ff9f6b;
+  stroke-width: 2.4px;
+}
+
+.cyq2-edge-used {
+  stroke: var(--neighbour-node);
+  stroke-width: 2.4px;
+  stroke-opacity: 0.95;
+}
+
+.cyq2-edge-cycle {
+  stroke: #ef4444;
+  stroke-width: 2.8px;
+}
+
+.cyq2-edge-label {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 10px;
+  fill: var(--amber);
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+/* side panels: VISITED / BAG / USED EDGES — same paper-box look as
+   neighbours-view.js's .nb-root, headed like .adj-heading */
+.cyq2-panel {
+  background: var(--highlight-box);
+  border: var(--border-w-thick) solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.7rem 0.75rem;
+}
+
+.cyq2-panel-header {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-on-paper);
+  margin-bottom: 0.5rem;
+}
+
+.cyq2-panel-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-height: 30px;
+  align-items: center;
+}
+
+.cyq2-panel-empty {
+  font-family: var(--font-mono);
+  color: var(--muted-on-paper);
+  font-size: 0.78rem;
+  font-style: italic;
+}
+
+/* chips — same look as .adj-box in graph.css / neighbours-view.js */
+.cyq2-chip {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 0.78rem;
+  padding: 0.24rem 0.55rem;
+  border-radius: var(--radius-sm);
+  border: var(--border-w) solid var(--line);
+  background: #fff;
+  color: var(--graphite);
+}
+
+.cyq2-chip-pick {
+  background: var(--coral);
+  border-color: var(--line);
+  color: var(--ink);
+  font-weight: 700;
+  animation: cyq2-chip-blink 1s ease-in-out infinite;
+}
+
+@keyframes cyq2-chip-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
+@media (max-width: 720px) {
+  .cyq2-quiz-side {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* per-neighbour sub-questions (Q4-Q6): one accordion block per neighbour,
+   each with its own independently-revealable answer. */
+.cyq2-nbr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.cyq2-nbr-block {
+  border: var(--border-w) solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--highlight-box);
+}
+
+.cyq2-nbr-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: var(--paper);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body);
+  color: var(--ink);
+  transition: background 0.15s ease;
+}
+
+.cyq2-nbr-toggle:hover {
+  background: var(--paper-edge);
+}
+
+/* the node-look chip, e.g. "B" — mirrors the graph's own amber node styling */
+.cyq2-nbr-node-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--amber);
+  border: var(--border-w) solid var(--line);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+
+/* the status pill, e.g. "unvisited" / "visited" */
+.cyq2-nbr-status-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  border: 1.5px solid transparent;
+  flex-shrink: 0;
+}
+
+.cyq2-nbr-status-unvisited {
+  background: #c4b5fd;
+  border-color: #6d28d9;
+  color: #3b0764;
+}
+
+.cyq2-nbr-status-visited {
+  background: #fb923c;
+  border-color: #9a3412;
+  color: #431407;
+}
+
+.cyq2-nbr-toggle-label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.cyq2-nbr-chevron {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.cyq2-nbr-answer {
+  max-height: 0;
+  overflow: hidden;
+  padding: 0 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--graphite);
+  transition: max-height 0.2s ease, padding 0.2s ease;
+}
+
+.cyq2-nbr-answer-visible {
+  max-height: 12rem;
+  padding: 10px 12px 12px;
+  border-top: var(--border-w) dashed var(--line);
+}
+
+.cyq2-nbr-answer-hidden {
+  color: var(--muted-on-paper);
+  font-size: 12.5px;
+  font-style: italic;
+}
+
+/* find_cycle code-block viz (right-hand panel) */
+.cy-code-viz {
+  gap: 0.55rem;
+}
+
+.cy-code-viz .cyq2-quiz-graph {
+  width: 100%;
+}
+
+.cy-code-viz .cyq2-quiz-side {
+  margin-top: 0;
+}
+
+.cy-code-viz .ht-quiz-controls {
+  margin-top: 8px;
 }
