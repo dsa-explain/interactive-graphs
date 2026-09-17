@@ -17,6 +17,7 @@ let _markerSeq = 0;
  *   neighbours?: Iterable<string>,
  *   visited?: Iterable<string>,
  *   pathEdges?: Iterable<string>,
+ *   nodeColors?: Record<string, string>|Map<string, string>,
  * }} StaticHighlight
  *
  * @param {HTMLElement} container
@@ -43,6 +44,17 @@ export function mountStaticGraphView(container, data, options = {}) {
   const currentId = highlight.current != null ? String(highlight.current) : null;
   const previousId = highlight.previous != null ? String(highlight.previous) : null;
   const nextId = highlight.next != null ? String(highlight.next) : null;
+  // Explicit edge-status sets (cycle quiz).
+  const activeEdgeSet = new Set([...(highlight.activeEdges ?? [])].map(String).filter(Boolean));
+  const usedEdgeSet = new Set([...(highlight.usedEdges ?? [])].map(String).filter(Boolean));
+  const visitedNeighboursHl = new Set([...(highlight.visitedNeighbours ?? [])].map(String).filter(Boolean));
+  const cycleEdgeSet = new Set(highlight.cycleEdge ? [String(highlight.cycleEdge)] : []);
+  const nodeColors =
+    highlight.nodeColors instanceof Map
+      ? highlight.nodeColors
+      : new Map(Object.entries(highlight.nodeColors || {}));
+  // When explicit edge sets are provided suppress the auto traveling-edge animation.
+  const explicitEdgeMode = activeEdgeSet.size > 0 || usedEdgeSet.size > 0 || cycleEdgeSet.size > 0;
   // Animated edges travel current → each neighbour; previous → current stays solid.
   const nodesIn = data?.nodes ?? [];
   const edgesIn = data?.edges ?? [];
@@ -185,16 +197,20 @@ export function mountStaticGraphView(container, data, options = {}) {
     .attr("class", "gv-edge")
     .attr("data-id", (d) => d.id);
 
-  // Base edge line. Path edges (incl. previous→current) stay solid; edges to
-  // neighbours get a dim underlay so the marching segment reads on top.
+  // Base edge line. Explicit sets (activeEdges/usedEdges/cycleEdge) take
+  // priority; otherwise fall back to the auto traveling-edge logic.
   edgeSel
     .append("line")
     .attr("class", (d) => {
       let cls = "gv-edge-line";
-      if (isTravelingEdge(d)) {
-        cls += " gv-traversed-edge gv-traversed-edge-active";
-      } else if (pathEdges.has(d.id)) {
+      if (cycleEdgeSet.has(d.id)) {
+        cls += " gv-edge-cycle";
+      } else if (activeEdgeSet.has(d.id)) {
+        cls += " gv-edge-active";
+      } else if (usedEdgeSet.has(d.id) || pathEdges.has(d.id)) {
         cls += " gv-traversed-edge";
+      } else if (!explicitEdgeMode && isTravelingEdge(d)) {
+        cls += " gv-traversed-edge gv-traversed-edge-active";
       }
       return cls;
     })
@@ -205,8 +221,9 @@ export function mountStaticGraphView(container, data, options = {}) {
     .attr("marker-end", directed ? `url(#${markerId})` : null);
 
   // Traveling highlight: short segment marching current → each neighbour.
+  // Suppressed when explicit edge sets are provided (cycle quiz step mode).
   edgeSel
-    .filter(isTravelingEdge)
+    .filter((d) => !explicitEdgeMode && isTravelingEdge(d))
     .append("line")
     .attr("class", "gv-edge-line gv-traveling-edge")
     .each(function (d) {
@@ -244,9 +261,16 @@ export function mountStaticGraphView(container, data, options = {}) {
     .attr("transform", (d) => `translate(${d.x},${d.y})`);
 
   nodeSel.append("circle").attr("r", 20).attr("class", (d) => {
+    const color = nodeColors.get(d.id);
+    if (color) {
+      let cls = `gv-node-circle gv-color-${color}`;
+      if (currentId != null && d.id === currentId) cls += " gv-color-focus";
+      return cls;
+    }
     let cls = "gv-node-circle";
-    // Role priority: current > previous/next > start/end > visited
+    // Role priority: current > visitedNeighbour > previous/next > start/end > visited
     if (currentId != null && d.id === currentId) cls += " gv-selected";
+    else if (visitedNeighboursHl.has(d.id)) cls += " gv-visited-neighbour";
     else if (previousId != null && d.id === previousId) cls += " gv-previous";
     else if (nextId != null && d.id === nextId) cls += " gv-neighbour";
     else if (neighbours.has(d.id)) cls += " gv-neighbour";
@@ -274,9 +298,10 @@ export function mountStaticGraphView(container, data, options = {}) {
 
   const roleOf = (d) => {
     if (currentId != null && d.id === currentId) return "current";
+    if (visitedNeighboursHl.has(d.id)) return "visited";
     if (previousId != null && d.id === previousId) return "previous";
     if (nextId != null && d.id === nextId) return "next";
-    if (neighbours.has(d.id)) return "next";
+    if (neighbours.has(d.id)) return "unvisited";
     if (startId != null && d.id === startId) return "start";
     if (endId != null && d.id === endId) return "end";
     return "";
