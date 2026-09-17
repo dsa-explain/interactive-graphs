@@ -8,24 +8,43 @@ project:
 
 website:
   title: "Graph Structures Explorer"
-  navbar:
-    left:
+  sidebar:
+    style: "docked"
+    search: true
+    contents:
       - href: index.qmd
         text: Home
-      - href: question-bank.qmd
-        text: Question Bank
-      - href: test_qmds/coding_sandbox.qmd
-        text: Coding Sandbox
-      - href: test_qmds/neighbours.qmd
-        text: Neighbours
-      - href: test_qmds/sandbox.qmd
-        text: Sandbox
-      - href: test_qmds/graph-representation.qmd
-        text: Graph Representation
-      - href: test_qmds/count-islands.qmd
-        text: Graph Connectivity
-      - href: test_qmds/directed-weighted-graph.qmd
-        text: Directed and Weighted Graph
+      - section: "Basics"
+        contents:
+          - href: test_qmds/neighbours.qmd
+            text: Neighbours
+          - href: test_qmds/coding_sandbox.qmd
+            text: Coding Sandbox
+          - href: test_qmds/sandbox.qmd
+            text: Sandbox
+          - href: test_qmds/graph-representation.qmd
+            text: Graph Representation
+          - href: test_qmds/directed-weighted-graph.qmd
+            text: Directed and Weighted Graph
+      - section: "Graph Algorithms"
+        contents:
+          - href: test_qmds/graph-traversal.qmd
+            text: Graph Traversal
+          - href: test_qmds/graph-traversal-2.qmd
+            text: Traversal Strategies
+          - href: test_qmds/traversal-undirected-practice.qmd
+            text: Undirected Graph Traversal Practice
+          - href: test_qmds/directed-traversal.qmd
+            text: Directed Graph Traversal
+          - href: test_qmds/count-islands.qmd
+            text: Graph Connectivity
+          - href: test_qmds/graph-cycles.qmd
+            text: Cycles in Graphs
+      - section: "Glossary"
+        contents:
+          - href: question-bank.qmd
+            text: Question Bank
+  
 format:
   html:
     theme: cosmo
@@ -35,4 +54,4 @@ format:
       body-width: 1000px
     embed-resources: false
 
-jupyter: dsa_explain
+jupyter: dsa
