@@ -3,6 +3,7 @@ project:
   output-dir: _site
   render:
     - index.qmd
+    - question-bank.qmd
     - test_qmds/*.qmd
 
 website:
@@ -23,6 +24,8 @@ website:
             text: Sandbox
           - href: test_qmds/graph-representation.qmd
             text: Graph Representation
+          - href: test_qmds/directed-weighted-graph.qmd
+            text: Directed and Weighted Graph
       - section: "Graph Algorithms"
         contents:
           - href: test_qmds/graph-traversal.qmd
@@ -37,7 +40,10 @@ website:
             text: Graph Connectivity
           - href: test_qmds/graph-cycles.qmd
             text: Cycles in Graphs
-
+        - section: "Glossary"
+          - href: question-bank.qmd
+            text: Question Bank
+  
 format:
   html:
     theme: cosmo
