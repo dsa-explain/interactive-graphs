@@ -1,0 +1,126 @@
+---
+title: "Question Bank"
+subtitle: "Exercise catalog and graph glossary"
+---
+
+Use this catalog to find every interactive exercise in the Graph Structures
+Lab. Each link opens the activity or question in the web text.
+
+## Exercise Catalog
+
+```{=html}
+<!--
+  Maintenance: when introducing a new tag, add a matching button below with a
+  unique data-tag slug, then add a pastel .tag-<slug> colour in graph.css.
+  Use that same slug in each relevant question card's data-tags attribute.
+-->
+<div class="question-bank-controls" aria-label="Question bank controls">
+  <fieldset class="tag-filter" aria-describedby="tag-filter-help">
+    <legend>Filter by tag</legend>
+    <p id="tag-filter-help" class="visually-hidden">Select one or more tags. Questions must have every selected tag to be shown.</p>
+    <div class="tag-filter-buttons">
+      <button type="button" class="tag-filter-button tag-neighbours" data-tag="neighbours" aria-pressed="false">Neighbours</button>
+      <button type="button" class="tag-filter-button tag-undirected-graphs" data-tag="undirected-graphs" aria-pressed="false">Undirected graphs</button>
+      <button type="button" class="tag-filter-button tag-adjacency-lists" data-tag="adjacency-lists" aria-pressed="false">Adjacency lists</button>
+      <button type="button" class="tag-filter-button tag-coding" data-tag="coding" aria-pressed="false">Coding</button>
+      <button type="button" class="tag-filter-button tag-connectivity" data-tag="connectivity" aria-pressed="false">Connectivity</button>
+      <button type="button" class="tag-filter-button tag-search" data-tag="search" aria-pressed="false">Search</button>
+      <button type="button" class="tag-filter-button tag-directed-graphs" data-tag="directed-graphs" aria-pressed="false">Directed graphs</button>
+    </div>
+  </fieldset>
+  <button type="button" id="clear-tag-filters" class="clear-tag-filters" disabled>Clear selection</button>
+</div>
+```
+
+<p id="question-bank-status" class="question-bank-status" aria-live="polite"></p>
+
+<div id="question-list" class="question-list">
+  <!--
+    Maintenance: add a card here for every new question or exercise.
+    Set data-tags to the space-separated tag slugs that match the filter buttons
+    above. Update the title, visible tag labels, and link (including an optional
+    heading anchor) for the new activity.
+  -->
+  <article class="question-card" data-order="1" data-tags="neighbours undirected-graphs">
+    <h3>Find a node's neighbours</h3>
+    <p class="topic-tags"><span class="topic-tag">Neighbours</span><span class="topic-tag">Undirected graphs</span></p>
+    <p><a href="test_qmds/neighbours.qmd">Select a node and identify its neighbours</a>.</p>
+  </article>
+  <article class="question-card" data-order="2" data-tags="neighbours adjacency-lists undirected-graphs">
+    <h3>Represent a graph</h3>
+    <p class="topic-tags"><span class="topic-tag">Neighbours</span><span class="topic-tag">Adjacency lists</span><span class="topic-tag">Undirected graphs</span></p>
+    <p><a href="test_qmds/graph-representation.qmd#question-get-the-neighbours-of-a-node-in-a-graph">Read graph representations and get a node's neighbours</a>.</p>
+  </article>
+  <article class="question-card" data-order="3" data-tags="coding connectivity search neighbours">
+    <h3>Count islands</h3>
+    <p class="topic-tags"><span class="topic-tag">Coding</span><span class="topic-tag">Connectivity</span><span class="topic-tag">Search</span><span class="topic-tag">Neighbours</span></p>
+    <p><a href="test_qmds/count-islands.qmd#question-count-the-number-of-islands-in-a-graph">Count the islands in a graph</a>.</p>
+  </article>
+  <article class="question-card" data-order="4" data-tags="neighbours directed-graphs">
+    <h3>Follow directed neighbours</h3>
+    <p class="topic-tags"><span class="topic-tag">Neighbours</span><span class="topic-tag">Directed graphs</span></p>
+    <p><a href="test_qmds/directed-weighted-graph.qmd#directed-neighbours">Identify the outgoing neighbours of a node</a>.</p>
+  </article>
+  <article class="question-card" data-order="5" data-tags="directed-graphs search">
+    <h3>Find a weighted shortest path</h3>
+    <p class="topic-tags"><span class="topic-tag">Directed graphs</span><span class="topic-tag">Search</span></p>
+    <p><a href="test_qmds/directed-weighted-graph.qmd#shortest-path-question">Choose the shortest path from A to D</a>.</p>
+  </article>
+</div>
+
+```{=html}
+<script>
+  (() => {
+    const list = document.querySelector("#question-list");
+    const tagButtons = Array.from(document.querySelectorAll(".tag-filter-button"));
+    const clearTagFilters = document.querySelector("#clear-tag-filters");
+    const status = document.querySelector("#question-bank-status");
+    const cards = Array.from(list.querySelectorAll(".question-card"));
+
+    function updateQuestions() {
+      const selectedTags = tagButtons
+        .filter((button) => button.getAttribute("aria-pressed") === "true")
+        .map((button) => button.dataset.tag);
+      cards.forEach((card) => {
+        const cardTags = card.dataset.tags.split(" ");
+        const matches = selectedTags.length === 0 || selectedTags.every((tag) => cardTags.includes(tag));
+        card.hidden = !matches;
+        list.append(card);
+      });
+
+      const count = cards.filter((card) => !card.hidden).length;
+      clearTagFilters.disabled = selectedTags.length === 0;
+      status.textContent = `${count} question${count === 1 ? "" : "s"} shown${selectedTags.length ? ` for ${selectedTags.length} selected tag${selectedTags.length === 1 ? "" : "s"}` : ""}.`;
+    }
+
+    tagButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const selected = button.getAttribute("aria-pressed") === "true";
+        button.setAttribute("aria-pressed", String(!selected));
+        updateQuestions();
+      });
+    });
+    clearTagFilters.addEventListener("click", () => {
+      tagButtons.forEach((button) => button.setAttribute("aria-pressed", "false"));
+      updateQuestions();
+    });
+    updateQuestions();
+  })();
+</script>
+```
+
+
+## Graph Dictionary
+
+| Term | Definition |
+|---|---|
+| Node/Vertex | A point in the graph. |
+| Edge | A connection between two vertices. |
+| Degree | The number of edges connected to a vertex. |
+| Path | A sequence of vertices connected by edges, with no repeated edges. |
+| Connected | Every vertex is reachable from every other vertex. |
+| Component | A maximal connected subgraph. |
+| Complete graph K_n | A graph in which every vertex is connected to every other vertex; it has n(n-1)/2 edges. |
+| Planar graph | A graph that can be drawn in 2D without edge crossings. |
+| Euler path | A path that uses every edge exactly once. |
+| Euler circuit | An Euler path that starts and ends at the same vertex. |
