@@ -40,7 +40,8 @@ website:
             text: Graph Connectivity
           - href: test_qmds/graph-cycles.qmd
             text: Cycles in Graphs
-        - section: "Glossary"
+      - section: "Glossary"
+        contents:
           - href: question-bank.qmd
             text: Question Bank
   
