@@ -97,6 +97,8 @@ export function planToPython(plan, opts = {}) {
  *   workspaceLabel?: string,
  *   preplaced?: string[],
  *   solutionOrder?: string[],
+ *   solutionLabel?: string,
+ *   showSolutionButton?: boolean,
  *   lockedBefore?: Array<{code: string, label?: string}>,
  *   lockedContainer?: {code: string, label?: string},
  *   lockedAfter?: Array<{code: string, label?: string}>,
@@ -218,11 +220,11 @@ export function mountCodeBlocksView(container, blocks = DEFAULT_BLOCKS, options 
   controls.appendChild(resetBtn);
 
   let solutionBtn = null;
-  if (solutionOrder) {
+  if (solutionOrder && options.showSolutionButton !== false) {
     solutionBtn = document.createElement("button");
     solutionBtn.type = "button";
     solutionBtn.className = "cb-btn cb-btn-solution";
-    solutionBtn.textContent = "Get Solution";
+    solutionBtn.textContent = options.solutionLabel ?? "Get Solution";
     controls.appendChild(solutionBtn);
   }
   container.appendChild(controls);

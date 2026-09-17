@@ -23,6 +23,9 @@ export class GraphEngine {
       currentNode: null,
       currentNeighbor: null,
       activeEdges: new Set(), // edge ids currently highlighted as traversed
+      // Optional per-node colour overlay (e.g. white/blue/black 3-colouring).
+      // Empty means "use the view's default fill".
+      nodeColors: new Map(),
     };
     this._listeners = new Set();
     this._nodeSeq = 0;
@@ -90,6 +93,7 @@ export class GraphEngine {
         currentNode: this.viz.currentNode,
         currentNeighbor: this.viz.currentNeighbor,
         activeEdges: new Set(this.viz.activeEdges),
+        nodeColors: new Map(this.viz.nodeColors ?? []),
       },
     };
   }
@@ -184,7 +188,7 @@ export class GraphEngine {
   /**
    * Update algorithm highlight overlay. Pass a partial state; omitted keys
    * are left unchanged. Use `clearViz()` to wipe everything.
-   * @param {{visited?: Iterable, frontier?: Iterable, currentNode?: string|null, currentNeighbor?: string|null, activeEdges?: Iterable}} patch
+   * @param {{visited?: Iterable, frontier?: Iterable, currentNode?: string|null, currentNeighbor?: string|null, activeEdges?: Iterable, nodeColors?: Map|Object}} patch
    */
   setViz(patch = {}) {
     if (patch.visited !== undefined) {
@@ -202,6 +206,12 @@ export class GraphEngine {
     if (patch.activeEdges !== undefined) {
       this.viz.activeEdges = new Set(patch.activeEdges);
     }
+    if (patch.nodeColors !== undefined) {
+      this.viz.nodeColors =
+        patch.nodeColors instanceof Map
+          ? new Map(patch.nodeColors)
+          : new Map(Object.entries(patch.nodeColors || {}));
+    }
     this._notify();
   }
 
@@ -211,6 +221,7 @@ export class GraphEngine {
     this.viz.currentNode = null;
     this.viz.currentNeighbor = null;
     this.viz.activeEdges = new Set();
+    this.viz.nodeColors = new Map();
     this._notify();
   }
 
