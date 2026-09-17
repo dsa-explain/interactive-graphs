@@ -3,6 +3,7 @@ project:
   output-dir: _site
   render:
     - index.qmd
+    - question-bank.qmd
     - test_qmds/*.qmd
 
 website:
@@ -11,6 +12,8 @@ website:
     left:
       - href: index.qmd
         text: Home
+      - href: question-bank.qmd
+        text: Question Bank
       - href: test_qmds/coding_sandbox.qmd
         text: Coding Sandbox
       - href: test_qmds/neighbours.qmd

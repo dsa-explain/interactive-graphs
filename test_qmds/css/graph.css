@@ -1059,3 +1059,125 @@ h1, h2, h3, .title {
 .mc-feedback.mc-incorrect {
   color: #9a6400;
 }
+
+/* ---------- question-bank tags and controls ---------- */
+
+.topic-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.6rem 0 1rem;
+}
+
+.topic-tag {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  background: var(--highlight-box);
+  border: var(--border-w) solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.question-bank-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem 1rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.tag-filter,
+.question-bank-controls label {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.tag-filter legend {
+  margin-bottom: 0.3rem;
+}
+
+.tag-filter-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.tag-filter-button,
+.clear-tag-filters {
+  padding: 0.35rem 0.65rem;
+  border: var(--border-w) solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.tag-filter-button:hover,
+.tag-filter-button[aria-pressed="true"] {
+  filter: brightness(0.87);
+}
+
+.tag-filter-button[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.tag-filter-button:focus-visible,
+.clear-tag-filters:focus-visible {
+  outline: 3px solid var(--coral);
+  outline-offset: 2px;
+}
+
+.tag-neighbours { background: #cfe8ff; }
+.tag-undirected-graphs { background: #d9f6d4; }
+.tag-adjacency-lists { background: #fff0bd; }
+.tag-coding { background: #ead8ff; }
+.tag-connectivity { background: #ffd8e5; }
+.tag-search { background: #c9f2ec; }
+.tag-directed-graphs { background: #ffdcbc; }
+
+.clear-tag-filters {
+  background: var(--paper);
+  border-radius: var(--radius-sm);
+}
+
+.clear-tag-filters:hover:not(:disabled) {
+  background: var(--paper-edge);
+}
+
+.clear-tag-filters:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.question-bank-status {
+  margin: 0.75rem 0;
+  color: var(--graphite);
+}
+
+.question-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.question-card {
+  padding: 1rem 1.1rem;
+  border: var(--border-w-thick) solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+}
+
+.question-card h3,
+.question-card p:last-child {
+  margin: 0;
+}
