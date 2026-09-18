@@ -49,7 +49,9 @@ format:
   html:
     theme: cosmo
     toc: false
-    css: test_qmds/css/graph.css
+    css:
+      - test_qmds/css/graph.css
+      - test_qmds/css/content-boxes.css
     grid:
       body-width: 1000px
     embed-resources: false
