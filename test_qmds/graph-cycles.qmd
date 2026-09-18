@@ -52,7 +52,7 @@ This method will work similarly for both BFS and DFS. Let's do a DFS implementat
 
 :::
 
-Convert those steps into code. Drag the blocks into the loop body — initialisation is given. Press **Reveal solution** if you get stuck, then **Play** or **Next step** to watch the search on the same graph. At each node the current node and all of its neighbours light up together; visited nodes, visited edges, and the bag update underneath.
+Convert those steps into code. Drag the blocks into the loop body — initialisation is given. Press **Get Solution** if you get stuck, then **Play** or **Next step** to watch the search on the same graph. At each node the current node and all of its neighbours light up together; visited nodes, visited edges, and the bag update underneath.
 
 ::: {.panel-grid}
 ::: {.panel}
@@ -92,7 +92,6 @@ findCycleViz = mountFindCycleCodeViz(document.querySelector("#find-cycle-viz"), 
     if (frame?.blockId) findCycleBlocks.highlight(frame.blockId);
     else findCycleBlocks.clearHighlight();
   },
-  onRevealSolution: () => findCycleBlocks.applySolution(),
 })
 ```
 
@@ -155,7 +154,7 @@ Do this for each incomplete node. At any point if we find a cycle, we return it.
 
 :::
 
-Convert those steps into code. Drag the blocks into the **dfs** body — the colour setup is given. Press **Reveal solution** if you get stuck, then **Play** or **Next step** to watch the 3-colour search on the same graph.
+Convert those steps into code. Drag the blocks into the **dfs** body — the colour setup is given. Press **Get Solution** if you get stuck, then **Play** or **Next step** to watch the 3-colour search on the same graph.
 
 ::: {.panel-grid}
 ::: {.panel}
@@ -194,7 +193,6 @@ directedCycleViz = mountDirectedCycleCodeViz(document.querySelector("#directed-c
     if (frame?.blockId) directedCycleBlocks.highlight(frame.blockId);
     else directedCycleBlocks.clearHighlight();
   },
-  onRevealSolution: () => directedCycleBlocks.applySolution(),
 })
 ```
 

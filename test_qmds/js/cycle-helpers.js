@@ -755,7 +755,6 @@ export const FIND_CYCLE_CODE_OPTIONS = {
   workspaceLabel: "Loop body — while bag:",
   preplaced: [],
   solutionOrder: ["pop", "mark", "scan"],
-  showSolutionButton: false,
   lockedBefore: [
     {
       code:
@@ -943,7 +942,6 @@ function renderFindCycleLegend() {
  *   graph?: {nodes: Array, edges: Array},
  *   startId?: string,
  *   onStep?: (frame: object|null) => void,
- *   onRevealSolution?: () => void,
  * }} [options]
  */
 export function mountFindCycleCodeViz(container, options = {}) {
@@ -958,7 +956,6 @@ export function mountFindCycleCodeViz(container, options = {}) {
   const graph = options.graph ?? CYCLE_QUIZ2_GRAPH;
   const startId = options.startId ?? graph.nodes[0]?.id ?? "A";
   const onStep = options.onStep ?? (() => {});
-  const onRevealSolution = options.onRevealSolution ?? null;
 
   const frames = buildFindCycleFrames(graph, startId);
 
@@ -1093,19 +1090,6 @@ export function mountFindCycleCodeViz(container, options = {}) {
 
   function renderControls() {
     controls.innerHTML = "";
-
-    if (onRevealSolution) {
-      const revealBtn = document.createElement("button");
-      revealBtn.type = "button";
-      revealBtn.className = "ht-nav-btn";
-      revealBtn.textContent = "Reveal solution";
-      revealBtn.onclick = () => {
-        stopPlayback();
-        onRevealSolution();
-        reset();
-      };
-      controls.appendChild(revealBtn);
-    }
 
     const playBtn = document.createElement("button");
     playBtn.type = "button";
@@ -1689,7 +1673,6 @@ export const DIRECTED_CYCLE_CODE_OPTIONS = {
   workspaceLabel: "dfs(node) body",
   preplaced: [],
   solutionOrder: ["mark_blue", "scan", "mark_black", "return_false"],
-  showSolutionButton: false,
   lockedBefore: [
     {
       code:
@@ -1896,7 +1879,6 @@ function renderDirectedCycleCodeLegend() {
  *   width?: number, height?: number, stepDelayMs?: number,
  *   graph?: {nodes: Array, edges: Array},
  *   onStep?: (frame: object|null) => void,
- *   onRevealSolution?: () => void,
  * }} [options]
  */
 export function mountDirectedCycleCodeViz(container, options = {}) {
@@ -1910,7 +1892,6 @@ export function mountDirectedCycleCodeViz(container, options = {}) {
   const stepDelayMs = options.stepDelayMs ?? 900;
   const graph = options.graph ?? DIRECTED_CYCLE_CODE_GRAPH;
   const onStep = options.onStep ?? (() => {});
-  const onRevealSolution = options.onRevealSolution ?? null;
   const frames = buildDirectedCycleCodeFrames(graph);
 
   container.innerHTML = "";
@@ -2066,19 +2047,6 @@ export function mountDirectedCycleCodeViz(container, options = {}) {
 
   function renderControls() {
     controls.innerHTML = "";
-
-    if (onRevealSolution) {
-      const revealBtn = document.createElement("button");
-      revealBtn.type = "button";
-      revealBtn.className = "ht-nav-btn";
-      revealBtn.textContent = "Reveal solution";
-      revealBtn.onclick = () => {
-        stopPlayback();
-        onRevealSolution();
-        reset();
-      };
-      controls.appendChild(revealBtn);
-    }
 
     const playBtn = document.createElement("button");
     playBtn.type = "button";
