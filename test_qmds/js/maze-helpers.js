@@ -18,20 +18,10 @@
 // Pyodide (same approach as islands-viz-view.js / graph-traversal-helpers.js)
 // so what's on screen reflects what the code actually does.
 
-const PYODIDE_INDEX = "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/";
-const PYODIDE_MODULE = "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.mjs";
-
-let _pyodidePromise = null;
-
-function getPyodide() {
-  if (!_pyodidePromise) {
-    _pyodidePromise = (async () => {
-      const { loadPyodide } = await import(/* @vite-ignore */ PYODIDE_MODULE);
-      return loadPyodide({ indexURL: PYODIDE_INDEX });
-    })();
-  }
-  return _pyodidePromise;
-}
+import { escapeHtml } from "./utils/dom-utils.js";
+import { getPyodide } from "./utils/pyodide-loader.js";
+import { createPlaybackTimer } from "./utils/frame-playback.js";
+import { renderChipsHtml, renderChipPanelShell } from "./utils/chip-panels.js";
 
 // ---------------------------------------------------------------------------
 // Reference algorithm + shared cell-state vocabulary
@@ -270,6 +260,16 @@ export const NEIGHBOURS_CODE_OPTIONS = {
   heading: "get_neighbours steps",
   workspaceLabel: "Your plan",
   preplaced: ["init_list", "for_dir"],
+  solutionOrder: [
+    "init_list",
+    {
+      id: "for_dir",
+      children: [
+        "compute_coords",
+        { id: "in_bounds", children: [{ id: "legal_move", children: ["add_neighbour"] }] },
+      ],
+    },
+  ],
   lockedBefore: [{ code: "DIRECTIONS = [(-1, 0), (1, 0), (0, -1), (0, 1)]" }],
 };
 
@@ -627,8 +627,7 @@ export function mountBfsMazeView(container, matrix, options = {}) {
   let path = [];
   let found = false;
   let frameIndex = -1; // -1 = idle
-  let playing = false;
-  let playTimer = null;
+  const playback = createPlaybackTimer();
   let compiling = false;
   let hasCompiled = false;
 
@@ -637,11 +636,7 @@ export function mountBfsMazeView(container, matrix, options = {}) {
   }
 
   function stopPlayback() {
-    playing = false;
-    if (playTimer != null) {
-      clearTimeout(playTimer);
-      playTimer = null;
-    }
+    playback.stop();
   }
 
   function setStatus(text, kind) {
@@ -650,7 +645,7 @@ export function mountBfsMazeView(container, matrix, options = {}) {
   }
 
   function renderControls() {
-    playBtn.textContent = compiling ? "Loading\u2026" : playing ? "Pause" : "Play";
+    playBtn.textContent = compiling ? "Loading\u2026" : playback.isPlaying() ? "Pause" : "Play";
     playBtn.disabled = compiling;
     stepBtn.disabled = compiling;
   }
@@ -777,11 +772,11 @@ export function mountBfsMazeView(container, matrix, options = {}) {
       return;
     }
     frameIndex = 0;
-    playing = true;
+    playback.start();
     render();
 
     const tick = () => {
-      if (!playing) return;
+      if (!playback.isPlaying()) return;
       if (frameIndex >= totalSteps() - 1) {
         stopPlayback();
         render();
@@ -789,14 +784,14 @@ export function mountBfsMazeView(container, matrix, options = {}) {
       }
       frameIndex += 1;
       render();
-      if (playing && frameIndex < totalSteps() - 1) {
-        playTimer = setTimeout(tick, stepDelayMs);
+      if (playback.isPlaying() && frameIndex < totalSteps() - 1) {
+        playback.schedule(tick, stepDelayMs);
       } else {
         stopPlayback();
         render();
       }
     };
-    playTimer = setTimeout(tick, stepDelayMs);
+    playback.schedule(tick, stepDelayMs);
   }
 
   function reset() {
@@ -810,7 +805,7 @@ export function mountBfsMazeView(container, matrix, options = {}) {
   }
 
   playBtn.addEventListener("click", () => {
-    if (playing) {
+    if (playback.isPlaying()) {
       stopPlayback();
       render();
     } else {
@@ -874,14 +869,6 @@ function cellLabel(cell) {
 
 function sameCell(a, b) {
   return !!a && !!b && a[0] === b[0] && a[1] === b[1];
-}
-
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 function resolveNotebookState(matrix, overrides, r, c) {
@@ -1045,6 +1032,16 @@ export const MANPAC_NEIGHBOURS_CODE_OPTIONS = {
   heading: "get_neighbours steps",
   workspaceLabel: "Your plan",
   preplaced: ["init_list", "for_dir"],
+  solutionOrder: [
+    "init_list",
+    {
+      id: "for_dir",
+      children: [
+        "compute_coords",
+        { id: "in_bounds", children: [{ id: "legal_move", children: ["add_neighbour"] }] },
+      ],
+    },
+  ],
   lockedBefore: [{ code: "DIRECTIONS = [(-1, 0), (1, 0), (0, -1), (0, 1)]" }],
 };
 
@@ -1834,59 +1831,58 @@ function eventsToManpacFrames(events, start, target, style = {}) {
 }
 
 function renderManpacBagPanel({ items, pick, pickDone, footer, title, emptyText }) {
-  const chips =
-    items.length === 0
-      ? `<div class="ht-bag-empty">${escapeHtml(emptyText ?? "bag empty — awaiting cells…")}</div>`
-      : items
-          .map((cell) => {
-            const done = pickDone && sameCell(cell, pickDone);
-            const picked = !done && pick && sameCell(cell, pick);
-            const cls = done
-              ? " ht-bag-chip-pick-done"
-              : picked
-                ? " ht-bag-chip-pick"
-                : "";
-            const check = done
-              ? `<span class="ht-bag-chip-check" aria-hidden="true">✓</span>`
-              : "";
-            return `<span class="ht-bag-chip${cls}">${escapeHtml(cellLabel(cell))}${check}</span>`;
-          })
-          .join("");
+  const chips = renderChipsHtml(items, {
+    chipClass: "ht-bag-chip",
+    classFor: (cell) => {
+      const done = pickDone && sameCell(cell, pickDone);
+      const picked = !done && pick && sameCell(cell, pick);
+      return done ? " ht-bag-chip-pick-done" : picked ? " ht-bag-chip-pick" : "";
+    },
+    decorFor: (cell) =>
+      pickDone && sameCell(cell, pickDone)
+        ? `<span class="ht-bag-chip-check" aria-hidden="true">✓</span>`
+        : "",
+    labelOf: (cell) => cellLabel(cell),
+    emptyClass: "ht-bag-empty",
+    emptyText: emptyText ?? "bag empty — awaiting cells…",
+  });
 
-  return `
-    <div class="ht-bag" aria-label="Bag">
-      <div class="ht-bag-header">
-        <span class="ht-bag-title">${escapeHtml(title ?? "ENCOUNTERED, NOTED TO BE EXPLORED")}</span>
-      </div>
-      <div class="ht-bag-body">${chips}</div>
-      <div class="ht-bag-footer">${escapeHtml(footer)}</div>
-    </div>
-  `;
+  return renderChipPanelShell({
+    wrapperClass: "ht-bag",
+    ariaLabel: "Bag",
+    headerClass: "ht-bag-header",
+    titleClass: "ht-bag-title",
+    title: title ?? "ENCOUNTERED, NOTED TO BE EXPLORED",
+    bodyClass: "ht-bag-body",
+    bodyHtml: chips,
+    footerClass: "ht-bag-footer",
+    footerHtml: escapeHtml(footer),
+  });
 }
 
 function renderManpacTrackingPanel(items) {
-  const chips =
-    items.length === 0
-      ? `<div class="ht-track-empty">no cells logged yet…</div>`
-      : items
-          .map((item) => {
-            const cell = item.cell ?? item;
-            const dist = item.dist;
-            const label =
-              dist == null ? cellLabel(cell) : `${cellLabel(cell)}:${dist}`;
-            return `<span class="ht-track-chip">${escapeHtml(label)}</span>`;
-          })
-          .join("");
+  const chips = renderChipsHtml(items, {
+    chipClass: "ht-track-chip",
+    labelOf: (item) => {
+      const cell = item.cell ?? item;
+      const dist = item.dist;
+      return dist == null ? cellLabel(cell) : `${cellLabel(cell)}:${dist}`;
+    },
+    emptyClass: "ht-track-empty",
+    emptyText: "no cells logged yet…",
+  });
 
-  return `
-    <div class="ht-track" aria-label="Tracking">
-      <div class="ht-track-header">
-        <span class="ht-track-title">TRACKING</span>
-      </div>
-      <div class="ht-track-body">${chips}</div>
-      <div class="ht-track-footer">visited cells — distance from start</div>
-    </div>
-  `;
+  return renderChipPanelShell({
+    wrapperClass: "ht-track",
+    ariaLabel: "Tracking",
+    headerClass: "ht-track-header",
+    titleClass: "ht-track-title",
+    title: "TRACKING",
+    bodyClass: "ht-track-body",
+    bodyHtml: chips,
+    footerClass: "ht-track-footer",
+    footerHtml: "visited cells — distance from start",
+  });
 }
 
 /**
@@ -1959,21 +1955,12 @@ export function mountManpacTraversalView(container, matrix, options = {}) {
 
   let frames = [];
   let frameIndex = -1;
-  let playing = false;
-  let playTimer = null;
+  const playback = createPlaybackTimer();
   let compiling = false;
   let statusOverride = null;
 
-  function clearPlayTimer() {
-    if (playTimer != null) {
-      clearTimeout(playTimer);
-      playTimer = null;
-    }
-  }
-
   function stopPlayback() {
-    playing = false;
-    clearPlayTimer();
+    playback.stop();
   }
 
   function currentFrame() {
@@ -2141,11 +2128,11 @@ export function mountManpacTraversalView(container, matrix, options = {}) {
       return;
     }
     frameIndex = 0;
-    playing = true;
+    playback.start();
     render();
 
     const tick = () => {
-      if (!playing) return;
+      if (!playback.isPlaying()) return;
       if (frameIndex >= frames.length - 1) {
         stopPlayback();
         render();
@@ -2153,14 +2140,14 @@ export function mountManpacTraversalView(container, matrix, options = {}) {
       }
       frameIndex += 1;
       render();
-      if (playing && frameIndex < frames.length - 1) {
-        playTimer = setTimeout(tick, stepDelayMs);
+      if (playback.isPlaying() && frameIndex < frames.length - 1) {
+        playback.schedule(tick, stepDelayMs);
       } else {
         stopPlayback();
         render();
       }
     };
-    playTimer = setTimeout(tick, stepDelayMs);
+    playback.schedule(tick, stepDelayMs);
   }
 
   function reset() {
@@ -2177,10 +2164,10 @@ export function mountManpacTraversalView(container, matrix, options = {}) {
     const playBtn = document.createElement("button");
     playBtn.type = "button";
     playBtn.className = "ht-nav-btn";
-    playBtn.textContent = compiling ? "Loading…" : playing ? "Pause" : "Play";
+    playBtn.textContent = compiling ? "Loading…" : playback.isPlaying() ? "Pause" : "Play";
     playBtn.disabled = compiling;
     playBtn.onclick = () => {
-      if (playing) {
+      if (playback.isPlaying()) {
         stopPlayback();
         render();
       } else {

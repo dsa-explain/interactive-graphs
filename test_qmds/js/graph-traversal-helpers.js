@@ -3,6 +3,14 @@
 // Visual theme lives here (separate from gv-* chalk/ink graphs):
 // square rooms, orthogonal vents, light playful station look, blink highlights.
 
+import { escapeHtml } from "./utils/dom-utils.js";
+import { getPyodide as getHeatPyodide } from "./utils/pyodide-loader.js";
+import { buildNavControls } from "./utils/quiz-nav.js";
+import { formatCapturedOutput } from "./utils/py-harness-utils.js";
+import { createPlaybackTimer } from "./utils/frame-playback.js";
+import { renderMcqOptionsHtml, renderMcqFeedbackHtml } from "./utils/guided-quiz-core.js";
+import { renderChipsHtml, renderChipPanelShell } from "./utils/chip-panels.js";
+
 // ---------------------------------------------------------------------------
 // Station graph data (edit-friendly: change nodes/edges here)
 // ---------------------------------------------------------------------------
@@ -170,34 +178,34 @@ export function renderBagPanel(opts = {}) {
   const emptyText = opts.emptyText ?? "bay empty — awaiting rooms…";
   const footer = opts.footer ?? "unordered";
 
-  const chips =
-    items.length === 0
-      ? `<div class="ht-bag-empty">${escapeHtml(emptyText)}</div>`
-      : items
-          .map((id) => {
-            const done = pickDone != null && id === pickDone;
-            const picked = !done && pick != null && id === pick;
-            const cls = done
-              ? " ht-bag-chip-pick-done"
-              : picked
-                ? " ht-bag-chip-pick"
-                : "";
-            const check = done
-              ? `<span class="ht-bag-chip-check" aria-hidden="true">✓</span>`
-              : "";
-            return `<span class="ht-bag-chip${cls}" data-id="${escapeHtml(id)}">${escapeHtml(roomChipLabel(id))}${check}</span>`;
-          })
-          .join("");
+  const chips = renderChipsHtml(items, {
+    chipClass: "ht-bag-chip",
+    classFor: (id) => {
+      const done = pickDone != null && id === pickDone;
+      const picked = !done && pick != null && id === pick;
+      return done ? " ht-bag-chip-pick-done" : picked ? " ht-bag-chip-pick" : "";
+    },
+    decorFor: (id) =>
+      pickDone != null && id === pickDone
+        ? `<span class="ht-bag-chip-check" aria-hidden="true">✓</span>`
+        : "",
+    labelOf: (id) => roomChipLabel(id),
+    dataIdOf: (id) => id,
+    emptyClass: "ht-bag-empty",
+    emptyText,
+  });
 
-  return `
-    <div class="ht-bag" aria-label="Bag">
-      <div class="ht-bag-header">
-        <span class="ht-bag-title">${escapeHtml(title)}</span>
-      </div>
-      <div class="ht-bag-body">${chips}</div>
-      <div class="ht-bag-footer">${escapeHtml(footer)}</div>
-    </div>
-  `;
+  return renderChipPanelShell({
+    wrapperClass: "ht-bag",
+    ariaLabel: "Bag",
+    headerClass: "ht-bag-header",
+    titleClass: "ht-bag-title",
+    title,
+    bodyClass: "ht-bag-body",
+    bodyHtml: chips,
+    footerClass: "ht-bag-footer",
+    footerHtml: escapeHtml(footer),
+  });
 }
 
 /**
@@ -209,25 +217,25 @@ export function renderTrackingPanel(opts = {}) {
   const title = opts.title ?? "EXPLORED ROOMS";
   const emptyText = opts.emptyText ?? "no rooms logged yet…";
 
-  const chips =
-    items.length === 0
-      ? `<div class="ht-track-empty">${escapeHtml(emptyText)}</div>`
-      : items
-          .map(
-            (id) =>
-              `<span class="ht-track-chip" data-id="${escapeHtml(id)}">${escapeHtml(roomChipLabel(id))}</span>`
-          )
-          .join("");
+  const chips = renderChipsHtml(items, {
+    chipClass: "ht-track-chip",
+    labelOf: (id) => roomChipLabel(id),
+    dataIdOf: (id) => id,
+    emptyClass: "ht-track-empty",
+    emptyText,
+  });
 
-  return `
-    <div class="ht-track" aria-label="Tracking">
-      <div class="ht-track-header">
-        <span class="ht-track-title">${escapeHtml(title)}</span>
-      </div>
-      <div class="ht-track-body">${chips}</div>
-      <div class="ht-track-footer">visited / reachable rooms</div>
-    </div>
-  `;
+  return renderChipPanelShell({
+    wrapperClass: "ht-track",
+    ariaLabel: "Tracking",
+    headerClass: "ht-track-header",
+    titleClass: "ht-track-title",
+    title,
+    bodyClass: "ht-track-body",
+    bodyHtml: chips,
+    footerClass: "ht-track-footer",
+    footerHtml: "visited / reachable rooms",
+  });
 }
 
 /**
@@ -240,34 +248,26 @@ export function renderDangerPanel(opts = {}) {
   const title = opts.title ?? "DANGER ROOMS";
   const emptyText = opts.emptyText ?? "no dangerous rooms listed yet…";
 
-  const chips =
-    items.length === 0
-      ? `<div class="ht-track-empty">${escapeHtml(emptyText)}</div>`
-      : items
-          .map((id) => {
-            const fresh = newest.has(String(id));
-            const cls = fresh ? " ht-danger-chip-new" : "";
-            return `<span class="ht-danger-chip${cls}" data-id="${escapeHtml(id)}">${escapeHtml(roomChipLabel(id))}</span>`;
-          })
-          .join("");
+  const chips = renderChipsHtml(items, {
+    chipClass: "ht-danger-chip",
+    classFor: (id) => (newest.has(String(id)) ? " ht-danger-chip-new" : ""),
+    labelOf: (id) => roomChipLabel(id),
+    dataIdOf: (id) => id,
+    emptyClass: "ht-track-empty",
+    emptyText,
+  });
 
-  return `
-    <div class="ht-danger-panel" aria-label="Danger rooms">
-      <div class="ht-danger-header">
-        <span class="ht-danger-title">${escapeHtml(title)}</span>
-      </div>
-      <div class="ht-danger-body">${chips}</div>
-      <div class="ht-danger-footer">rooms connected to the Admin leak</div>
-    </div>
-  `;
-}
-
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+  return renderChipPanelShell({
+    wrapperClass: "ht-danger-panel",
+    ariaLabel: "Danger rooms",
+    headerClass: "ht-danger-header",
+    titleClass: "ht-danger-title",
+    title,
+    bodyClass: "ht-danger-body",
+    bodyHtml: chips,
+    footerClass: "ht-danger-footer",
+    footerHtml: "rooms connected to the Admin leak",
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -459,32 +459,6 @@ export function mountStationGraphView(container, data, options = {}) {
   });
 }
 
-function buildNavControls({ prevDisabled, nextDisabled, nextLabel, indicator, onPrev, onNext, extraButtons = [] }) {
-  const wrap = document.createElement("div");
-  wrap.className = "ht-quiz-controls";
-
-  const prevBtn = document.createElement("button");
-  prevBtn.type = "button";
-  prevBtn.className = "ht-nav-btn";
-  prevBtn.textContent = "← Previous";
-  prevBtn.disabled = !!prevDisabled;
-  prevBtn.onclick = onPrev;
-
-  const nextBtn = document.createElement("button");
-  nextBtn.type = "button";
-  nextBtn.className = "ht-nav-btn";
-  nextBtn.textContent = nextLabel;
-  nextBtn.disabled = !!nextDisabled;
-  nextBtn.onclick = onNext;
-
-  const ind = document.createElement("span");
-  ind.className = "ht-step-indicator";
-  ind.textContent = indicator;
-
-  wrap.append(prevBtn, ind, nextBtn, ...extraButtons);
-  return wrap;
-}
-
 // ---------------------------------------------------------------------------
 // Guided quiz mount (graph left, questions right)
 // ---------------------------------------------------------------------------
@@ -586,36 +560,21 @@ export function mountTraversalQuiz(container, options = {}) {
     let bodyHtml;
 
     if (mcq) {
-      const optionsHtml = q.options
-        .map((opt) => {
-          const classes = ["ht-mcq-btn"];
-          if (shown && opt.correct) classes.push("ht-mcq-btn-correct");
-          else if (!shown && wrongPicks.has(opt.id)) classes.push("ht-mcq-btn-incorrect");
-          if (shown) classes.push("ht-mcq-btn-disabled");
-          return `<button type="button" class="${classes.join(" ")}" data-id="${escapeHtml(opt.id)}" ${shown ? "disabled" : ""}>${escapeHtml(opt.label)}</button>`;
-        })
-        .join("");
+      const optionsHtml = renderMcqOptionsHtml(q.options, { shown, wrongPicks });
 
-      let feedbackHtml;
-      if (shown) {
-        const correct = q.options.find((o) => o.correct);
-        feedbackHtml = `
-          <div class="ht-mcq-feedback ht-mcq-feedback-correct">
-            <span class="ht-mcq-feedback-label">Correct</span>${escapeHtml(correct.feedback)}
-          </div>
-          ${q.note ? `<p class="ht-quiz-note">${escapeHtml(q.note)}</p>` : ""}
-        `;
-      } else if (wrongPicks.size > 0) {
-        const lastId = [...wrongPicks][wrongPicks.size - 1];
-        const opt = q.options.find((o) => o.id === lastId);
-        feedbackHtml = `
-          <div class="ht-mcq-feedback ht-mcq-feedback-incorrect">
-            <span class="ht-mcq-feedback-label">Not quite</span>${escapeHtml(opt?.feedback ?? "")}
-          </div>
-        `;
-      } else {
-        feedbackHtml = `<div class="ht-mcq-feedback-hidden">Pick a room to see if you're right.</div>`;
-      }
+      const correct = q.options.find((o) => o.correct);
+      const lastWrongId = wrongPicks.size > 0 ? [...wrongPicks][wrongPicks.size - 1] : null;
+      const lastWrongOpt = lastWrongId ? q.options.find((o) => o.id === lastWrongId) : null;
+      const feedbackHtml = renderMcqFeedbackHtml({
+        shown,
+        correctLabelHtml: "Correct",
+        correctFeedback: correct?.feedback,
+        correctNoteHtml: q.note ? `<p class="ht-quiz-note">${escapeHtml(q.note)}</p>` : "",
+        hasWrongPick: wrongPicks.size > 0,
+        incorrectLabelHtml: "Not quite",
+        incorrectFeedback: lastWrongOpt?.feedback,
+        emptyHtml: `<div class="ht-mcq-feedback-hidden">Pick a room to see if you're right.</div>`,
+      });
 
       bodyHtml = `<div class="ht-mcq-options">${optionsHtml}</div>${feedbackHtml}`;
     } else {
@@ -736,15 +695,6 @@ export function findCafeteriaId(nodes) {
   return null;
 }
 
-export function findRoomPId(nodes) {
-  for (const n of nodes) {
-    const id = String(n.id).toLowerCase();
-    const label = String(n.label ?? n.id).toLowerCase().trim();
-    if (id === "p" || label === "p" || label === "room p") return n.id;
-  }
-  return null;
-}
-
 export function findAdminId(nodes) {
   for (const n of nodes) {
     const id = String(n.id).toLowerCase();
@@ -754,136 +704,11 @@ export function findAdminId(nodes) {
   return null;
 }
 
-function cloneStationData(data) {
-  return {
-    nodes: (data.nodes ?? []).map((n) => ({ ...n })),
-    edges: (data.edges ?? []).map((e) => ({ ...e })),
-  };
-}
-
-function neighboursOf(data, nodeId) {
-  const out = [];
-  for (const e of data.edges) {
-    if (e.source === nodeId) out.push({ id: e.target, edgeId: e.id });
-    else if (e.target === nodeId) out.push({ id: e.source, edgeId: e.id });
-  }
-  return out;
-}
-
-function edgeIdBetween(a, b) {
-  return `${a}—${b}`;
-}
-
-/**
- * Build animation frames for a random-bag reachability walk on the live graph.
- * Stops when room P is reached, or the bag is empty.
- */
-export function buildReachabilityFrames(data, startId, goalId) {
-  const frames = [];
-  const visited = new Set([startId]);
-  const bag = [];
-  const tracking = [startId];
-  const activeEdges = [];
-  const via = new Map(); // node -> edge used to first reach it
-
-  for (const nb of neighboursOf(data, startId)) {
-    if (!visited.has(nb.id) && !bag.includes(nb.id)) {
-      bag.push(nb.id);
-      via.set(nb.id, nb.edgeId);
-    }
-  }
-
-  frames.push({
-    current: startId,
-    bag: [...bag],
-    bagPick: null,
-    bagPickDone: null,
-    tracking: [...tracking],
-    visited: [...visited],
-    pathEdges: [...activeEdges],
-    neighbours: [...bag],
-    done: false,
-    reached: false,
-  });
-
-  while (bag.length > 0) {
-    const pickIdx = Math.floor(Math.random() * bag.length);
-    const pick = bag.splice(pickIdx, 1)[0];
-
-    frames.push({
-      current: startId,
-      bag: [...bag, pick],
-      bagPick: pick,
-      bagPickDone: pick,
-      tracking: [...tracking],
-      visited: [...visited],
-      pathEdges: [...activeEdges],
-      neighbours: [pick],
-      done: false,
-      reached: false,
-    });
-
-    visited.add(pick);
-    tracking.push(pick);
-    const usedEdge = via.get(pick);
-    if (usedEdge && !activeEdges.includes(usedEdge)) activeEdges.push(usedEdge);
-
-    const reached = pick === goalId;
-    const newNbs = [];
-    if (!reached) {
-      for (const nb of neighboursOf(data, pick)) {
-        if (!visited.has(nb.id) && !bag.includes(nb.id)) {
-          bag.push(nb.id);
-          via.set(nb.id, nb.edgeId);
-          newNbs.push(nb.id);
-        }
-      }
-    }
-
-    frames.push({
-      current: pick,
-      bag: [...bag],
-      bagPick: null,
-      bagPickDone: null,
-      tracking: [...tracking],
-      visited: [...visited],
-      pathEdges: [...activeEdges],
-      neighbours: newNbs,
-      done: reached || bag.length === 0,
-      reached,
-    });
-
-    if (reached) break;
-  }
-
-  if (frames.length === 1) {
-    frames[0].done = true;
-    frames[0].reached = startId === goalId;
-  }
-
-  return frames;
-}
-
 // ---------------------------------------------------------------------------
 // Heat "Convert it to code" viz — runs the student's assembled blocks via
 // Pyodide (same idea as islands-viz-view) and drives graph / bag / tracking
 // + code-block highlights with Play / Step / Reset.
 // ---------------------------------------------------------------------------
-
-const PYODIDE_INDEX = "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/";
-const PYODIDE_MODULE = "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.mjs";
-
-let _heatPyodidePromise = null;
-
-function getHeatPyodide() {
-  if (!_heatPyodidePromise) {
-    _heatPyodidePromise = (async () => {
-      const { loadPyodide } = await import(/* @vite-ignore */ PYODIDE_MODULE);
-      return loadPyodide({ indexURL: PYODIDE_INDEX });
-    })();
-  }
-  return _heatPyodidePromise;
-}
 
 /** @typedef {"pick"|"check_goal"|"track_neighbours"|"bag_neighbours"|"remove_node"} HeatStepBlockId */
 
@@ -1335,21 +1160,12 @@ export function mountHeatCodeViz(container, options = {}) {
 
   let frames = [];
   let frameIndex = -1; // -1 = idle (init state, no highlight)
-  let playing = false;
-  let playTimer = null;
+  const playback = createPlaybackTimer();
   let compiling = false;
   let statusOverride = null;
 
-  function clearPlayTimer() {
-    if (playTimer != null) {
-      clearTimeout(playTimer);
-      playTimer = null;
-    }
-  }
-
   function stopPlayback() {
-    playing = false;
-    clearPlayTimer();
+    playback.stop();
   }
 
   function currentFrame() {
@@ -1507,11 +1323,11 @@ export function mountHeatCodeViz(container, options = {}) {
       return;
     }
     frameIndex = 0;
-    playing = true;
+    playback.start();
     render();
 
     const tick = () => {
-      if (!playing) return;
+      if (!playback.isPlaying()) return;
       if (frameIndex >= frames.length - 1) {
         stopPlayback();
         render();
@@ -1519,14 +1335,14 @@ export function mountHeatCodeViz(container, options = {}) {
       }
       frameIndex += 1;
       render();
-      if (playing && frameIndex < frames.length - 1) {
-        playTimer = setTimeout(tick, stepDelayMs);
+      if (playback.isPlaying() && frameIndex < frames.length - 1) {
+        playback.schedule(tick, stepDelayMs);
       } else {
         stopPlayback();
         render();
       }
     };
-    playTimer = setTimeout(tick, stepDelayMs);
+    playback.schedule(tick, stepDelayMs);
   }
 
   function reset() {
@@ -1543,10 +1359,10 @@ export function mountHeatCodeViz(container, options = {}) {
     const playBtn = document.createElement("button");
     playBtn.type = "button";
     playBtn.className = "ht-nav-btn";
-    playBtn.textContent = compiling ? "Loading…" : playing ? "Pause" : "Play";
+    playBtn.textContent = compiling ? "Loading…" : playback.isPlaying() ? "Pause" : "Play";
     playBtn.disabled = compiling;
     playBtn.onclick = () => {
-      if (playing) {
+      if (playback.isPlaying()) {
         stopPlayback();
         render();
       } else {
@@ -1709,13 +1525,6 @@ function newestRoomIds(prev, curr) {
   return (curr ?? []).filter((id) => !seen.has(String(id)));
 }
 
-function formatCapturedOutput(stdout, stderr) {
-  const out = String(stdout ?? "");
-  const err = String(stderr ?? "");
-  if (out && err) return `${out}${out.endsWith("\n") ? "" : "\n"}${err}`;
-  return out || err;
-}
-
 /**
  * Right-hand viz for the typed danger-rooms exercise: station graph, orange
  * `danger_rooms` chips, and Play / Pause. Locks the Python editor while playing.
@@ -1768,22 +1577,13 @@ export function mountDangerRoomsViz(container, options = {}) {
 
   let frames = [];
   let frameIndex = -1;
-  let playing = false;
-  let playTimer = null;
+  const playback = createPlaybackTimer();
   let compiling = false;
   let statusOverride = null;
   let lastOutput = { text: "", isError: false };
 
-  function clearPlayTimer() {
-    if (playTimer != null) {
-      clearTimeout(playTimer);
-      playTimer = null;
-    }
-  }
-
   function stopPlayback() {
-    playing = false;
-    clearPlayTimer();
+    playback.stop();
   }
 
   function currentFrame() {
@@ -1804,7 +1604,7 @@ export function mountDangerRoomsViz(container, options = {}) {
       done: false,
       stdout: "",
       stderr: "",
-      message: 'Write a traversal starting from "Admin", then press Play.',
+      message: 'Write a traversal starting from "Admin", then press Play or Step.',
     };
   }
 
@@ -1984,11 +1784,11 @@ export function mountDangerRoomsViz(container, options = {}) {
       frameIndex = 0;
     }
     editor?.lock();
-    playing = true;
+    playback.start();
     render();
 
     const tick = () => {
-      if (!playing) return;
+      if (!playback.isPlaying()) return;
       if (frameIndex >= frames.length - 1) {
         stopPlayback();
         render();
@@ -1996,18 +1796,40 @@ export function mountDangerRoomsViz(container, options = {}) {
       }
       frameIndex += 1;
       render();
-      if (playing && frameIndex < frames.length - 1) {
-        playTimer = setTimeout(tick, delayForFrame(frames[frameIndex]));
+      if (playback.isPlaying() && frameIndex < frames.length - 1) {
+        playback.schedule(tick, delayForFrame(frames[frameIndex]));
       } else {
         stopPlayback();
         render();
       }
     };
-    playTimer = setTimeout(tick, delayForFrame(currentFrame()));
+    playback.schedule(tick, delayForFrame(currentFrame()));
   }
 
   function pause() {
     stopPlayback();
+    render();
+  }
+
+  async function stepForward() {
+    const atEnd = frames.length > 0 && frameIndex >= frames.length - 1;
+    const needCompile = !frames.length || atEnd || frameIndex < 0;
+    if (needCompile) {
+      editor?.lock();
+      const ok = await compileFrames();
+      if (!ok) {
+        editor?.unlock();
+        render();
+        return;
+      }
+      frameIndex = 0;
+      render();
+      return;
+    }
+    editor?.lock();
+    if (frameIndex < frames.length - 1) {
+      frameIndex += 1;
+    }
     render();
   }
 
@@ -2027,11 +1849,21 @@ export function mountDangerRoomsViz(container, options = {}) {
     const playBtn = document.createElement("button");
     playBtn.type = "button";
     playBtn.className = "ht-nav-btn";
-    playBtn.textContent = compiling ? "Loading…" : playing ? "Pause" : "Play";
+    playBtn.textContent = compiling ? "Loading…" : playback.isPlaying() ? "Pause" : "Play";
     playBtn.disabled = compiling;
     playBtn.onclick = () => {
-      if (playing) pause();
+      if (playback.isPlaying()) pause();
       else play();
+    };
+
+    const stepBtn = document.createElement("button");
+    stepBtn.type = "button";
+    stepBtn.className = "ht-nav-btn";
+    stepBtn.textContent = "Step →";
+    stepBtn.disabled = compiling;
+    stepBtn.onclick = () => {
+      stopPlayback();
+      stepForward();
     };
 
     const resetBtn = document.createElement("button");
@@ -2040,7 +1872,7 @@ export function mountDangerRoomsViz(container, options = {}) {
     resetBtn.textContent = "Reset";
     resetBtn.onclick = () => reset();
 
-    controls.append(playBtn, resetBtn);
+    controls.append(playBtn, stepBtn, resetBtn);
   }
 
   render();
@@ -2049,27 +1881,10 @@ export function mountDangerRoomsViz(container, options = {}) {
   return {
     play,
     pause,
+    step: stepForward,
     reset,
     destroy: () => stopPlayback(),
   };
-}
-
-function nextAutoRoomId(nodes) {
-  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  let n = 0;
-  while (n < 200) {
-    const cycle = Math.floor(n / letters.length) + 1;
-    const letter = letters[n % letters.length];
-    const id = cycle === 1 ? letter : `${letter}${cycle}`;
-    if (!nodes.some((node) => node.id === id)) return id;
-    n += 1;
-  }
-  return `R${Date.now()}`;
-}
-
-function promptLabel(title, defaultValue = "") {
-  const value = window.prompt(title, defaultValue);
-  return value == null ? null : value.trim();
 }
 
 // ---------------------------------------------------------------------------

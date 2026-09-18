@@ -3,516 +3,14 @@
 // Supports progressive graph reveal, edge-status highlighting, and
 // a notebook-style three-panel sidebar (VISITED / BAG / EDGES).
 
-import { mountStaticGraphView } from "./static-graph-view.js";
-import { GraphEngine } from "./graph-engine.js";
-import { mountGraphView } from "./graph-view.js";
-
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-// ── Graph data ────────────────────────────────────────────────────────────────
-
-/**
- * Diamond undirected graph — A connects to B and C; B and C each connect to D.
- * This creates the cycle A→B→D→C→A used in the walk-through questions.
- * All nodes have pinned (x, y) positions for a stable layout.
- */
-export const CYCLE_DEMO_GRAPH = {
-  nodes: [
-    { id: "A", label: "A", x: 180, y: 55  },
-    { id: "B", label: "B", x: 75,  y: 170 },
-    { id: "C", label: "C", x: 285, y: 170 },
-    { id: "D", label: "D", x: 180, y: 285 },
-  ],
-  edges: [
-    { id: "A-B", source: "A", target: "B", label: "A-B" },
-    { id: "A-C", source: "A", target: "C", label: "A-C" },
-    { id: "B-D", source: "B", target: "D", label: "B-D" },
-    { id: "C-D", source: "C", target: "D", label: "C-D" },
-  ],
-};
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Filter graph to only the specified visible node/edge sets.
- *  Passing null for either means "show all". */
-function filterGraph(graph, visibleNodes, visibleEdges) {
-  if (!visibleNodes && !visibleEdges) return graph;
-  const nodeSet = visibleNodes ? new Set(visibleNodes) : null;
-  const edgeSet  = visibleEdges ? new Set(visibleEdges) : null;
-  return {
-    nodes: nodeSet ? graph.nodes.filter((n) => nodeSet.has(n.id)) : graph.nodes,
-    edges: edgeSet ? graph.edges.filter((e) => edgeSet.has(e.id)) : graph.edges,
-  };
-}
-
-// ── Panel renderers (notebook-style: no footers/subtitles) ────────────────────
-
-function renderChipPanel({
-  title,
-  items = [],
-  emptyText = "—",
-  pick = null,
-  pickDone = null,
-  chipClass = "ht-track-chip",
-}) {
-  const chips =
-    items.length === 0
-      ? `<div class="ht-track-empty">${escapeHtml(emptyText)}</div>`
-      : items
-          .map((id) => {
-            const done   = pickDone != null && id === pickDone;
-            const picked = !done && pick != null && id === pick;
-            const extra  = done
-              ? " ht-bag-chip-pick-done"
-              : picked
-                ? " ht-bag-chip-pick"
-                : "";
-            const check = done
-              ? `<span class="ht-bag-chip-check" aria-hidden="true">✓</span>`
-              : "";
-            return `<span class="${chipClass}${extra}" data-id="${escapeHtml(id)}">${escapeHtml(id)}${check}</span>`;
-          })
-          .join("");
-
-  return `
-    <div class="ht-track" aria-label="${escapeHtml(title)}">
-      <div class="ht-track-header">
-        <span class="ht-track-title">${escapeHtml(title)}</span>
-      </div>
-      <div class="ht-track-body">${chips}</div>
-    </div>
-  `;
-}
-
-/** Parent panel — no arrows, no footer. */
-function renderParentPanel(parentMap = null) {
-  let body;
-  if (parentMap && typeof parentMap === "object") {
-    const entries = Object.entries(parentMap);
-    body =
-      entries.length === 0
-        ? `<div class="ht-track-empty">no parents yet…</div>`
-        : entries
-            .map(
-              ([node, p]) =>
-                `<span class="ht-track-chip">${escapeHtml(node)}: ${escapeHtml(
-                  p == null ? "∅" : p
-                )}</span>`
-            )
-            .join("");
-  } else {
-    body = `<div class="ht-track-empty">—</div>`;
-  }
-  return `
-    <div class="ht-track" aria-label="Parent">
-      <div class="ht-track-header">
-        <span class="ht-track-title">PARENT</span>
-      </div>
-      <div class="ht-track-body">${body}</div>
-    </div>
-  `;
-}
-
-/** EDGES panel — shows used/tracked edges. */
-function renderEdgesPanel(usedEdges = []) {
-  const chips =
-    usedEdges.length === 0
-      ? `<div class="ht-track-empty">none yet…</div>`
-      : usedEdges
-          .map(
-            (e) =>
-              `<span class="ht-track-chip cy-edge-chip">${escapeHtml(e)}</span>`
-          )
-          .join("");
-  return `
-    <div class="ht-track" aria-label="Used Edges">
-      <div class="ht-track-header">
-        <span class="ht-track-title">EDGES</span>
-      </div>
-      <div class="ht-track-body">${chips}</div>
-    </div>
-  `;
-}
-
-/** Small inline colour-coded legend for the node/edge statuses. */
-function renderLegend() {
-  return `
-    <div class="cy-legend">
-      <span class="cy-leg-item">
-        <span class="cy-leg-swatch" style="background:var(--coral,#feb686);border-color:var(--line,#19162b)"></span>current
-      </span>
-      <span class="cy-leg-item">
-        <span class="cy-leg-swatch" style="background:#86c0fe;border-color:#e8f2ff"></span>unvisited
-      </span>
-      <span class="cy-leg-item">
-        <span class="cy-leg-swatch" style="background:#d8d4ef;border-color:var(--line,#19162b)"></span>visited nbr
-      </span>
-      <span class="cy-leg-item">
-        <span class="cy-leg-line" style="background:#ff9f6b"></span>active edge
-      </span>
-      <span class="cy-leg-item">
-        <span class="cy-leg-line" style="background:#86c0fe"></span>used edge
-      </span>
-      <span class="cy-leg-item">
-        <span class="cy-leg-line" style="background:#ef4444"></span>cycle edge
-      </span>
-    </div>
-  `;
-}
-
-// ── Nav controls ──────────────────────────────────────────────────────────────
-
-function buildNavControls({
-  prevDisabled,
-  nextDisabled,
-  nextLabel,
-  indicator,
-  onPrev,
-  onNext,
-}) {
-  const wrap = document.createElement("div");
-  wrap.className = "ht-quiz-controls";
-
-  const prevBtn = document.createElement("button");
-  prevBtn.type = "button";
-  prevBtn.className = "ht-nav-btn";
-  prevBtn.textContent = "← Previous";
-  prevBtn.disabled = !!prevDisabled;
-  prevBtn.onclick = onPrev;
-
-  const nextBtn = document.createElement("button");
-  nextBtn.type = "button";
-  nextBtn.className = "ht-nav-btn";
-  nextBtn.textContent = nextLabel;
-  nextBtn.disabled = !!nextDisabled;
-  nextBtn.onclick = onNext;
-
-  const ind = document.createElement("span");
-  ind.className = "ht-step-indicator";
-  ind.textContent = indicator;
-
-  wrap.append(prevBtn, ind, nextBtn);
-  return wrap;
-}
-
-// ── Mount function ────────────────────────────────────────────────────────────
-
-/**
- * Guided step-through quiz for cycle detection.
- *
- * Question shape:
- *   {
- *     prompt:   string
- *     note?:    string
- *     options?: [{id, label, correct, feedback}]   // MCQ when present
- *     question: Panel
- *     answer:   Panel & { text?: string }
- *   }
- *
- * Panel:
- *   {
- *     graph?:             {nodes, edges}       // defaults to CYCLE_DEMO_GRAPH
- *     highlight?:         object               // passed to mountStaticGraphView
- *     visited?:           string[]             // chip panel
- *     bag?/stack?:        string[]             // chip panel
- *     bagPick?/stackPick? string|null
- *     // Progressive reveal (null = show all):
- *     visibleNodes?:      string[]|null
- *     visibleEdges?:      string[]|null
- *     // Edge/node statuses (cycle detection):
- *     usedEdges?:         string[]|null        // shown in EDGES panel + blue on graph
- *     activeEdges?:       string[]             // orange on graph
- *     visitedNeighbours?: string[]             // lavender nodes on graph
- *     cycleEdge?:         string               // red edge on graph
- *   }
- *
- * @param {HTMLElement} container
- * @param {{width?,height?,graph?,questions?,directed?}} options
- */
-export function mountCycleQuiz(container, options = {}) {
-  if (!container) return null;
-
-  const width        = options.width   ?? 360;
-  const height       = options.height  ?? 320;
-  const directed     = !!options.directed;
-  const questions    = options.questions ?? [];
-  const defaultGraph = options.graph ?? CYCLE_DEMO_GRAPH;
-
-  let qIndex   = 0;
-  let revealed = false;
-  let solved   = questions.map(() => false);
-  let wrongPicks = new Set();
-
-  // ── DOM skeleton ────────────────────────────────────────────────────────────
-
-  container.innerHTML = "";
-  container.classList.add("ht-quiz", "cy-quiz");
-
-  const layout = document.createElement("div");
-  layout.className = "ht-quiz-layout";
-
-  const left = document.createElement("div");
-  left.className = "ht-quiz-left";
-
-  const graphMount = document.createElement("div");
-  graphMount.className = "ht-quiz-graph cy-quiz-graph";
-
-  const legendMount = document.createElement("div");
-
-  const sidePanels = document.createElement("div");
-  sidePanels.className = "ht-quiz-side cy-quiz-side";
-
-  left.append(graphMount, legendMount, sidePanels);
-
-  const right = document.createElement("div");
-  right.className = "ht-quiz-right";
-
-  layout.append(left, right);
-  container.append(layout);
-
-  // ── Helpers ─────────────────────────────────────────────────────────────────
-
-  function isMCQ(q) {
-    return Array.isArray(q.options) && q.options.length > 0;
-  }
-
-  function resolvePanel(panel = {}) {
-    return {
-      graph:           panel.graph ?? defaultGraph,
-      highlight:       panel.highlight ?? {},
-      visited:         panel.visited ?? panel.tracking ?? [],
-      stack:           panel.stack ?? panel.bag ?? [],
-      stackPick:       panel.stackPick ?? panel.bagPick ?? null,
-      stackPickDone:   panel.stackPickDone ?? panel.bagPickDone ?? null,
-      parentMap:       panel.parentMap ?? null,
-      // Progressive reveal
-      visibleNodes:    panel.visibleNodes ?? null,
-      visibleEdges:    panel.visibleEdges ?? null,
-      // Edge/node statuses
-      usedEdges:       panel.usedEdges ?? null,
-      activeEdges:     panel.activeEdges ?? null,
-      visitedNeighbours: panel.visitedNeighbours ?? null,
-      cycleEdge:       panel.cycleEdge ?? null,
-    };
-  }
-
-  // ── Render ──────────────────────────────────────────────────────────────────
-
-  function render() {
-    const q = questions[qIndex];
-    if (!q) {
-      right.innerHTML = `<p class="ht-quiz-note">No questions configured.</p>`;
-      return;
-    }
-
-    const mcq    = isMCQ(q);
-    const shown  = mcq ? solved[qIndex] : revealed;
-    const panel  = resolvePanel(shown ? q.answer : q.question);
-
-    // Filter graph for progressive reveal
-    const graphData = filterGraph(
-      panel.graph,
-      panel.visibleNodes,
-      panel.visibleEdges
-    );
-
-    // Build merged highlight for mountStaticGraphView
-    const highlight = { ...panel.highlight };
-    if (panel.activeEdges?.length)       highlight.activeEdges      = panel.activeEdges;
-    if (panel.usedEdges?.length)         highlight.usedEdges        = panel.usedEdges;
-    if (panel.visitedNeighbours?.length) highlight.visitedNeighbours = panel.visitedNeighbours;
-    if (panel.cycleEdge)                 highlight.cycleEdge        = panel.cycleEdge;
-
-    mountStaticGraphView(graphMount, graphData, {
-      width,
-      height,
-      directed,
-      highlight,
-    });
-
-    // Legend: show for edge-tracking questions
-    const hasEdgeFeatures =
-      panel.usedEdges !== null ||
-      (panel.activeEdges && panel.activeEdges.length > 0);
-    legendMount.innerHTML = hasEdgeFeatures ? renderLegend() : "";
-
-    // Sidebar: VISITED + BAG + EDGES  OR  VISITED + STACK + PARENT
-    const useEdgePanels = panel.usedEdges !== null;
-    if (useEdgePanels) {
-      sidePanels.innerHTML =
-        renderChipPanel({
-          title: "VISITED",
-          items: panel.visited,
-          emptyText: "none yet…",
-        }) +
-        renderChipPanel({
-          title: "BAG",
-          items: panel.stack,
-          emptyText: "bag empty…",
-          pick: panel.stackPick,
-          pickDone: panel.stackPickDone,
-          chipClass: "ht-bag-chip",
-        }) +
-        renderEdgesPanel(panel.usedEdges);
-    } else {
-      sidePanels.innerHTML =
-        renderChipPanel({
-          title: "VISITED",
-          items: panel.visited,
-          emptyText: "none yet…",
-        }) +
-        renderChipPanel({
-          title: "STACK",
-          items: panel.stack,
-          emptyText: "stack empty…",
-          pick: panel.stackPick,
-          pickDone: panel.stackPickDone,
-          chipClass: "ht-bag-chip",
-        }) +
-        renderParentPanel(panel.parentMap);
-    }
-
-    // ── Right panel HTML ────────────────────────────────────────────────────
-
-    const isLast = qIndex === questions.length - 1;
-    let bodyHtml;
-
-    if (mcq) {
-      const optionsHtml = q.options
-        .map((opt) => {
-          const classes = ["ht-mcq-btn"];
-          if (shown && opt.correct)         classes.push("ht-mcq-btn-correct");
-          else if (!shown && wrongPicks.has(opt.id)) classes.push("ht-mcq-btn-incorrect");
-          if (shown) classes.push("ht-mcq-btn-disabled");
-          return `<button type="button" class="${classes.join(" ")}" data-id="${escapeHtml(
-            opt.id
-          )}" ${shown ? "disabled" : ""}>${escapeHtml(opt.label)}</button>`;
-        })
-        .join("");
-
-      let feedbackHtml;
-      if (shown) {
-        const correct = q.options.find((o) => o.correct);
-        feedbackHtml = `
-          <div class="ht-mcq-feedback ht-mcq-feedback-correct">
-            <span class="ht-mcq-feedback-label">Correct</span>${escapeHtml(
-              correct?.feedback ?? ""
-            )}
-          </div>
-          ${q.note ? `<p class="ht-quiz-note">${escapeHtml(q.note)}</p>` : ""}
-        `;
-      } else if (wrongPicks.size > 0) {
-        const lastId = [...wrongPicks][wrongPicks.size - 1];
-        const opt    = q.options.find((o) => o.id === lastId);
-        feedbackHtml = `
-          <div class="ht-mcq-feedback ht-mcq-feedback-incorrect">
-            <span class="ht-mcq-feedback-label">Not quite</span>${escapeHtml(
-              opt?.feedback ?? ""
-            )}
-          </div>
-        `;
-      } else {
-        feedbackHtml = `<div class="ht-mcq-feedback-hidden">Pick an answer to check.</div>`;
-      }
-
-      bodyHtml = `<div class="ht-mcq-options">${optionsHtml}</div>${feedbackHtml}`;
-    } else {
-      bodyHtml = `
-        <div class="ht-quiz-answer-wrap ${shown ? "ht-quiz-answer-visible" : ""}">
-          ${
-            shown
-              ? `<div class="ht-quiz-answer">
-                   <span class="ht-quiz-answer-label">Answer</span>${escapeHtml(
-                     q.answer.text ?? ""
-                   )}
-                 </div>
-                 ${q.note ? `<p class="ht-quiz-note">${escapeHtml(q.note)}</p>` : ""}`
-              : `<div class="ht-quiz-answer-hidden">Answer hidden — press Reveal to show</div>`
-          }
-        </div>
-      `;
-    }
-
-    right.innerHTML = `
-      <div class="ht-quiz-meta">Question ${qIndex + 1} of ${questions.length}</div>
-      <h4 class="ht-quiz-prompt">${escapeHtml(q.prompt ?? "")}</h4>
-      ${bodyHtml}
-    `;
-
-    if (mcq) {
-      right.querySelectorAll(".ht-mcq-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const id  = btn.getAttribute("data-id");
-          const opt = q.options.find((o) => o.id === id);
-          if (!opt || solved[qIndex]) return;
-          if (opt.correct) solved[qIndex] = true;
-          else             wrongPicks.add(id);
-          render();
-        });
-      });
-    }
-
-    const controls = buildNavControls({
-      prevDisabled: mcq
-        ? qIndex === 0
-        : qIndex === 0 && !revealed,
-      nextDisabled: mcq
-        ? !shown || isLast
-        : shown && qIndex >= questions.length - 1,
-      nextLabel: mcq
-        ? isLast
-          ? shown ? "Done" : "Solve to finish"
-          : "Next question →"
-        : !revealed
-          ? "Reveal answer →"
-          : qIndex < questions.length - 1
-            ? "Next question →"
-            : "Done",
-      indicator: mcq
-        ? shown ? "Solved" : "Pick one"
-        : revealed ? "Answer shown" : "Think first",
-      onPrev: () => {
-        if (mcq) {
-          if (qIndex > 0) { qIndex -= 1; wrongPicks = new Set(); render(); }
-          return;
-        }
-        if (revealed) revealed = false;
-        else if (qIndex > 0) { qIndex -= 1; revealed = true; }
-        render();
-      },
-      onNext: () => {
-        if (mcq) {
-          if (shown && qIndex < questions.length - 1) {
-            qIndex += 1; wrongPicks = new Set(); render();
-          }
-          return;
-        }
-        if (!revealed) revealed = true;
-        else if (qIndex < questions.length - 1) { qIndex += 1; revealed = false; }
-        render();
-      },
-    });
-    right.appendChild(controls);
-  }
-
-  render();
-
-  return {
-    getState: () => ({ qIndex, revealed, solved: [...solved] }),
-    goTo: (i, showAnswer = false) => {
-      qIndex     = Math.max(0, Math.min(questions.length - 1, i));
-      revealed   = !!showAnswer;
-      wrongPicks = new Set();
-      render();
-    },
-  };
-}
+import { mountStaticGraphView } from "./qmd-specific-utils/static-graph-view.js";
+import { GraphEngine } from "./utils/graph-engine.js";
+import { mountGraphView } from "./utils/graph-view.js";
+import { escapeHtml, escapeHtml as cyq2Esc } from "./utils/dom-utils.js";
+import { buildNavControls } from "./utils/quiz-nav.js";
+import { createPlaybackTimer } from "./utils/frame-playback.js";
+import { renderMcqOptionsHtml, renderMcqFeedbackHtml } from "./utils/guided-quiz-core.js";
+import { renderChipsHtml } from "./utils/chip-panels.js";
 
 // ═════════════════════════════════════════════════════════════════════════
 // ── v2: bag-based cycle-detection step quiz ─────────────────────────────────
@@ -566,14 +64,6 @@ function cyq2Reveal(graph, graphState) {
     };
   }
   return { nodes: new Set(step.nodes), edges: new Set(step.edges) };
-}
-
-function cyq2Esc(s) {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 /** Renders the graph panel as plain SVG (no d3 needed — every node has a
@@ -674,10 +164,11 @@ function renderCycleQuiz2Graph(container, graph, panel, { width, height }) {
 
 /** VISITED / USED-EDGES style panel: a titled box of plain chips. */
 function renderCycleQuiz2SetPanel(title, items = [], emptyText = "—") {
-  const body =
-    items.length === 0
-      ? `<div class="cyq2-panel-empty">${cyq2Esc(emptyText)}</div>`
-      : items.map((id) => `<span class="cyq2-chip">${cyq2Esc(id)}</span>`).join("");
+  const body = renderChipsHtml(items, {
+    chipClass: "cyq2-chip",
+    emptyClass: "cyq2-panel-empty",
+    emptyText,
+  });
   return `
     <div class="cyq2-panel">
       <div class="cyq2-panel-header">${cyq2Esc(title)}</div>
@@ -688,15 +179,12 @@ function renderCycleQuiz2SetPanel(title, items = [], emptyText = "—") {
 
 /** BAG panel: one of the chips (bagPick) renders as the highlighted "current" pick. */
 function renderCycleQuiz2BagPanel(items = [], pick = null) {
-  const body =
-    items.length === 0
-      ? `<div class="cyq2-panel-empty">bag empty…</div>`
-      : items
-          .map((id) => {
-            const cls = id === pick ? "cyq2-chip cyq2-chip-pick" : "cyq2-chip";
-            return `<span class="${cls}">${cyq2Esc(id)}</span>`;
-          })
-          .join("");
+  const body = renderChipsHtml(items, {
+    chipClass: "cyq2-chip",
+    classFor: (id) => (id === pick ? " cyq2-chip-pick" : ""),
+    emptyClass: "cyq2-panel-empty",
+    emptyText: "bag empty…",
+  });
   return `
     <div class="cyq2-panel">
       <div class="cyq2-panel-header">BAG</div>
@@ -837,38 +325,21 @@ export function mountCycleStepQuiz(container, options = {}) {
     let bodyHtml;
 
     if (mcq) {
-      const optionsHtml = q.options
-        .map((opt) => {
-          const classes = ["ht-mcq-btn"];
-          if (shown && opt.correct)                  classes.push("ht-mcq-btn-correct");
-          else if (!shown && wrongPicks.has(opt.id)) classes.push("ht-mcq-btn-incorrect");
-          if (shown) classes.push("ht-mcq-btn-disabled");
-          return `<button type="button" class="${classes.join(" ")}" data-id="${cyq2Esc(
-            opt.id
-          )}" ${shown ? "disabled" : ""}>${cyq2Esc(opt.label)}</button>`;
-        })
-        .join("");
+      const optionsHtml = renderMcqOptionsHtml(q.options, { shown, wrongPicks });
 
-      let feedbackHtml;
-      if (shown) {
-        const correct = q.options.find((o) => o.correct);
-        feedbackHtml = `
-          <div class="ht-mcq-feedback ht-mcq-feedback-correct">
-            <span class="ht-mcq-feedback-label">Correct</span>${cyq2Esc(correct?.feedback ?? "")}
-          </div>
-          ${q.note ? `<p class="ht-quiz-note">${cyq2Esc(q.note)}</p>` : ""}
-        `;
-      } else if (wrongPicks.size > 0) {
-        const lastId = [...wrongPicks][wrongPicks.size - 1];
-        const opt    = q.options.find((o) => o.id === lastId);
-        feedbackHtml = `
-          <div class="ht-mcq-feedback ht-mcq-feedback-incorrect">
-            <span class="ht-mcq-feedback-label">Not quite</span>${cyq2Esc(opt?.feedback ?? "")}
-          </div>
-        `;
-      } else {
-        feedbackHtml = `<div class="ht-mcq-feedback-hidden">Pick an answer to check.</div>`;
-      }
+      const correct = q.options.find((o) => o.correct);
+      const lastWrongId = wrongPicks.size > 0 ? [...wrongPicks][wrongPicks.size - 1] : null;
+      const lastWrongOpt = lastWrongId ? q.options.find((o) => o.id === lastWrongId) : null;
+      const feedbackHtml = renderMcqFeedbackHtml({
+        shown,
+        correctLabelHtml: "Correct",
+        correctFeedback: correct?.feedback,
+        correctNoteHtml: q.note ? `<p class="ht-quiz-note">${cyq2Esc(q.note)}</p>` : "",
+        hasWrongPick: wrongPicks.size > 0,
+        incorrectLabelHtml: "Not quite",
+        incorrectFeedback: lastWrongOpt?.feedback,
+        emptyHtml: `<div class="ht-mcq-feedback-hidden">Pick an answer to check.</div>`,
+      });
 
       bodyHtml = `<div class="ht-mcq-options">${optionsHtml}</div>${feedbackHtml}`;
     } else if (nbrQ) {
@@ -1521,8 +992,7 @@ export function mountFindCycleCodeViz(container, options = {}) {
   container.appendChild(controls);
 
   let frameIndex = -1;
-  let playing = false;
-  let playTimer = null;
+  const playback = createPlaybackTimer();
 
   function idleState() {
     return {
@@ -1542,16 +1012,8 @@ export function mountFindCycleCodeViz(container, options = {}) {
     };
   }
 
-  function clearPlayTimer() {
-    if (playTimer != null) {
-      clearTimeout(playTimer);
-      playTimer = null;
-    }
-  }
-
   function stopPlayback() {
-    playing = false;
-    clearPlayTimer();
+    playback.stop();
   }
 
   function currentFrame() {
@@ -1598,15 +1060,14 @@ export function mountFindCycleCodeViz(container, options = {}) {
   }
 
   function play() {
-    clearPlayTimer();
     if (frameIndex < 0 || frameIndex >= frames.length - 1) {
       frameIndex = 0;
     }
-    playing = true;
+    playback.start();
     render();
 
     const tick = () => {
-      if (!playing) return;
+      if (!playback.isPlaying()) return;
       if (frameIndex >= frames.length - 1) {
         stopPlayback();
         render();
@@ -1614,14 +1075,14 @@ export function mountFindCycleCodeViz(container, options = {}) {
       }
       frameIndex += 1;
       render();
-      if (playing && frameIndex < frames.length - 1) {
-        playTimer = setTimeout(tick, stepDelayMs);
+      if (playback.isPlaying() && frameIndex < frames.length - 1) {
+        playback.schedule(tick, stepDelayMs);
       } else {
         stopPlayback();
         render();
       }
     };
-    playTimer = setTimeout(tick, stepDelayMs);
+    playback.schedule(tick, stepDelayMs);
   }
 
   function reset() {
@@ -1649,9 +1110,9 @@ export function mountFindCycleCodeViz(container, options = {}) {
     const playBtn = document.createElement("button");
     playBtn.type = "button";
     playBtn.className = "ht-nav-btn";
-    playBtn.textContent = playing ? "Pause" : "Play";
+    playBtn.textContent = playback.isPlaying() ? "Pause" : "Play";
     playBtn.onclick = () => {
-      if (playing) {
+      if (playback.isPlaying()) {
         stopPlayback();
         render();
       } else {
@@ -2482,8 +1943,7 @@ export function mountDirectedCycleCodeViz(container, options = {}) {
   container.appendChild(controls);
 
   let frameIndex = -1;
-  let playing = false;
-  let playTimer = null;
+  const playback = createPlaybackTimer();
 
   function idleState() {
     const colors = {};
@@ -2502,16 +1962,8 @@ export function mountDirectedCycleCodeViz(container, options = {}) {
     };
   }
 
-  function clearPlayTimer() {
-    if (playTimer != null) {
-      clearTimeout(playTimer);
-      playTimer = null;
-    }
-  }
-
   function stopPlayback() {
-    playing = false;
-    clearPlayTimer();
+    playback.stop();
   }
 
   function currentFrame() {
@@ -2581,15 +2033,14 @@ export function mountDirectedCycleCodeViz(container, options = {}) {
   }
 
   function play() {
-    clearPlayTimer();
     if (frameIndex < 0 || frameIndex >= frames.length - 1) {
       frameIndex = 0;
     }
-    playing = true;
+    playback.start();
     render();
 
     const tick = () => {
-      if (!playing) return;
+      if (!playback.isPlaying()) return;
       if (frameIndex >= frames.length - 1) {
         stopPlayback();
         render();
@@ -2597,14 +2048,14 @@ export function mountDirectedCycleCodeViz(container, options = {}) {
       }
       frameIndex += 1;
       render();
-      if (playing && frameIndex < frames.length - 1) {
-        playTimer = setTimeout(tick, stepDelayMs);
+      if (playback.isPlaying() && frameIndex < frames.length - 1) {
+        playback.schedule(tick, stepDelayMs);
       } else {
         stopPlayback();
         render();
       }
     };
-    playTimer = setTimeout(tick, stepDelayMs);
+    playback.schedule(tick, stepDelayMs);
   }
 
   function reset() {
@@ -2632,9 +2083,9 @@ export function mountDirectedCycleCodeViz(container, options = {}) {
     const playBtn = document.createElement("button");
     playBtn.type = "button";
     playBtn.className = "ht-nav-btn";
-    playBtn.textContent = playing ? "Pause" : "Play";
+    playBtn.textContent = playback.isPlaying() ? "Pause" : "Play";
     playBtn.onclick = () => {
-      if (playing) {
+      if (playback.isPlaying()) {
         stopPlayback();
         render();
       } else {

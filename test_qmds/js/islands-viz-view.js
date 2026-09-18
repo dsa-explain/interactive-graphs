@@ -3,26 +3,9 @@
 // student's assembled Python (via Pyodide) with instrumentation, and
 // animates node / neighbor highlights plus a growing visited set.
 
-import { mountGraphView } from "./graph-view.js";
-
-const PYODIDE_INDEX = "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/";
-const PYODIDE_MODULE = "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.mjs";
-
-let _pyodidePromise = null;
-
-function getPyodide() {
-  if (!_pyodidePromise) {
-    _pyodidePromise = (async () => {
-      const { loadPyodide } = await import(/* @vite-ignore */ PYODIDE_MODULE);
-      return loadPyodide({ indexURL: PYODIDE_INDEX });
-    })();
-  }
-  return _pyodidePromise;
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+import { mountGraphView } from "./utils/graph-view.js";
+import { getPyodide } from "./utils/pyodide-loader.js";
+import { createPlaybackTimer } from "./utils/frame-playback.js";
 
 /** Build a Python adjacency dict literal from the engine (integer node ids). */
 function buildGraphLiteral(engine) {
@@ -252,30 +235,40 @@ export function mountIslandsVizView(container, engine, options = {}) {
   // ---- status + controls ----
   const status = document.createElement("div");
   status.className = "iv-status";
-  status.textContent = "Assemble your plan, then Run to animate the traversal.";
+  status.textContent = "Assemble your plan, then press Play or Step to animate the traversal.";
   container.appendChild(status);
 
   const controls = document.createElement("div");
   controls.className = "cb-controls iv-controls";
 
-  const runBtn = document.createElement("button");
-  runBtn.type = "button";
-  runBtn.className = "cb-btn iv-run";
-  runBtn.textContent = "Run";
+  const playBtn = document.createElement("button");
+  playBtn.type = "button";
+  playBtn.className = "cb-btn iv-run";
+  playBtn.textContent = "Play";
+
+  const stepBtn = document.createElement("button");
+  stepBtn.type = "button";
+  stepBtn.className = "cb-btn";
+  stepBtn.textContent = "Step \u2192";
 
   const resetBtn = document.createElement("button");
   resetBtn.type = "button";
   resetBtn.className = "cb-btn";
-  resetBtn.textContent = "Clear highlights";
+  resetBtn.textContent = "Reset";
 
-  controls.append(runBtn, resetBtn);
+  controls.append(playBtn, stepBtn, resetBtn);
   container.appendChild(controls);
 
-  // Internal mirror of Python's visited set (grows during playback).
+  // Internal mirror of Python's visited set, rendered per-frame — every
+  // recorded event already carries a full snapshot (see buildHarness), so
+  // any frame can be rendered directly without replaying prior ones.
   const visited = new Set();
   let islandCount = 0;
-  let cancelPlayback = false;
-  let playing = false;
+  let frames = [];
+  let frameIndex = -1; // -1 = idle (nothing run yet)
+  const playback = createPlaybackTimer();
+  let compiling = false;
+  let statusOverride = null;
 
   const nodeValueEl = varsEl.querySelector(".iv-var-node");
   const neighborValueEl = varsEl.querySelector(".iv-var-neighbor");
@@ -342,6 +335,7 @@ export function mountIslandsVizView(container, engine, options = {}) {
     engine.clearSelection();
   }
 
+  /** Apply one recorded event's full snapshot (idempotent — safe to call for any frame in isolation). */
   function applyEvent(ev) {
     if (Array.isArray(ev.visited)) {
       visited.clear();
@@ -364,36 +358,34 @@ export function mountIslandsVizView(container, engine, options = {}) {
     syncEngineViz(node, neighbor);
   }
 
-  async function playEvents(events) {
-    cancelPlayback = false;
-    for (const ev of events) {
-      if (cancelPlayback) break;
-      applyEvent(ev);
-      await sleep(stepDelayMs);
-    }
+  function stopPlayback() {
+    playback.stop();
   }
 
-  async function run() {
-    if (playing) return;
-    playing = true;
-    runBtn.disabled = true;
-    runBtn.textContent = "Loading…";
+  function currentFrame() {
+    if (frameIndex < 0 || frameIndex >= frames.length) return null;
+    return frames[frameIndex];
+  }
+
+  /** Run the student's current plan through Pyodide and record every step as a frame. */
+  async function compileFrames() {
+    const userSrc = (getPython() || "").trim();
+    if (!userSrc) {
+      statusOverride = "Your plan is empty — drag some blocks in first.";
+      frames = [];
+      frameIndex = -1;
+      return false;
+    }
+
+    compiling = true;
+    statusOverride = null;
     status.textContent = "Loading Python runtime…";
     status.className = "iv-status";
-
-    resetVisuals();
+    renderControls();
 
     try {
-      const userSrc = (getPython() || "").trim();
-      if (!userSrc) {
-        status.textContent = "Your plan is empty — drag some blocks in first.";
-        status.className = "iv-status iv-status-error";
-        return;
-      }
-
       const harness = buildHarness(engine, userSrc);
       const pyodide = await getPyodide();
-      runBtn.textContent = "Running…";
       status.textContent = "Running your code…";
 
       const rawJson = await pyodide.runPythonAsync(harness);
@@ -402,9 +394,47 @@ export function mountIslandsVizView(container, engine, options = {}) {
       const result = payload?.result;
       const events = Array.isArray(payload?.events) ? payload.events : [];
 
-      runBtn.textContent = "Animating…";
-      await playEvents(events);
+      frames = events.map((ev) => ({ ...ev, done: false }));
+      frames.push({ done: true, result });
+      frameIndex = -1;
+      statusOverride = null;
+      return true;
+    } catch (err) {
+      console.error(err);
+      statusOverride = "Error running code: " + String(err);
+      frames = [];
+      frameIndex = -1;
+      return false;
+    } finally {
+      compiling = false;
+    }
+  }
 
+  function render() {
+    const frame = currentFrame();
+
+    if (frameIndex < 0) {
+      resetVisuals();
+    } else if (frame && !frame.done) {
+      applyEvent(frame);
+    } else if (frame?.done) {
+      renderVars(null, null);
+      engine.setViz({
+        visited: [...visited].map(String),
+        currentNode: null,
+        currentNeighbor: null,
+        activeEdges: [],
+      });
+    }
+
+    if (statusOverride) {
+      status.textContent = statusOverride;
+      status.className = "iv-status iv-status-error";
+    } else if (frameIndex < 0) {
+      status.textContent = "Assemble your plan, then press Play or Step to animate the traversal.";
+      status.className = "iv-status";
+    } else if (frame?.done) {
+      const result = frame.result;
       if (result === "RECURSION_ERROR") {
         status.innerHTML =
           "Infinite recursion — did you forget to mark the node visited, or skip the <code>if neighbor not in visited</code> guard?";
@@ -419,44 +449,108 @@ export function mountIslandsVizView(container, engine, options = {}) {
           Number(result) === 1 ? "" : "s"
         }.`;
         status.className = "iv-status iv-status-ok";
-        // Leave final visited highlight; clear transient focus.
-        engine.setViz({
-          visited: [...visited].map(String),
-          currentNode: null,
-          currentNeighbor: null,
-          activeEdges: [],
-        });
-        renderVars(null, null);
       }
-    } catch (err) {
-      console.error(err);
-      status.textContent = "Error running code: " + String(err);
-      status.className = "iv-status iv-status-error";
-    } finally {
-      playing = false;
-      runBtn.disabled = false;
-      runBtn.textContent = "Run";
+    } else {
+      status.textContent = "Running your code…";
+      status.className = "iv-status";
     }
+
+    renderControls();
   }
 
-  runBtn.addEventListener("click", () => {
-    cancelPlayback = true;
-    run();
+  async function play() {
+    const atEnd = frames.length > 0 && frameIndex >= frames.length - 1;
+    const needCompile = !frames.length || atEnd || frameIndex < 0;
+    if (needCompile) {
+      const ok = await compileFrames();
+      if (!ok || !frames.length) {
+        render();
+        return;
+      }
+      frameIndex = 0;
+    }
+    playback.start();
+    render();
+
+    const tick = () => {
+      if (!playback.isPlaying()) return;
+      if (frameIndex >= frames.length - 1) {
+        stopPlayback();
+        render();
+        return;
+      }
+      frameIndex += 1;
+      render();
+      if (playback.isPlaying() && frameIndex < frames.length - 1) {
+        playback.schedule(tick, stepDelayMs);
+      } else {
+        stopPlayback();
+        render();
+      }
+    };
+    playback.schedule(tick, stepDelayMs);
+  }
+
+  function pause() {
+    stopPlayback();
+    render();
+  }
+
+  async function stepForward() {
+    const atEnd = frames.length > 0 && frameIndex >= frames.length - 1;
+    const needCompile = !frames.length || atEnd || frameIndex < 0;
+    if (needCompile) {
+      const ok = await compileFrames();
+      if (!ok) {
+        render();
+        return;
+      }
+      frameIndex = 0;
+      render();
+      return;
+    }
+    if (frameIndex < frames.length - 1) {
+      frameIndex += 1;
+    }
+    render();
+  }
+
+  function reset() {
+    stopPlayback();
+    frames = [];
+    frameIndex = -1;
+    statusOverride = null;
+    render();
+  }
+
+  function renderControls() {
+    playBtn.textContent = compiling ? "Loading…" : playback.isPlaying() ? "Pause" : "Play";
+    playBtn.disabled = compiling;
+    stepBtn.disabled = compiling;
+  }
+
+  playBtn.addEventListener("click", () => {
+    if (playback.isPlaying()) pause();
+    else play();
   });
 
-  resetBtn.addEventListener("click", () => {
-    cancelPlayback = true;
-    resetVisuals();
-    status.textContent = "Assemble your plan, then Run to animate the traversal.";
-    status.className = "iv-status";
+  stepBtn.addEventListener("click", () => {
+    stopPlayback();
+    stepForward();
   });
+
+  resetBtn.addEventListener("click", () => reset());
+
+  render();
 
   // Warm Pyodide in the background.
   getPyodide().catch(() => {});
 
   return {
-    run,
-    reset: resetVisuals,
+    play,
+    pause,
+    step: stepForward,
+    reset,
     getVisited: () => new Set(visited),
   };
 }

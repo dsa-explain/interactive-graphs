@@ -11,6 +11,8 @@
 //   BFS / DFS sequences.  Any one correct pick solves the section.
 
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+import { escapeHtml as escHtml } from "./utils/dom-utils.js";
+import { renderMcqOptionsHtml, renderMcqFeedbackHtml } from "./utils/guided-quiz-core.js";
 
 // ────────────────────────────────────────────────────────────────────────────
 // CSS injection
@@ -247,12 +249,6 @@ export function mountQuizGraph(container, data, options = {}) {
 // ────────────────────────────────────────────────────────────────────────────
 // Utility
 // ────────────────────────────────────────────────────────────────────────────
-
-function escHtml(s) {
-  return String(s)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
 
 // ────────────────────────────────────────────────────────────────────────────
 // Questions
@@ -826,39 +822,27 @@ export function mountTraversalOrderQuiz(container, options = {}) {
     const badgeCls = section === "bfs" ? "tq-section-head-bfs" : "tq-section-head-dfs";
     const label    = section === "bfs" ? "BFS" : "DFS";
 
-    const optionsHtml = info.options.map(opt => {
-      let cls = "ht-mcq-btn";
-      // Show all correct options in green once ANY correct is picked
-      if (solved && opt.correct)        cls += " ht-mcq-btn-correct";
-      if (!solved && tried.has(opt.id)) cls += " ht-mcq-btn-incorrect";
-      if (solved)                       cls += " ht-mcq-btn-disabled";
-      return `<button type="button" class="${cls}"
-                data-mcq-section="${section}"
-                data-opt-id="${escHtml(opt.id)}"
-                ${solved ? "disabled" : ""}>
-                ${escHtml(opt.label)}
-              </button>`;
-    }).join("");
+    const optionsHtml = renderMcqOptionsHtml(info.options, {
+      shown: solved,
+      wrongPicks: tried,
+      dataAttrsFor: (opt) => `data-mcq-section="${section}" data-opt-id="${escHtml(opt.id)}"`,
+    });
 
-    let feedbackHtml;
-    if (solved) {
-      // Find which correct option the student actually clicked (last non-tried correct)
-      const picked = info.options.find(o => o.correct && !tried.has(o.id)) ??
-                     info.options.find(o => o.correct);
-      feedbackHtml = `
-        <div class="ht-mcq-feedback ht-mcq-feedback-correct">
-          <span class="ht-mcq-feedback-label">✓ Correct&ensp;</span>${escHtml(picked?.feedback ?? "")}
-        </div>`;
-    } else if (tried.size > 0) {
-      const lastId = [...tried][tried.size - 1];
-      const opt    = info.options.find(o => o.id === lastId);
-      feedbackHtml = `
-        <div class="ht-mcq-feedback ht-mcq-feedback-incorrect">
-          <span class="ht-mcq-feedback-label">✗ Not quite&ensp;</span>${escHtml(opt?.feedback ?? "")}
-        </div>`;
-    } else {
-      feedbackHtml = `<div class="ht-mcq-feedback-hidden">Pick an answer to check.</div>`;
-    }
+    // Find which correct option the student actually clicked (last non-tried correct)
+    const picked = info.options.find(o => o.correct && !tried.has(o.id)) ??
+                   info.options.find(o => o.correct);
+    const lastWrongId = tried.size > 0 ? [...tried][tried.size - 1] : null;
+    const lastWrongOpt = lastWrongId ? info.options.find(o => o.id === lastWrongId) : null;
+
+    const feedbackHtml = renderMcqFeedbackHtml({
+      shown: solved,
+      correctLabelHtml: "✓ Correct&ensp;",
+      correctFeedback: picked?.feedback,
+      hasWrongPick: tried.size > 0,
+      incorrectLabelHtml: "✗ Not quite&ensp;",
+      incorrectFeedback: lastWrongOpt?.feedback,
+      emptyHtml: `<div class="ht-mcq-feedback-hidden">Pick an answer to check.</div>`,
+    });
 
     return `
       <div class="tq-section">

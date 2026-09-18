@@ -1,3 +1,7 @@
+import { getPyodide } from "./utils/pyodide-loader.js";
+import { formatCapturedOutput } from "./utils/py-harness-utils.js";
+import { createPlaybackTimer } from "./utils/frame-playback.js";
+
 export const PIXEL_ARRAY = [
     ['#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438'],
     ['#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438', '#0e1438'],
@@ -55,21 +59,6 @@ export const PIXEL_ARRAY = [
 // PIXEL_ARRAY (above) is the sample image: a 2D grid of hex colour strings.
 // Students implement floodFill(pixel_array, start, color) and mutate the
 // grid in place. The right-hand panel paints those writes live.
-
-const PYODIDE_INDEX = "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/";
-const PYODIDE_MODULE = "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.mjs";
-
-let _pyodidePromise = null;
-
-function getPyodide() {
-  if (!_pyodidePromise) {
-    _pyodidePromise = (async () => {
-      const { loadPyodide } = await import(/* @vite-ignore */ PYODIDE_MODULE);
-      return loadPyodide({ indexURL: PYODIDE_INDEX });
-    })();
-  }
-  return _pyodidePromise;
-}
 
 export const DEFAULT_START = [8, 20];
 export const DEFAULT_COLOR = "#ff6b4a";
@@ -328,13 +317,6 @@ json.dumps({
 `.trim();
 }
 
-function formatCapturedOutput(stdout, stderr) {
-  const out = String(stdout ?? "");
-  const err = String(stderr ?? "");
-  if (out && err) return `${out}${out.endsWith("\n") ? "" : "\n"}${err}`;
-  return out || err;
-}
-
 /**
  * Right-hand viz: pixel-art grid + Play / Pause. Locks the Python editor
  * while playing. Only the live image is shown — each in-place write paints
@@ -362,11 +344,9 @@ export function mountFloodFillViz(container, options = {}) {
   let liveGrid = clonePixelArray(original);
   let frames = [];
   let frameIndex = -1;
-  let playing = false;
-  let playTimer = null;
+  const playback = createPlaybackTimer();
   let compiling = false;
   let statusOverride = null;
-  let lastOutput = { text: "", isError: false };
 
   container.innerHTML = "";
   container.classList.remove("cb-viz-placeholder");
@@ -409,7 +389,7 @@ export function mountFloodFillViz(container, options = {}) {
     start,
     selectable: true,
     onCellClick: (r, c) => {
-      if (playing || compiling) return;
+      if (playback.isPlaying() || compiling) return;
       start = [r, c];
       frames = [];
       frameIndex = -1;
@@ -456,16 +436,8 @@ export function mountFloodFillViz(container, options = {}) {
       : `<span class="ff-hex">(${r}, ${c})</span> · <span class="ff-hex">${hex}</span>`;
   }
 
-  function clearPlayTimer() {
-    if (playTimer != null) {
-      clearTimeout(playTimer);
-      playTimer = null;
-    }
-  }
-
   function stopPlayback() {
-    playing = false;
-    clearPlayTimer();
+    playback.stop();
   }
 
   function currentFrame() {
@@ -498,7 +470,7 @@ export function mountFloodFillViz(container, options = {}) {
     status.classList.toggle("ht-play-status-warn", false);
     status.classList.toggle("ht-play-status-ok", false);
     if (!frame) {
-      status.textContent = "Click a pixel, pick a fill colour, then press Play.";
+      status.textContent = "Click a pixel, pick a fill colour, then press Play or Step.";
       return;
     }
     if (frame.done) {
@@ -563,7 +535,6 @@ export function mountFloodFillViz(container, options = {}) {
       );
       const payload = JSON.parse(typeof rawJson === "string" ? rawJson : String(rawJson));
       const captured = formatCapturedOutput(payload.stdout, payload.stderr);
-      lastOutput = { text: captured, isError: !!payload?.error };
 
       const rawFrames = Array.isArray(payload.frames) ? payload.frames : [];
       frames = rawFrames.map((ev) => ({
@@ -597,7 +568,6 @@ export function mountFloodFillViz(container, options = {}) {
       statusOverride = "Error running code: " + String(err);
       frames = [];
       frameIndex = -1;
-      lastOutput = { text: String(err), isError: true };
       editor?.setStdout?.(String(err), { isError: true });
       return false;
     } finally {
@@ -621,11 +591,11 @@ export function mountFloodFillViz(container, options = {}) {
       frameIndex = -1;
     }
     editor?.lock();
-    playing = true;
+    playback.start();
     renderControls();
 
     const tick = () => {
-      if (!playing) return;
+      if (!playback.isPlaying()) return;
       if (frameIndex >= frames.length - 1) {
         stopPlayback();
         render();
@@ -638,18 +608,46 @@ export function mountFloodFillViz(container, options = {}) {
       updateReadout();
       renderStatus();
       renderEditorChrome(frame);
-      if (playing && frameIndex < frames.length - 1) {
-        playTimer = setTimeout(tick, stepDelayMs);
+      if (playback.isPlaying() && frameIndex < frames.length - 1) {
+        playback.schedule(tick, stepDelayMs);
       } else {
         stopPlayback();
         render();
       }
     };
-    playTimer = setTimeout(tick, stepDelayMs);
+    playback.schedule(tick, stepDelayMs);
   }
 
   function pause() {
     stopPlayback();
+    renderControls();
+  }
+
+  async function stepForward() {
+    const atEnd = frames.length > 0 && frameIndex >= frames.length - 1;
+    const needCompile = !frames.length || atEnd || frameIndex < 0;
+    if (needCompile) {
+      editor?.lock();
+      const ok = await compileFrames();
+      if (!ok) {
+        editor?.unlock();
+        resetImage();
+        render();
+        return;
+      }
+      resetImage();
+      frameIndex = -1;
+    }
+    editor?.lock();
+    if (frameIndex < frames.length - 1) {
+      frameIndex += 1;
+      const frame = currentFrame();
+      if (frame && !frame.done) applyFrame(frame);
+      else board.setPaint(null);
+    }
+    updateReadout();
+    renderStatus();
+    renderEditorChrome(currentFrame());
     renderControls();
   }
 
@@ -658,7 +656,6 @@ export function mountFloodFillViz(container, options = {}) {
     frames = [];
     frameIndex = -1;
     statusOverride = null;
-    lastOutput = { text: "", isError: false };
     editor?.unlock();
     editor?.clearLineHighlight?.();
     editor?.clearStdout?.();
@@ -670,8 +667,17 @@ export function mountFloodFillViz(container, options = {}) {
   playBtn.type = "button";
   playBtn.className = "ht-nav-btn";
   playBtn.addEventListener("click", () => {
-    if (playing) pause();
+    if (playback.isPlaying()) pause();
     else play();
+  });
+
+  const stepBtn = document.createElement("button");
+  stepBtn.type = "button";
+  stepBtn.className = "ht-nav-btn";
+  stepBtn.textContent = "Step →";
+  stepBtn.addEventListener("click", () => {
+    stopPlayback();
+    stepForward();
   });
 
   const resetBtn = document.createElement("button");
@@ -680,11 +686,12 @@ export function mountFloodFillViz(container, options = {}) {
   resetBtn.textContent = "Reset";
   resetBtn.addEventListener("click", () => reset());
 
-  controls.append(playBtn, resetBtn);
+  controls.append(playBtn, stepBtn, resetBtn);
 
   function renderControls() {
-    playBtn.textContent = compiling ? "Loading…" : playing ? "Pause" : "Play";
+    playBtn.textContent = compiling ? "Loading…" : playback.isPlaying() ? "Pause" : "Play";
     playBtn.disabled = compiling;
+    stepBtn.disabled = compiling;
   }
 
   updateReadout();
@@ -700,6 +707,7 @@ export function mountFloodFillViz(container, options = {}) {
   return {
     play,
     pause,
+    step: stepForward,
     reset,
     destroy: () => {
       stopPlayback();
