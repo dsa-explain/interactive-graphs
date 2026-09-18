@@ -1418,6 +1418,28 @@ danger_rooms = []
 `;
 }
 
+/** Full replacement used by the editor's Reveal solution button. */
+export function dangerRoomsSolutionCode(data) {
+  const graph = data ?? createStationGraphData();
+  return `G = ${buildLabelAdjLiteral(graph)}
+
+danger_rooms = []
+start = "Admin"
+bag = [start]
+seen = set()
+
+while bag:
+    room = bag.pop()
+    if room in seen:
+        continue
+    seen.add(room)
+    danger_rooms.append(room)
+    for nb in G.get(room, []):
+        if nb not in seen:
+            bag.append(nb)
+`;
+}
+
 function buildDangerHarness(userSrc) {
   const srcLit = JSON.stringify(userSrc ?? "");
   return `

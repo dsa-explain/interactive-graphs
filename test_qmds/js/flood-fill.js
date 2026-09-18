@@ -88,6 +88,36 @@ export function floodFillStarterCode() {
 `;
 }
 
+/** Full replacement used by the editor's Reveal solution button. */
+export function floodFillSolutionCode() {
+  return `def floodFill(pixel_array, start, color):
+    """Fill the connected region of start with color, in place.
+
+    pixel_array: 2D list of hex colour strings
+    start: (row, col)
+    color: hex string to paint with
+    """
+    row, col = start
+    original = pixel_array[row][col]
+    if original == color:
+        return
+
+    rows, cols = len(pixel_array), len(pixel_array[0])
+    stack = [(row, col)]
+    while stack:
+        r, c = stack.pop()
+        if r < 0 or r >= rows or c < 0 or c >= cols:
+            continue
+        if pixel_array[r][c] != original:
+            continue
+        pixel_array[r][c] = color
+        stack.append((r - 1, c))
+        stack.append((r + 1, c))
+        stack.append((r, c - 1))
+        stack.append((r, c + 1))
+`;
+}
+
 function luminance(hex) {
   const n = String(hex ?? "").replace("#", "");
   if (n.length < 6) return 0;
