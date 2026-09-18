@@ -526,6 +526,7 @@ import { PythonEditorInput } from "./js/qmd-specific-utils/python-editor-input.j
 import {
   createStationGraphData,
   dangerRoomsStarterCode,
+  dangerRoomsSolutionCode,
   mountDangerRoomsViz,
 } from "./js/graph-traversal-helpers.js";
 ```
@@ -542,6 +543,7 @@ dangerEditor = PythonEditorInput.mountPlayable(
   {
     heading: "Python",
     defaultCode: dangerRoomsStarterCode(dangerStation),
+    solutionCode: dangerRoomsSolutionCode(dangerStation),
   }
 )
 ```

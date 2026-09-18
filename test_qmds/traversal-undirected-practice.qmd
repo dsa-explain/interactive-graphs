@@ -264,6 +264,7 @@ import { PythonEditorInput } from "./js/qmd-specific-utils/python-editor-input.j
 import {
   PIXEL_ARRAY,
   floodFillStarterCode,
+  floodFillSolutionCode,
   mountFloodFillViz,
 } from "./js/flood-fill.js";
 ```
@@ -275,6 +276,7 @@ floodEditor = PythonEditorInput.mountPlayable(
   {
     heading: "Python",
     defaultCode: floodFillStarterCode(),
+    solutionCode: floodFillSolutionCode(),
   }
 )
 ```
