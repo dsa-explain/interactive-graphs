@@ -198,19 +198,47 @@ directedCycleViz = mountDirectedCycleCodeViz(document.querySelector("#directed-c
 
 
 Exercise: Around the world in 80 days (or is it?)
-You are given a graph where each node is a country and each edge is a one-way flight. Check if there's a chance to get stuck in a cycle. If it is, return a set of nodes which should be reversed to break the cycle.
 
-<!-- code editor -->
+You are given a graph where each node is a country and each edge is a one-way flight. Check if there's a chance to get stuck in a cycle. If it is, return a set of edges as `key_edges` which should be reversed to break the cycle.
 
-```{python}
-G = {
-  'USA': ['Canada', 'Brazil'],
-  'Canada': ['UK', 'South Africa'],
-  'South Africa': ['India'],
-  'UK': ['Russia'],
-  'China': ['Russia','Australia'],
-}
+Fill in `around_the_world`, then press **Play** or **Step** to watch line-by-line. The flight map updates `visited_nodes`, `visited_edges`, `bag`, and `key_edges` as your code runs.
 
-def around_the_world(G):
-    return
+::: {.panel-grid}
+::: {.panel}
+<div id="around-world-editor"></div>
+:::
+::: {.panel}
+<div id="around-world-viz" class="cb-viz-placeholder"></div>
+:::
+:::
+
+```{ojs}
+//| echo: false
+import { PythonEditorInput } from "./js/qmd-specific-utils/python-editor-input.js";
+import {
+  aroundTheWorldStarterCode,
+  aroundTheWorldSolutionCode,
+  mountAroundTheWorldViz,
+} from "./js/cycle-helpers.js";
+```
+
+```{ojs}
+//| echo: false
+aroundWorldEditor = PythonEditorInput.mountPlayable(
+  document.querySelector("#around-world-editor"),
+  {
+    heading: "Python",
+    defaultCode: aroundTheWorldStarterCode(),
+    solutionCode: aroundTheWorldSolutionCode(),
+  }
+)
+```
+
+```{ojs}
+//| echo: false
+aroundWorldViz = mountAroundTheWorldViz(document.querySelector("#around-world-viz"), {
+  width: 480,
+  height: 280,
+  editor: aroundWorldEditor,
+})
 ```

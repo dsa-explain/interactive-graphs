@@ -11,6 +11,9 @@ import { buildNavControls } from "./utils/quiz-nav.js";
 import { createPlaybackTimer } from "./utils/frame-playback.js";
 import { renderMcqOptionsHtml, renderMcqFeedbackHtml } from "./utils/guided-quiz-core.js";
 import { renderChipsHtml } from "./utils/chip-panels.js";
+import { mountStaticWalkthrough } from "./utils/static-walkthrough.js";
+import { getPyodide } from "./utils/pyodide-loader.js";
+import { formatCapturedOutput } from "./utils/py-harness-utils.js";
 
 // ═════════════════════════════════════════════════════════════════════════
 // ── v2: bag-based cycle-detection step quiz ─────────────────────────────────
@@ -1454,61 +1457,55 @@ function dcwColorOf(colors, id) {
   return colors?.[id] || "white";
 }
 
-/**
- * Step-through 3-colour DFS with recursion stack and neighbour strip.
- *
- * @param {HTMLElement} container
- * @param {{width?: number, height?: number, graph?, steps?}} [options]
- */
-export function mountDirectedCycleWalkthrough(container, options = {}) {
-  if (!container) return null;
+function renderDirectedCycleSide(sideEl, step) {
+  const colors = step.colors || {};
+  const neighbours = step.neighbours || [];
+  const current = step.current || null;
+  const stack = step.stack || [];
+  const kind = step.messageKind || "white";
 
-  const width = options.width ?? 360;
-  const height = options.height ?? 280;
-  const graph = options.graph ?? DIRECTED_CYCLE_WALKTHROUGH_GRAPH;
-  const steps = options.steps ?? DIRECTED_CYCLE_WALKTHROUGH_STEPS;
-  let stepIndex = 0;
-
-  container.innerHTML = "";
-  container.classList.add("gt-panel-wrap", "dcw-root");
-
-  const body = document.createElement("div");
-  body.className = "dcw-body";
-  container.appendChild(body);
-
-  const left = document.createElement("div");
-  left.className = "dcw-left";
-  body.appendChild(left);
-
-  const graphMount = document.createElement("div");
-  graphMount.className = "gt-graph-mount";
-  left.appendChild(graphMount);
-
-  const info = document.createElement("div");
-  info.className = "gt-info";
-  left.appendChild(info);
-
-  const side = document.createElement("div");
-  side.className = "dcw-side";
-  body.appendChild(side);
+  sideEl.innerHTML = "";
 
   const activeLabel = document.createElement("div");
   activeLabel.className = "dcw-active-label";
   activeLabel.textContent = "Current → neighbours";
-  side.appendChild(activeLabel);
+  sideEl.appendChild(activeLabel);
 
   const activeRow = document.createElement("div");
   activeRow.className = "dcw-active-row";
-  side.appendChild(activeRow);
+  sideEl.appendChild(activeRow);
+
+  if (current) {
+    activeRow.appendChild(
+      dcwTile(current, dcwColorOf(colors, current), { focus: true })
+    );
+    if (neighbours.length) {
+      const arrow = document.createElement("span");
+      arrow.className = "dcw-arrow";
+      arrow.textContent = "→";
+      activeRow.appendChild(arrow);
+      const nbrWrap = document.createElement("div");
+      nbrWrap.className = "dcw-nbrs";
+      neighbours.forEach((id) => {
+        nbrWrap.appendChild(
+          dcwTile(id, dcwColorOf(colors, id), {
+            focus: id === step.focusNeighbour,
+          })
+        );
+      });
+      activeRow.appendChild(nbrWrap);
+    }
+  }
 
   const messageEl = document.createElement("div");
-  messageEl.className = "dcw-message dcw-message-white";
+  messageEl.className = `dcw-message dcw-message-${kind}`;
   messageEl.setAttribute("role", "status");
-  side.appendChild(messageEl);
+  messageEl.textContent = step.message || DCW_MESSAGES[kind] || "";
+  sideEl.appendChild(messageEl);
 
   const stackWrap = document.createElement("div");
   stackWrap.className = "dcw-stack-wrap";
-  side.appendChild(stackWrap);
+  sideEl.appendChild(stackWrap);
 
   const stackLabel = document.createElement("div");
   stackLabel.className = "dcw-stack-label";
@@ -1519,121 +1516,55 @@ export function mountDirectedCycleWalkthrough(container, options = {}) {
   stackEl.className = "dcw-stack";
   stackWrap.appendChild(stackEl);
 
-  const controls = document.createElement("div");
-  controls.className = "gt-controls";
-  container.appendChild(controls);
-
-  const prevBtn = document.createElement("button");
-  prevBtn.type = "button";
-  prevBtn.className = "gt-nav-btn";
-  prevBtn.textContent = "← Previous";
-
-  const indicator = document.createElement("span");
-  indicator.className = "gt-step-indicator";
-
-  const nextBtn = document.createElement("button");
-  nextBtn.type = "button";
-  nextBtn.className = "gt-nav-btn";
-  nextBtn.textContent = "Next →";
-
-  controls.append(prevBtn, indicator, nextBtn);
-
-  function render() {
-    const step = steps[stepIndex];
-    if (!step) return;
-
-    const colors = { ...(step.colors || {}) };
-    for (const n of graph.nodes || []) {
-      if (!colors[n.id]) colors[n.id] = "white";
+  if (!stack.length) {
+    const empty = document.createElement("div");
+    empty.className = "dcw-stack-empty";
+    empty.textContent = "empty";
+    stackEl.appendChild(empty);
+  } else {
+    // Newest frame on top, matching the sample (C above B above A).
+    for (let i = stack.length - 1; i >= 0; i--) {
+      const id = stack[i];
+      stackEl.appendChild(
+        dcwTile(id, dcwColorOf(colors, id), { focus: id === current })
+      );
     }
-    const neighbours = step.neighbours || [];
-    const current = step.current || null;
-    const stack = step.stack || [];
+  }
+}
 
-    mountStaticGraphView(graphMount, graph, {
-      width,
-      height,
-      directed: true,
-      highlight: {
-        current,
-        neighbours,
+/**
+ * Step-through 3-colour DFS with recursion stack and neighbour strip.
+ *
+ * @param {HTMLElement} container
+ * @param {{width?: number, height?: number, graph?, steps?}} [options]
+ */
+export function mountDirectedCycleWalkthrough(container, options = {}) {
+  const graph = options.graph ?? DIRECTED_CYCLE_WALKTHROUGH_GRAPH;
+  const steps = options.steps ?? DIRECTED_CYCLE_WALKTHROUGH_STEPS;
+
+  return mountStaticWalkthrough(container, {
+    graph,
+    steps,
+    width: options.width ?? 360,
+    height: options.height ?? 280,
+    directed: true,
+    className: "dcw-root",
+    sideClass: "dcw-side",
+    highlight: (step) => {
+      const colors = { ...(step.colors || {}) };
+      for (const n of graph.nodes || []) {
+        if (!colors[n.id]) colors[n.id] = "white";
+      }
+      return {
+        current: step.current || null,
+        neighbours: step.neighbours || [],
         nodeColors: colors,
         activeEdges: step.activeEdges || [],
         cycleEdge: step.cycle ? (step.activeEdges || [])[0] : null,
-      },
-    });
-
-    activeRow.innerHTML = "";
-    if (current) {
-      const curColor = dcwColorOf(colors, current);
-      activeRow.appendChild(
-        dcwTile(current, curColor, { focus: true })
-      );
-      if (neighbours.length) {
-        const arrow = document.createElement("span");
-        arrow.className = "dcw-arrow";
-        arrow.textContent = "→";
-        activeRow.appendChild(arrow);
-        const nbrWrap = document.createElement("div");
-        nbrWrap.className = "dcw-nbrs";
-        neighbours.forEach((id) => {
-          nbrWrap.appendChild(
-            dcwTile(id, dcwColorOf(colors, id), {
-              focus: id === step.focusNeighbour,
-            })
-          );
-        });
-        activeRow.appendChild(nbrWrap);
-      }
-    }
-
-    const kind = step.messageKind || "white";
-    messageEl.className = `dcw-message dcw-message-${kind}`;
-    messageEl.textContent = step.message || DCW_MESSAGES[kind] || "";
-
-    stackEl.innerHTML = "";
-    if (!stack.length) {
-      const empty = document.createElement("div");
-      empty.className = "dcw-stack-empty";
-      empty.textContent = "empty";
-      stackEl.appendChild(empty);
-    } else {
-      // Newest frame on top, matching the sample (C above B above A).
-      for (let i = stack.length - 1; i >= 0; i--) {
-        const id = stack[i];
-        stackEl.appendChild(
-          dcwTile(id, dcwColorOf(colors, id), { focus: id === current })
-        );
-      }
-    }
-
-    info.innerHTML = "";
-    const title = document.createElement("h4");
-    title.textContent = step.title || "";
-    const desc = document.createElement("p");
-    desc.className = "gt-desc";
-    desc.textContent = step.description || "";
-    info.append(title, desc);
-
-    prevBtn.disabled = stepIndex === 0;
-    nextBtn.disabled = stepIndex === steps.length - 1;
-    indicator.textContent = `Step ${stepIndex + 1} of ${steps.length}`;
-  }
-
-  prevBtn.addEventListener("click", () => {
-    stepIndex = Math.max(0, stepIndex - 1);
-    render();
+      };
+    },
+    renderSide: renderDirectedCycleSide,
   });
-  nextBtn.addEventListener("click", () => {
-    stepIndex = Math.min(steps.length - 1, stepIndex + 1);
-    render();
-  });
-
-  render();
-  return {
-    next: () => nextBtn.click(),
-    prev: () => prevBtn.click(),
-  };
 }
 
 export const DIRECTED_CYCLE_CODE_BLOCKS = [
@@ -2353,5 +2284,729 @@ export function mountDirectedCycleSandbox(container, options = {}) {
     },
   };
   container._directedCycleDestroy = api.destroy;
+  return api;
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// ── Around the world: typed Python editor + line-step viz ────────────────
+// ═════════════════════════════════════════════════════════════════════════
+
+/** Directed country-flight graph for the around-the-world exercise. */
+export const AROUND_THE_WORLD_GRAPH = {
+  nodes: [
+    { id: "USA", label: "USA", x: 70, y: 140 },
+    { id: "Canada", label: "Canada", x: 70, y: 50 },
+    { id: "Brazil", label: "Brazil", x: 70, y: 240 },
+    { id: "UK", label: "UK", x: 210, y: 50 },
+    { id: "South Africa", label: "S. Africa", x: 210, y: 160 },
+    { id: "India", label: "India", x: 340, y: 220 },
+    { id: "Russia", label: "Russia", x: 340, y: 50 },
+    { id: "China", label: "China", x: 460, y: 100 },
+    { id: "Australia", label: "Australia", x: 460, y: 220 },
+  ],
+  edges: [
+    { id: "USA→Canada", source: "USA", target: "Canada", label: "" },
+    { id: "USA→Brazil", source: "USA", target: "Brazil", label: "" },
+    { id: "Canada→UK", source: "Canada", target: "UK", label: "" },
+    { id: "Canada→South Africa", source: "Canada", target: "South Africa", label: "" },
+    { id: "South Africa→India", source: "South Africa", target: "India", label: "" },
+    { id: "UK→Russia", source: "UK", target: "Russia", label: "" },
+    { id: "China→Russia", source: "China", target: "Russia", label: "" },
+    { id: "China→Australia", source: "China", target: "Australia", label: "" },
+  ],
+};
+
+const AROUND_THE_WORLD_ADJ = {
+  USA: ["Canada", "Brazil"],
+  Canada: ["UK", "South Africa"],
+  "South Africa": ["India"],
+  UK: ["Russia"],
+  China: ["Russia", "Australia"],
+};
+
+function aroundWorldAdjLiteral() {
+  const lines = Object.entries(AROUND_THE_WORLD_ADJ).map(
+    ([k, vs]) => `  ${JSON.stringify(k)}: [${vs.map((v) => JSON.stringify(v)).join(", ")}],`
+  );
+  return `{\n${lines.join("\n")}\n}`;
+}
+
+/** Starter code shown in the playable editor. */
+export function aroundTheWorldStarterCode() {
+  return `G = ${aroundWorldAdjLiteral()}
+visited_nodes = set()
+visited_edges = set()
+bag = []
+
+key_edges = []
+
+# Detect directed cycles using visited_nodes / visited_edges / bag.
+# When you find a cycle-closing flight, append that edge to key_edges
+# (edges to reverse so nobody gets stuck looping).
+# Call around_the_world(G) at the bottom so Play can visualise it.
+
+`;
+}
+
+/**
+ * Solution: 3-colour DFS. bag = active recursion path, visited_nodes =
+ * grey∪black, visited_edges = flights walked, key_edges = back-edges to
+ * active (grey) nodes — reverse those to break each cycle found.
+ * Colours match the directed-cycle viz: white / grey(active) / black.
+ */
+export function aroundTheWorldSolutionCode() {
+  return `G = ${aroundWorldAdjLiteral()}
+visited_nodes = set()
+visited_edges = set()
+bag = []
+
+key_edges = []
+
+WHITE, GREY, BLACK = "white", "grey", "black"
+
+nodes = set(G.keys())
+for nbrs in G.values():
+    nodes.update(nbrs)
+color = {n: WHITE for n in nodes}
+
+def dfs(node):
+    color[node] = GREY
+    bag.append(node)
+    visited_nodes.add(node)
+
+    for nxt in G.get(node, []):
+        edge = (node, nxt)
+        visited_edges.add(edge)
+        if color[nxt] == GREY:
+            # Back-edge into the active path — a directed cycle.
+            key_edges.append(edge)
+        elif color[nxt] == WHITE:
+            dfs(nxt)
+
+    color[node] = BLACK
+    bag.pop()
+
+for start in list(G.keys()):
+    if color[start] == WHITE:
+        dfs(start)
+`;
+}
+
+/** Map textbook / student colour names onto gv-color-* classes (grey → blue). */
+function aroundWorldCssColor(raw) {
+  const c = String(raw ?? "white").toLowerCase().trim();
+  if (c === "black" || c === "complete") return "black";
+  if (c === "orange" || c === "cycle") return "orange";
+  if (c === "grey" || c === "gray" || c === "blue" || c === "active") return "blue";
+  return "white";
+}
+
+function aroundWorldAllWhite(graph) {
+  const colors = {};
+  for (const n of graph.nodes ?? []) colors[n.id] = "white";
+  return colors;
+}
+
+/**
+ * Prefer an explicit `color` map from the student code; otherwise derive
+ * white / grey(active→blue) / black from bag + visited_nodes. When a new
+ * key_edge appears, paint the active path orange (same as directed-cycle viz).
+ */
+function aroundWorldNodeColors(graph, { colorMap, bag, visited, paintCycle }) {
+  const colors = aroundWorldAllWhite(graph);
+  const bagSet = new Set((bag ?? []).map(String));
+  const visitedSet = new Set((visited ?? []).map(String));
+
+  if (colorMap && typeof colorMap === "object") {
+    for (const [id, raw] of Object.entries(colorMap)) {
+      colors[String(id)] = aroundWorldCssColor(raw);
+    }
+  } else {
+    for (const id of visitedSet) colors[id] = "black";
+    for (const id of bagSet) colors[id] = "blue";
+  }
+
+  if (paintCycle) {
+    for (const id of bagSet) colors[id] = "orange";
+  }
+  return colors;
+}
+
+function aroundWorldNormList(val) {
+  if (val == null) return [];
+  if (typeof val === "string") return [val];
+  try {
+    return [...val].map((x) => {
+      if (x == null) return "";
+      if (typeof x === "string") return x;
+      if (Array.isArray(x) || (typeof x === "object" && typeof x.length === "number")) {
+        const a = [...x].map(String);
+        if (a.length >= 2) return `${a[0]}→${a[1]}`;
+      }
+      if (typeof x === "object" && x !== null) {
+        // Python tuple via pyodide proxy often stringifies as ('A', 'B')
+        const s = String(x);
+        const m = s.match(/\(\s*['"]?([^'",]+)['"]?\s*,\s*['"]?([^'",]+)['"]?\s*\)/);
+        if (m) return `${m[1]}→${m[2]}`;
+      }
+      return String(x);
+    }).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function aroundWorldEdgeId(label) {
+  const s = String(label);
+  if (s.includes("→")) return s;
+  const m = s.match(/^(.+?)[-–—>](.+)$/);
+  if (m) return `${m[1].trim()}→${m[2].trim()}`;
+  return s;
+}
+
+function buildAroundTheWorldHarness(userSrc) {
+  const srcLit = JSON.stringify(userSrc ?? "");
+  return `
+import json
+import sys
+import io
+import traceback
+
+_user_src = ${srcLit}
+_MAX_EVENTS = 500
+_frames = []
+_error = None
+_pending_line = None
+_stdout = io.StringIO()
+_stderr = io.StringIO()
+
+def _norm_nodes(val):
+    if val is None:
+        return []
+    if isinstance(val, str):
+        return [val]
+    try:
+        return [str(x) for x in list(val)]
+    except Exception:
+        return []
+
+def _norm_edges(val):
+    out = []
+    if val is None:
+        return out
+    try:
+        items = list(val)
+    except Exception:
+        return out
+    for x in items:
+        if isinstance(x, str):
+            out.append(x)
+        elif isinstance(x, (list, tuple)) and len(x) >= 2:
+            out.append(str(x[0]) + "→" + str(x[1]))
+        else:
+            out.append(str(x))
+    return out
+
+def _norm_colors(val):
+    out = {}
+    if val is None:
+        return out
+    try:
+        items = val.items() if hasattr(val, "items") else []
+        for k, v in items:
+            out[str(k)] = str(v)
+    except Exception:
+        return {}
+    return out
+
+def _snap(line, ns, done=False):
+    return {
+        "line": line,
+        "visited_nodes": _norm_nodes(ns.get("visited_nodes")),
+        "visited_edges": _norm_edges(ns.get("visited_edges")),
+        "bag": _norm_nodes(ns.get("bag")),
+        "key_edges": _norm_edges(ns.get("key_edges")),
+        "colors": _norm_colors(ns.get("color")),
+        "done": bool(done),
+        "stdout": _stdout.getvalue(),
+        "stderr": _stderr.getvalue(),
+    }
+
+def _emit(line, ns, done=False):
+    _frames.append(_snap(line, ns, done))
+
+def _tracer(frame, event, arg):
+    global _pending_line
+    if event == "call":
+        return _tracer if frame.f_code.co_filename == "<user>" else None
+    if event != "line":
+        return _tracer
+    if frame.f_code.co_filename != "<user>":
+        return None
+    if len(_frames) >= _MAX_EVENTS:
+        raise RuntimeError("TOO_MANY_ITERS")
+    ns = frame.f_globals
+    if _pending_line is not None:
+        _emit(_pending_line, ns)
+    _pending_line = frame.f_lineno
+    return _tracer
+
+_old_out, _old_err = sys.stdout, sys.stderr
+_ns = {"__name__": "__main__"}
+try:
+    sys.stdout = _stdout
+    sys.stderr = _stderr
+    _code = compile(_user_src, "<user>", "exec")
+    sys.settrace(_tracer)
+    try:
+        exec(_code, _ns)
+    finally:
+        sys.settrace(None)
+    if _pending_line is not None:
+        _emit(_pending_line, _ns)
+    _emit(None, _ns, done=True)
+except RuntimeError as e:
+    if str(e) == "TOO_MANY_ITERS":
+        _error = "TOO_MANY_ITERS"
+        _emit(None, _ns, done=True)
+    else:
+        _error = type(e).__name__ + ": " + str(e)
+        traceback.print_exc(file=_stderr)
+except Exception as e:
+    _error = type(e).__name__ + ": " + str(e)
+    traceback.print_exc(file=_stderr)
+    if _pending_line is not None:
+        _emit(_pending_line, _ns)
+finally:
+    sys.stdout = _old_out
+    sys.stderr = _old_err
+
+json.dumps({
+    "frames": _frames,
+    "error": _error,
+    "stdout": _stdout.getvalue(),
+    "stderr": _stderr.getvalue(),
+})
+`.trim();
+}
+
+function isAroundWorldSkippableLine(src, lineNumber) {
+  if (lineNumber == null) return false;
+  const line = (src.split("\n")[lineNumber - 1] ?? "").trim();
+  return line === "" || line.startsWith("#");
+}
+
+function aroundWorldNewest(prev, curr) {
+  const seen = new Set((prev ?? []).map(String));
+  return (curr ?? []).filter((id) => !seen.has(String(id)));
+}
+
+/**
+ * Playable editor viz: directed flight map + VISITED NODES / BAG / VISITED
+ * EDGES / KEY EDGES chips. Line-highlights the locked Python editor while
+ * stepping.
+ *
+ * @param {HTMLElement} container
+ * @param {{
+ *   editor?: object,
+ *   width?: number, height?: number,
+ *   stepDelayMs?: number, skipDelayMs?: number,
+ *   graph?: {nodes: Array, edges: Array},
+ * }} [options]
+ */
+export function mountAroundTheWorldViz(container, options = {}) {
+  if (!container) return null;
+  if (typeof container._aroundWorldDestroy === "function") {
+    container._aroundWorldDestroy();
+  }
+
+  const width = options.width ?? 480;
+  const height = options.height ?? 280;
+  const stepDelayMs = options.stepDelayMs ?? 700;
+  const skipDelayMs = options.skipDelayMs ?? 160;
+  const editor = options.editor ?? null;
+  const getCode = options.getCode ?? (() => editor?.getCode?.() ?? "");
+  const graph = options.graph ?? AROUND_THE_WORLD_GRAPH;
+
+  container.innerHTML = "";
+  container.classList.remove("cb-viz-placeholder");
+  container.classList.add("iv-root", "cy-code-viz", "aw-viz-root");
+
+  const heading = document.createElement("div");
+  heading.className = "adj-heading";
+  heading.textContent = "Flight map";
+  container.appendChild(heading);
+
+  const graphMount = document.createElement("div");
+  graphMount.className = "cyq2-quiz-graph";
+  container.appendChild(graphMount);
+
+  const sidePanels = document.createElement("div");
+  sidePanels.className = "ht-quiz-side cyq2-quiz-side";
+  container.appendChild(sidePanels);
+
+  const keyEdgesPanel = document.createElement("div");
+  keyEdgesPanel.className = "aw-key-edges-panel";
+  container.appendChild(keyEdgesPanel);
+
+  const status = document.createElement("div");
+  status.className = "ht-play-status";
+  container.appendChild(status);
+
+  const controls = document.createElement("div");
+  controls.className = "ht-quiz-controls";
+  container.appendChild(controls);
+
+  let frames = [];
+  let frameIndex = -1;
+  const playback = createPlaybackTimer();
+  let compiling = false;
+  let statusOverride = null;
+  let lastOutput = { text: "", isError: false };
+
+  function stopPlayback() {
+    playback.stop();
+  }
+
+  function currentFrame() {
+    if (frameIndex < 0 || frameIndex >= frames.length) return null;
+    return frames[frameIndex];
+  }
+
+  function idleState() {
+    return {
+      line: null,
+      visited: [],
+      bag: [],
+      bagPick: null,
+      usedEdge: [],
+      keyEdges: [],
+      colors: aroundWorldAllWhite(graph),
+      glow: [],
+      activeEdge: [],
+      cycleEdge: null,
+      done: false,
+      stdout: "",
+      stderr: "",
+      message: "Write around_the_world, then press Play or Step.",
+    };
+  }
+
+  function render() {
+    const frame = currentFrame() ?? idleState();
+    const usedEdge = (frame.usedEdge ?? []).map(aroundWorldEdgeId);
+    const keyIds = (frame.keyEdges ?? []).map(aroundWorldEdgeId);
+    const colors = frame.colors ?? aroundWorldAllWhite(graph);
+    const panel = {
+      visited: frame.visited ?? [],
+      bag: frame.bag ?? [],
+      bagPick: frame.bagPick ?? null,
+      glow: frame.glow ?? (frame.bagPick ? [frame.bagPick] : []),
+      usedEdge,
+      activeEdge: frame.activeEdge ?? [],
+      cycleEdge: frame.cycleEdge ?? (keyIds.length ? keyIds[keyIds.length - 1] : null),
+    };
+
+    mountStaticGraphView(graphMount, graph, {
+      width,
+      height,
+      directed: true,
+      highlight: {
+        nodeColors: colors,
+        current: panel.bagPick,
+        usedEdges: panel.usedEdge,
+        activeEdges: panel.activeEdge.length ? panel.activeEdge : keyIds,
+        cycleEdge: panel.cycleEdge,
+      },
+    });
+
+    sidePanels.innerHTML =
+      renderCycleQuiz2SetPanel("VISITED NODES", panel.visited, "none yet…") +
+      renderCycleQuiz2BagPanel(panel.bag, panel.bagPick) +
+      renderCycleQuiz2SetPanel("VISITED EDGES", panel.usedEdge, "none yet…");
+
+    keyEdgesPanel.innerHTML = renderCycleQuiz2SetPanel(
+      "KEY EDGES",
+      keyIds,
+      "none yet — no cycle found…"
+    );
+
+    if (statusOverride) {
+      status.textContent = statusOverride;
+      status.classList.toggle("ht-play-status-warn", true);
+      status.classList.toggle("ht-play-status-ok", false);
+    } else {
+      status.textContent = frame.message ?? "";
+      status.classList.toggle("ht-play-status-warn", frame.correct === false);
+      status.classList.toggle("ht-play-status-ok", frame.correct === true);
+    }
+
+    if (editor) {
+      if (frame.line != null) editor.highlightLine(frame.line);
+      else editor.clearLineHighlight?.();
+      const hasFrame = currentFrame() != null;
+      const live = formatCapturedOutput(frame.stdout, frame.stderr);
+      if (hasFrame) {
+        editor.setStdout?.(live, { isError: !!frame.stderr });
+      } else if (lastOutput.text) {
+        editor.setStdout?.(lastOutput.text, { isError: lastOutput.isError });
+      } else {
+        editor.clearStdout?.();
+      }
+    }
+
+    renderControls();
+  }
+
+  function toVizFrames(src, rawFrames) {
+    const out = [];
+    let prevNodes = [];
+    let prevKeys = [];
+    for (const ev of rawFrames ?? []) {
+      if (isAroundWorldSkippableLine(src, ev.line)) continue;
+      const visited = ev.visited_nodes ?? [];
+      const bag = ev.bag ?? [];
+      const usedEdge = (ev.visited_edges ?? []).map(aroundWorldEdgeId);
+      const keyEdges = (ev.key_edges ?? []).map(aroundWorldEdgeId);
+      const newestNodes = aroundWorldNewest(prevNodes, visited);
+      const newestKeys = aroundWorldNewest(prevKeys, keyEdges);
+      const bagPick = bag.length ? bag[bag.length - 1] : null;
+      const done = !!ev.done;
+      const colorMap =
+        ev.colors && Object.keys(ev.colors).length ? ev.colors : null;
+      const colors = aroundWorldNodeColors(graph, {
+        colorMap,
+        bag,
+        visited,
+        paintCycle: newestKeys.length > 0,
+      });
+      // This sample graph is a DAG — correct answer is an empty key_edges list.
+      const correct = done ? keyEdges.length === 0 : null;
+      let message;
+      if (done) {
+        message = correct
+          ? "No directed cycle — key_edges stays empty. Nice work!"
+          : keyEdges.length
+            ? `Finished with key_edges = [${keyEdges.join(", ")}]. This flight map has no cycle, so key_edges should be empty.`
+            : "Finished.";
+      } else if (newestKeys.length) {
+        message = `Cycle-closing flight ${newestKeys.join(", ")} added to key_edges.`;
+      } else if (newestNodes.length) {
+        message = `Visited ${newestNodes.join(", ")}.`;
+      } else if (ev.line != null) {
+        message = `Running line ${ev.line}…`;
+      } else {
+        message = "";
+      }
+      out.push({
+        line: ev.line ?? null,
+        visited,
+        bag,
+        bagPick,
+        colors,
+        glow: bagPick ? [bagPick] : newestNodes,
+        usedEdge,
+        activeEdge: newestKeys.length ? newestKeys : [],
+        cycleEdge: newestKeys.length ? newestKeys[newestKeys.length - 1] : null,
+        keyEdges,
+        done,
+        correct,
+        unchanged: newestNodes.length === 0 && newestKeys.length === 0 && !done,
+        stdout: ev.stdout ?? "",
+        stderr: ev.stderr ?? "",
+        message,
+      });
+      prevNodes = visited;
+      prevKeys = keyEdges;
+    }
+    return out;
+  }
+
+  async function compileFrames() {
+    const userSrc = (getCode() || "").trim();
+    if (!userSrc) {
+      statusOverride = "The editor is empty — write a solution first.";
+      frames = [];
+      frameIndex = -1;
+      return false;
+    }
+    if (!/\bkey_edges\b/.test(userSrc)) {
+      statusOverride = "Use the variable key_edges for flights to reverse.";
+      frames = [];
+      frameIndex = -1;
+      return false;
+    }
+
+    compiling = true;
+    statusOverride = null;
+    status.textContent = "Loading Python runtime…";
+    status.classList.remove("ht-play-status-warn");
+    renderControls();
+
+    try {
+      const pyodide = await getPyodide();
+      status.textContent = "Running your code…";
+      const rawJson = await pyodide.runPythonAsync(buildAroundTheWorldHarness(userSrc));
+      const payload = JSON.parse(typeof rawJson === "string" ? rawJson : String(rawJson));
+      const captured = formatCapturedOutput(payload.stdout, payload.stderr);
+      lastOutput = { text: captured, isError: !!payload?.error };
+
+      if (payload?.error === "TOO_MANY_ITERS") {
+        statusOverride = "Loop ran too long — check your stop condition.";
+        frames = toVizFrames(userSrc, payload.frames ?? []);
+        frameIndex = frames.length ? 0 : -1;
+        if (!frames.length && captured) editor?.setStdout?.(captured, { isError: true });
+        return frames.length > 0;
+      }
+      if (payload?.error) {
+        statusOverride = "Error running code: " + payload.error;
+        frames = toVizFrames(userSrc, payload.frames ?? []);
+        frameIndex = frames.length ? 0 : -1;
+        if (!frames.length) editor?.setStdout?.(captured || payload.error, { isError: true });
+        return frames.length > 0;
+      }
+
+      frames = toVizFrames(userSrc, payload.frames ?? []);
+      frameIndex = -1;
+      statusOverride = null;
+      if (!frames.length) {
+        statusOverride = "Nothing to play — fill in around_the_world and call it.";
+        if (captured) editor?.setStdout?.(captured);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error(err);
+      statusOverride = "Error running code: " + String(err);
+      frames = [];
+      frameIndex = -1;
+      lastOutput = { text: String(err), isError: true };
+      editor?.setStdout?.(String(err), { isError: true });
+      return false;
+    } finally {
+      compiling = false;
+    }
+  }
+
+  function delayForFrame(frame) {
+    return frame?.unchanged ? skipDelayMs : stepDelayMs;
+  }
+
+  async function play() {
+    const atEnd = frames.length > 0 && frameIndex >= frames.length - 1;
+    const needCompile = !frames.length || atEnd || frameIndex < 0;
+    if (needCompile) {
+      editor?.lock();
+      const ok = await compileFrames();
+      if (!ok) {
+        editor?.unlock();
+        render();
+        return;
+      }
+      frameIndex = 0;
+    }
+    editor?.lock();
+    playback.start();
+    render();
+
+    const tick = () => {
+      if (!playback.isPlaying()) return;
+      if (frameIndex >= frames.length - 1) {
+        stopPlayback();
+        render();
+        return;
+      }
+      frameIndex += 1;
+      render();
+      if (playback.isPlaying() && frameIndex < frames.length - 1) {
+        playback.schedule(tick, delayForFrame(frames[frameIndex]));
+      } else {
+        stopPlayback();
+        render();
+      }
+    };
+    playback.schedule(tick, delayForFrame(currentFrame()));
+  }
+
+  function pause() {
+    stopPlayback();
+    render();
+  }
+
+  async function stepForward() {
+    const atEnd = frames.length > 0 && frameIndex >= frames.length - 1;
+    const needCompile = !frames.length || atEnd || frameIndex < 0;
+    if (needCompile) {
+      editor?.lock();
+      const ok = await compileFrames();
+      if (!ok) {
+        editor?.unlock();
+        render();
+        return;
+      }
+      frameIndex = 0;
+      render();
+      return;
+    }
+    editor?.lock();
+    if (frameIndex < frames.length - 1) {
+      frameIndex += 1;
+    }
+    render();
+  }
+
+  function reset() {
+    stopPlayback();
+    frames = [];
+    frameIndex = -1;
+    statusOverride = null;
+    editor?.unlock();
+    editor?.clearLineHighlight?.();
+    render();
+  }
+
+  function renderControls() {
+    controls.innerHTML = "";
+
+    const playBtn = document.createElement("button");
+    playBtn.type = "button";
+    playBtn.className = "ht-nav-btn";
+    playBtn.textContent = compiling ? "Loading…" : playback.isPlaying() ? "Pause" : "Play";
+    playBtn.disabled = compiling;
+    playBtn.onclick = () => {
+      if (playback.isPlaying()) pause();
+      else play();
+    };
+
+    const stepBtn = document.createElement("button");
+    stepBtn.type = "button";
+    stepBtn.className = "ht-nav-btn";
+    stepBtn.textContent = "Step →";
+    stepBtn.disabled = compiling;
+    stepBtn.onclick = () => {
+      stopPlayback();
+      stepForward();
+    };
+
+    const resetBtn = document.createElement("button");
+    resetBtn.type = "button";
+    resetBtn.className = "ht-nav-btn ht-nav-btn-ghost";
+    resetBtn.textContent = "Reset";
+    resetBtn.onclick = () => reset();
+
+    controls.append(playBtn, stepBtn, resetBtn);
+  }
+
+  render();
+  getPyodide().catch(() => {});
+
+  const api = {
+    play,
+    pause,
+    step: stepForward,
+    reset,
+    destroy: () => stopPlayback(),
+  };
+  container._aroundWorldDestroy = api.destroy;
   return api;
 }
