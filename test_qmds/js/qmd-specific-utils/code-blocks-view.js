@@ -4,6 +4,8 @@
 // Container blocks (those whose code ends with ":") accept nested drops.
 // Each block may be used at most once — placing it removes it from the palette.
 
+import { fillHighlightedPython } from "../utils/python-highlight.js";
+
 const DEFAULT_BLOCKS = [
   { id: "count0", label: "initialise total count as 0", code: "count = 0" },
   { id: "visited", label: "initialise visited as an empty set", code: "visited = set()" },
@@ -183,7 +185,7 @@ export function mountCodeBlocksView(container, blocks = DEFAULT_BLOCKS, options 
     row.className = "cb-block-row";
     const label = document.createElement("span");
     label.className = "cb-block-label";
-    label.textContent = def.code ?? def.label ?? "";
+    fillHighlightedPython(label, def.code ?? def.label ?? "");
     row.appendChild(label);
     el.appendChild(row);
     if (isContainer && slotEl) el.appendChild(slotEl);
@@ -252,8 +254,12 @@ export function mountCodeBlocksView(container, blocks = DEFAULT_BLOCKS, options 
     const labelEl = blockEl.querySelector(":scope > .cb-block-row > .cb-block-label");
     if (!labelEl) return;
     const showLabel = blockEl.dataset.showLabel === "1";
-    labelEl.textContent = showLabel ? def.label : def.code;   // was: showLabel ? def.code : def.label
-    blockEl.classList.toggle("cb-showing-code", showLabel);   // was: blockEl.classList.toggle("cb-showing-code", showLabel);
+    if (showLabel) {
+      labelEl.textContent = def.label;
+    } else {
+      fillHighlightedPython(labelEl, def.code);
+    }
+    blockEl.classList.toggle("cb-showing-code", showLabel);
   }
 
   /**
@@ -280,7 +286,7 @@ export function mountCodeBlocksView(container, blocks = DEFAULT_BLOCKS, options 
 
     const label = document.createElement("span");
     label.className = "cb-block-label";
-    label.textContent = def.code;
+    fillHighlightedPython(label, def.code);
     row.appendChild(label);
 
     if (!isPalette) {
