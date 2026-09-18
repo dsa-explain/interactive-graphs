@@ -221,3 +221,6 @@ __marimo__/
 /.quarto/
 *.quarto_ipynb
 _site/
+
+**/*.quarto_ipynb
+/node_modules/
