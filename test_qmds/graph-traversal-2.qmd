@@ -19,7 +19,7 @@ So far we randomly picked nodes from the bag to traverse the graph. While we are
 
 ```{ojs}
 //| echo: false
-import { mountStaticGraphView } from "./js/static-graph-view.js";
+import { mountStaticGraphView } from "./js/qmd-specific-utils/static-graph-view.js";
 
 // A—B, A—D, A—E; B—C; C—F; D—G, D—H
 sharedEdges = ([
@@ -455,7 +455,7 @@ We need to now select the order of rooms we will pick from the bag.
 
 ```{ojs}
 //| echo: false
-import { treeNodes, computeDFSFrames, makeFrameGenerator, renderViz } from "./js/static-graph-view.js"
+import { treeNodes, computeDFSFrames, makeFrameGenerator, renderViz } from "./js/bfs-dfs-tree-viz.js"
 
 dfsFrames = computeDFSFrames(treeNodes)
 frameDFS = makeFrameGenerator(dfsFrames, 1100)
@@ -466,7 +466,7 @@ renderViz(frameDFS, treeNodes, d3, html)
 
 ```{ojs}
 //| echo: false
-import { computeBFSFrames } from "./js/static-graph-view.js"
+import { computeBFSFrames } from "./js/bfs-dfs-tree-viz.js"
 
 bfsFrames = computeBFSFrames(treeNodes)
 frameBFS = makeFrameGenerator(bfsFrames, 1100)
@@ -566,7 +566,7 @@ Drag the blocks to the right place to implement the first strategy of Depth-Firs
 
 ```{ojs}
 //| echo: false
-import { mountCodeBlocksView } from "./js/code-blocks-view.js";
+import { mountCodeBlocksView } from "./js/qmd-specific-utils/code-blocks-view.js";
 import { mountHeatCodeViz, createTraversalGraphData } from "./js/graph-traversal-helpers.js";
 ```
 

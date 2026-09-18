@@ -40,9 +40,9 @@ ojs_define(nb_nodes = nb_nodes, nb_edges = nb_edges)
 
 ```{ojs}
 //| echo: false
-import { GraphEngine } from "./js/graph-engine.js";
-import { mountGraphView } from "./js/graph-view.js";
-import { mountNeighboursView } from "./js/neighbours-view.js";
+import { GraphEngine } from "./js/utils/graph-engine.js";
+import { mountGraphView } from "./js/utils/graph-view.js";
+import { mountNeighboursView } from "./js/qmd-specific-utils/neighbours-view.js";
 
 nbEngine = new GraphEngine({ nodes: nb_nodes, edges: nb_edges }, { directed: false });
 ```

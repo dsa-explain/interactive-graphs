@@ -28,7 +28,7 @@ ojs_define(udg_nodes = udg_nodes, udg_edges = udg_edges)
 
 ```{ojs}
 //| echo: false
-import { mountStaticGraphView } from "./js/static-graph-view.js";
+import { mountStaticGraphView } from "./js/qmd-specific-utils/static-graph-view.js";
 
 udgView = mountStaticGraphView(
   document.querySelector("#undirected-example"),
@@ -119,9 +119,9 @@ ojs_define(dnb_nodes = dnb_nodes, dnb_edges = dnb_edges)
 
 ```{ojs}
 //| echo: false
-import { GraphEngine } from "./js/graph-engine.js";
-import { mountGraphView } from "./js/graph-view.js";
-import { mountNeighboursView } from "./js/neighbours-view.js";
+import { GraphEngine } from "./js/utils/graph-engine.js";
+import { mountGraphView } from "./js/utils/graph-view.js";
+import { mountNeighboursView } from "./js/qmd-specific-utils/neighbours-view.js";
 
 dnbEngine = new GraphEngine(
   { nodes: dnb_nodes, edges: dnb_edges },

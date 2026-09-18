@@ -33,7 +33,7 @@ import {
   BFS_CODE_BLOCKS,
   BFS_CODE_OPTIONS,
 } from "./js/maze-helpers.js";
-import { mountCodeBlocksView } from "./js/code-blocks-view.js";
+import { mountCodeBlocksView } from "./js/qmd-specific-utils/code-blocks-view.js";
 ```
 
 ```{ojs}

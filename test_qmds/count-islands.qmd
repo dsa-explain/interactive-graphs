@@ -34,7 +34,7 @@ ojs_define(intro_nodes = intro_nodes, intro_edges = intro_edges)
 
 ```{ojs}
 //| echo: false
-import { mountStaticGraphView } from "./js/static-graph-view.js";
+import { mountStaticGraphView } from "./js/qmd-specific-utils/static-graph-view.js";
 
 introView = mountStaticGraphView(
   document.querySelector("#intro-static-graph"),
@@ -141,8 +141,8 @@ ojs_define(islands_nodes = islands_nodes, islands_edges = islands_edges)
 
 ```{ojs}
 //| echo: false
-import { mountCodeBlocksView } from "./js/code-blocks-view.js";
-import { GraphEngine } from "./js/graph-engine.js";
+import { mountCodeBlocksView } from "./js/qmd-specific-utils/code-blocks-view.js";
+import { GraphEngine } from "./js/utils/graph-engine.js";
 import { mountIslandsVizView } from "./js/islands-viz-view.js";
 
 islandsBlocks = mountCodeBlocksView(document.querySelector("#islands-blocks"), [
@@ -161,7 +161,21 @@ islandsBlocks = mountCodeBlocksView(document.querySelector("#islands-blocks"), [
   { id: "inc", code: "count += 1", label: "increment count by 1 — found a new component" },
   { id: "call_dfs", code: "dfs(node)", label: "traverse everything reachable from node" },
 
-], { preplaced: ["count0", "visited", "def_dfs", "for_node"] });
+], {
+  preplaced: ["count0", "visited", "def_dfs", "for_node"],
+  solutionOrder: [
+    "count0",
+    "visited",
+    {
+      id: "def_dfs",
+      children: [
+        "mark",
+        { id: "for_neighbor", children: [{ id: "if_unvisited", children: ["recurse"] }] },
+      ],
+    },
+    { id: "for_node", children: [{ id: "if_new", children: ["inc", "call_dfs"] }] },
+  ],
+});
 
 islandsEngine = new GraphEngine(
   { nodes: islands_nodes, edges: islands_edges },

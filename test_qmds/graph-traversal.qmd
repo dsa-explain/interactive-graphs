@@ -13,7 +13,7 @@ Lets do a sample traversal!
 
 ```{ojs}
 //| echo: false
-import { mountStaticGraphView } from "./js/static-graph-view.js";
+import { mountStaticGraphView } from "./js/qmd-specific-utils/static-graph-view.js";
 ```
 
 ```{ojs}
@@ -457,7 +457,7 @@ tracking panel react on the right.
 
 ```{ojs}
 //| echo: false
-import { mountCodeBlocksView } from "./js/code-blocks-view.js";
+import { mountCodeBlocksView } from "./js/qmd-specific-utils/code-blocks-view.js";
 import { mountHeatCodeViz } from "./js/graph-traversal-helpers.js";
 ```
 
@@ -509,7 +509,7 @@ Hint: You can start traversing from the admin room. This time the stop condition
 
 Note: Use the variable `danger_rooms` to track the rooms that are dangerous. This list will be visualised.
 
-Type a traversal in the editor, then press **Play**. The graph highlights rooms in `danger_rooms` in orange as each line of your code runs.
+Type a traversal in the editor, then press **Play** to watch it run, or **Step** to advance one line. The graph highlights rooms in `danger_rooms` in orange as each line of your code runs.
 
 ::: {.panel-grid}
 ::: {.panel}
@@ -522,7 +522,7 @@ Type a traversal in the editor, then press **Play**. The graph highlights rooms 
 
 ```{ojs}
 //| echo: false
-import { PythonEditorInput } from "./js/python-editor-input.js";
+import { PythonEditorInput } from "./js/qmd-specific-utils/python-editor-input.js";
 import {
   createStationGraphData,
   dangerRoomsStarterCode,

@@ -72,7 +72,7 @@ Explore as deep as possible first: pick the **last** cell in the bag (`pop()`). 
 
 ```{ojs}
 //| echo: false
-import { mountCodeBlocksView } from "./js/code-blocks-view.js";
+import { mountCodeBlocksView } from "./js/qmd-specific-utils/code-blocks-view.js";
 import {
   MANPAC_MAZE,
   MANPAC_START,
@@ -245,7 +245,7 @@ The image is a 2D list of hex colour strings (`pixel_array`). A section of the p
 
 <5 x 10 grid with hex values written in each cell>
 
-Click a pixel on the right to choose the start cell, pick a fill colour, then implement `floodFill(pixel_array, start, color)`. Modify the grid **in place** — neighbours are the four adjacent cells. Press **Play** to watch the image update as your code paints it.
+Click a pixel on the right to choose the start cell, pick a fill colour, then implement `floodFill(pixel_array, start, color)`. Modify the grid **in place** — neighbours are the four adjacent cells. Press **Play** to watch the image update as your code paints it, or **Step** to advance one cell at a time.
 
 Hint: This time the "neighbours" are adjacent cells that have the **same** colour. This time you are free to either use a separate function to find the neighbours, or do it inline.
 
@@ -260,7 +260,7 @@ Hint: This time the "neighbours" are adjacent cells that have the **same** colou
 
 ```{ojs}
 //| echo: false
-import { PythonEditorInput } from "./js/python-editor-input.js";
+import { PythonEditorInput } from "./js/qmd-specific-utils/python-editor-input.js";
 import {
   PIXEL_ARRAY,
   floodFillStarterCode,

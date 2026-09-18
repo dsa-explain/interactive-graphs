@@ -63,10 +63,10 @@ ojs_define(sb_default_code = default_python_code)
 
 ```{ojs}
 //| echo: false
-import { GraphEngine } from "./js/graph-engine.js";
-import { mountGraphView } from "./js/graph-view.js";
-import { PyGraphEngine } from "./js/py-graph-engine.js";
-import { PythonEditorInput } from "./js/python-editor-input.js";
+import { GraphEngine } from "./js/utils/graph-engine.js";
+import { mountGraphView } from "./js/utils/graph-view.js";
+import { PyGraphEngine } from "./js/utils/py-graph-engine.js";
+import { PythonEditorInput } from "./js/qmd-specific-utils/python-editor-input.js";
 
 sandboxData = ({ nodes: [], edges: [] });
 sandboxEngine = new GraphEngine(sandboxData, { directed: false });

@@ -29,8 +29,8 @@ ojs_define(sb_nodes = initial_nodes, sb_edges = initial_edges)
 
 ```{ojs}
 //| echo: false
-import { GraphEngine } from "./js/graph-engine.js";
-import { mountGraphView } from "./js/graph-view.js";
+import { GraphEngine } from "./js/utils/graph-engine.js";
+import { mountGraphView } from "./js/utils/graph-view.js";
 
 sandboxData = ({
   nodes: sb_nodes,

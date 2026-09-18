@@ -28,7 +28,7 @@ ojs_define(intro_nodes = intro_nodes, intro_edges = intro_edges)
 
 ```{ojs}
 //| echo: false
-import { mountStaticGraphView } from "./js/static-graph-view.js";
+import { mountStaticGraphView } from "./js/qmd-specific-utils/static-graph-view.js";
 
 introView = mountStaticGraphView(
   document.querySelector("#intro-static-graph"),
@@ -83,9 +83,9 @@ ojs_define(w1_nodes = w1_nodes, w1_edges = w1_edges)
 
 ```{ojs}
 //| echo: false
-import { GraphEngine } from "./js/graph-engine.js";
-import { mountGraphView } from "./js/graph-view.js";
-import { mountAdjacencyListSingle } from "./js/adjacency-list-view.js";
+import { GraphEngine } from "./js/utils/graph-engine.js";
+import { mountGraphView } from "./js/utils/graph-view.js";
+import { mountAdjacencyListSingle } from "./js/qmd-specific-utils/adjacency-list-view.js";
 
 al1Engine = new GraphEngine({ nodes: w1_nodes, edges: w1_edges }, { directed: false });
 ```
@@ -134,7 +134,7 @@ ojs_define(w2_nodes = w2_nodes, w2_edges = w2_edges)
 
 ```{ojs}
 //| echo: false
-import { mountAdjacencyList } from "./js/adjacency-list-view.js";
+import { mountAdjacencyList } from "./js/qmd-specific-utils/adjacency-list-view.js";
 
 al2Engine = new GraphEngine({ nodes: w2_nodes, edges: w2_edges }, { directed: false });
 ```
@@ -185,7 +185,7 @@ ojs_define(m1_nodes = w1_nodes, m1_edges = w1_edges)
 
 ```{ojs}
 //| echo: false
-import { mountAdjacencyMatrixSingle } from "./js/adjacency-matrix-view.js";
+import { mountAdjacencyMatrixSingle } from "./js/qmd-specific-utils/adjacency-matrix-view.js";
 
 am1Engine = new GraphEngine({ nodes: m1_nodes, edges: m1_edges }, { directed: false });
 ```
@@ -234,7 +234,7 @@ ojs_define(m2_nodes = w2_nodes, m2_edges = w2_edges)
 
 ```{ojs}
 //| echo: false
-import { mountAdjacencyMatrix } from "./js/adjacency-matrix-view.js";
+import { mountAdjacencyMatrix } from "./js/qmd-specific-utils/adjacency-matrix-view.js";
 
 am2Engine = new GraphEngine({ nodes: m2_nodes, edges: m2_edges }, { directed: false });
 ```
