@@ -1118,6 +1118,11 @@ h1, h2, h3, .title {
   line-height: 1.35;
   word-break: break-word;
   white-space: pre-line;
+  font-weight: 500;
+}
+
+.cb-block-label > span {
+  font-weight: inherit;
 }
 
 .cb-block-delete {
@@ -2820,11 +2825,80 @@ button.ht-bag-chip.bdo-chip-back {
   margin: 0;
   box-sizing: border-box;
   background: #ffffff;
+  color: var(--ink, #19162b);
 }
 
 .dr-editor-root h3 {
   margin: 0;
   font-size: 1.05rem;
+  color: var(--ink, #19162b);
+}
+
+.dr-editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dr-editor-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.dr-editor-root .ht-nav-btn {
+  background: #fffdf9;
+  border-color: var(--line, #19162b);
+  color: var(--ink, #19162b);
+}
+
+.dr-editor-root .ht-nav-btn:hover:not(:disabled) {
+  background: #fff7e8;
+  border-color: var(--line, #19162b);
+  color: var(--ink, #19162b);
+}
+
+.dr-reveal-btn {
+  flex-shrink: 0;
+  background: #fffdf9;
+  border-color: var(--line, #19162b);
+  color: var(--ink, #19162b);
+  font-weight: 700;
+}
+
+.dr-editor-root .dr-reveal-btn:hover:not(:disabled) {
+  background: #fff7e8;
+  border-color: var(--line, #19162b);
+  color: var(--ink, #19162b);
+}
+
+.dr-cm-host {
+  min-height: 360px;
+  max-height: 520px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(25, 22, 43, 0.18);
+  background: #fffdf9;
+}
+
+.dr-cm-host .cm-editor {
+  height: 360px;
+  max-height: 520px;
+}
+
+.dr-cm-host .cm-editor.cm-focused {
+  outline: none;
+}
+
+.dr-cm-host .cm-line.dr-cm-line-active {
+  background-color: rgba(254, 182, 134, 0.35);
+  box-shadow: inset 3px 0 0 #f97316;
+}
+
+.dr-editor-locked .dr-cm-host {
+  cursor: not-allowed;
 }
 
 .dr-code-display {
@@ -2834,8 +2908,9 @@ button.ht-bag-chip.bdo-chip-back {
   padding: 10px 12px;
   margin: 0;
   border-radius: 8px;
-  background: var(--ht-bg, #f8fafc);
-  border: 1px solid var(--ht-border, #e2e8f0);
+  background: #fffdf9;
+  border: 1px solid rgba(25, 22, 43, 0.18);
+  color: var(--ink, #19162b);
   min-height: 360px;
   max-height: 520px;
   overflow: auto;
@@ -2851,8 +2926,8 @@ button.ht-bag-chip.bdo-chip-back {
 }
 
 .dr-line-active {
-  background: #fef9c3;
-  outline: 1px solid #eab308;
+  background: rgba(254, 182, 134, 0.35);
+  outline: 1px solid #f97316;
 }
 
 .dr-textarea {
@@ -2863,16 +2938,22 @@ button.ht-bag-chip.bdo-chip-back {
   line-height: 1.6;
   padding: 10px 12px;
   border-radius: 8px;
-  border: 1px solid var(--ht-border, #e2e8f0);
-  background: var(--ht-bg, #f8fafc);
+  border: 1px solid rgba(25, 22, 43, 0.18);
+  background: #fffdf9;
   color: var(--ink, #19162b);
+  caret-color: var(--ink, #19162b);
   resize: vertical;
   min-height: 360px;
 }
 
+.dr-textarea-hidden,
+.dr-editor-root textarea[hidden] {
+  display: none !important;
+}
+
 .dr-editor-locked .dr-textarea,
 .dr-textarea[readonly] {
-  background: #eeebe4;
+  background: #f3ebe0;
   cursor: not-allowed;
 }
 
@@ -2886,7 +2967,7 @@ button.ht-bag-chip.bdo-chip-back {
 
 .dr-editor-status {
   font-size: 0.85em;
-  color: #64748b;
+  color: var(--muted-on-paper, #6a6986);
   min-height: 1.2em;
 }
 
@@ -2909,7 +2990,7 @@ button.ht-bag-chip.bdo-chip-back {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-weight: 700;
-  color: var(--muted, #ffffff);
+  color: var(--muted-on-paper, #6a6986);
 }
 
 .dr-stdout-clear {
@@ -2924,8 +3005,8 @@ button.ht-bag-chip.bdo-chip-back {
   overflow: auto;
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid var(--ht-border, #e2e8f0);
-  background: #e4edfc;
+  border: 1px solid rgba(25, 22, 43, 0.18);
+  background: #fffdf9;
   color: #153d72;
   font-family: var(--font-mono), ui-monospace, "Cascadia Code", "Fira Code", monospace;
   font-size: 0.78em;
@@ -2935,14 +3016,14 @@ button.ht-bag-chip.bdo-chip-back {
 }
 
 .dr-stdout-empty {
-  color: #4573b0;
+  color: #6a6986;
   font-style: italic;
 }
 
 .dr-stdout-error {
-  background: #3f1d1d;
+  background: #fff1f1;
   border-color: #f87171;
-  color: #fecaca;
+  color: #9f1239;
 }
 
 .dr-viz-root .ht-anim-panels {
@@ -2961,9 +3042,12 @@ button.ht-bag-chip.bdo-chip-back {
   }
 
   .dr-code-display,
-  .dr-textarea {
+  .dr-textarea,
+  .dr-cm-host,
+  .dr-cm-host .cm-editor {
     min-height: 240px;
     max-height: 360px;
+    height: 240px;
   }
 }
 
