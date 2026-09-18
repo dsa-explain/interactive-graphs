@@ -1,0 +1,13 @@
+### Exercise: Word Search
+
+What if in the above problem, we can move in any of the 4 directions (up, down, left, right) from the current cell? Can we follow the same recursive approach and just add all four neighbors as children?
+
+Consider the following simple example:
+
+if the word is PI
+
+P - P
+|   |
+P - I
+
+keywords: backtracking, graph traversal

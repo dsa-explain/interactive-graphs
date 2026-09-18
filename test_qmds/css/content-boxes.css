@@ -1,0 +1,243 @@
+/* content-boxes.css ---------------------------------------------------
+   Project callouts for Q&A, tips, notes, hints, and inline code emphasis.
+   Uses design tokens from graph.css (must load after graph.css).
+------------------------------------------------------------------------ */
+
+.ig-qa,
+.ig-tip,
+.ig-note,
+.ig-hint {
+  background: var(--highlight-box);
+  border: var(--border-w-thick) solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1rem 1rem;
+  margin: 1.25rem 0;
+  color: var(--graphite);
+  overflow: hidden;
+}
+
+.ig-qa > :first-child,
+.ig-tip > :first-child,
+.ig-note > :first-child,
+.ig-hint > :first-child {
+  margin-top: 0;
+}
+
+.ig-qa > :last-child,
+.ig-tip > :last-child,
+.ig-note > :last-child,
+.ig-hint > :last-child {
+  margin-bottom: 0;
+}
+
+.ig-box__label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-on-paper);
+  margin: 0 0 0.55rem;
+}
+
+/* --- Q&A: coral left accent --- */
+
+.ig-qa {
+  border-left: 5px solid var(--coral);
+  padding-left: calc(1rem - 2px);
+}
+
+.ig-qa .ig-box__label {
+  color: var(--ink);
+}
+
+.ig-qa p {
+  margin: 0.4rem 0;
+}
+
+.ig-qa p:first-of-type {
+  margin-top: 0;
+}
+
+.ig-qa strong:first-child {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+/* --- Tip: amber header strip --- */
+
+.ig-tip {
+  padding-top: 0;
+  background: var(--highlight-box);
+}
+
+.ig-tip::before {
+  content: "Tip";
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--amber);
+  margin: 0 -1rem 0.75rem;
+  padding: 0.45rem 1rem;
+  border-bottom: var(--border-w) solid var(--line);
+}
+
+.ig-tip:has(> .ig-box__label)::before {
+  display: none;
+}
+
+.ig-tip > .ig-box__label {
+  background: var(--amber);
+  color: var(--ink);
+  margin: 0 -1rem 0.75rem;
+  padding: 0.45rem 1rem;
+  border-bottom: var(--border-w) solid var(--line);
+}
+
+/* --- Note: plain notebook aside --- */
+
+.ig-note {
+  background: var(--paper);
+}
+
+.ig-note::before {
+  content: "Note";
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-on-paper);
+  margin: 0 0 0.55rem;
+}
+
+.ig-note:has(> .ig-box__label)::before,
+.ig-note:has(> :is(h1, h2, h3, h4, h5, h6))::before {
+  display: none;
+}
+
+.ig-note > :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  margin: 0 0 0.55rem;
+}
+
+.ig-note img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.75rem 0 0;
+}
+
+/* --- Hint: collapsible via details --- */
+
+.ig-hint {
+  background: var(--paper);
+  padding: 0;
+}
+
+.ig-hint > details {
+  margin: 0;
+}
+
+.ig-hint > details > summary {
+  list-style: none;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--neighbour-node-stroke);
+  padding: 0.5rem 1rem;
+  border-bottom: var(--border-w) solid transparent;
+  user-select: none;
+}
+
+.ig-hint > details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ig-hint > details > summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 0.45rem;
+  transition: transform 0.15s ease;
+}
+
+.ig-hint > details[open] > summary {
+  border-bottom-color: var(--line);
+}
+
+.ig-hint > details[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.ig-hint > details > :not(summary) {
+  margin-left: 1rem;
+  margin-right: 1rem;
+}
+
+.ig-hint > details > :not(summary):first-of-type {
+  margin-top: 0.85rem;
+}
+
+.ig-hint > details > :not(summary):last-child {
+  margin-bottom: 1rem;
+}
+
+/* Non-collapsible hint body (no details wrapper) */
+.ig-hint:not(:has(> details)) {
+  padding: 0.85rem 1rem 1rem;
+}
+
+.ig-hint:not(:has(> details))::before {
+  content: "Hint";
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-on-paper);
+  margin: 0 0 0.55rem;
+}
+
+.ig-hint:not(:has(> details)):has(> .ig-box__label)::before {
+  display: none;
+}
+
+/* --- Inline code highlight --- */
+
+.ig-code {
+  display: inline;
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--coral-soft);
+  border: 1px solid var(--coral);
+  border-radius: 4px;
+  padding: 0.08em 0.35em;
+  white-space: nowrap;
+}
+
+.ig-qa code,
+.ig-tip code,
+.ig-note code,
+.ig-hint code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}

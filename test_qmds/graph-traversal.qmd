@@ -341,7 +341,7 @@ heatQuiz = mountHeatQuiz(document.querySelector("#heat-quiz"), {
 
 Convert it to code!
 
-:::{.callout-tip}
+::: {.ig-tip}
 The flow is:
 
 1. initialisation: track and bag the first node: cafeteria
@@ -404,19 +404,29 @@ heatCodeViz = mountHeatCodeViz(document.querySelector("#heat-code-viz"), {
 })
 ```
 
-:::{.callout-tip}
+::: {.ig-tip}
 In the above code, for simplicity, we are not checking if P exists in the neighbours. Thus we are depending on the random choice to pick P from the bag to stop the loop. We can simply add that condition if we wish to make it faster.
 :::
 
 Code exercise:
 
-Question: Oh no! There is a breach in the admin room window and all air is leaking out. The space station is on lockdown. All rooms connected to the admin room vents are dangerous. Can you list out all these rooms?
+::: {.ig-qa}
+**Q.** Oh no! There is a breach in the admin room window and all air is leaking out. The space station is on lockdown. All rooms connected to the admin room vents are dangerous. Can you list out all these rooms?
 
 You will be getting the adjacency list of the graph "G" as input.
+:::
 
-Hint: You can start traversing from the admin room. This time the stop condition is when the bag is empty.
+::: {.ig-hint}
+<details>
+<summary>Hint</summary>
 
-Note: Use the variable `danger_rooms` to track the rooms that are dangerous. This list will be visualised.
+You can start traversing from the admin room. This time the stop condition is when the bag is empty.
+</details>
+:::
+
+::: {.ig-note}
+Use the variable <span class="ig-code">danger_rooms</span> to track the rooms that are dangerous. This list will be visualised.
+:::
 
 Type a traversal in the editor, then press **Play** to watch it run, or **Step** to advance one line. The graph highlights rooms in `danger_rooms` in orange as each line of your code runs.
 

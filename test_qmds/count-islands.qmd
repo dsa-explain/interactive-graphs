@@ -87,20 +87,24 @@ not_fully_connected_view = mountStaticGraphView(
 
 An island is a group of nodes that are not connected to any other nodes in the graph. 
 
-::: {.callout-tip collapse="true"}
-## Hint
+::: {.ig-hint}
+<details>
+<summary>Hint</summary>
 
 Every node you can possibly visit from a given starting node is part of the same island. Thus we can simply traverse the graph and count the number of times we have to start a new traversal to visit all the nodes in the graph.
+</details>
 :::
 
-::: {.callout-tip collapse="true"}
-## Code Help
+::: {.ig-hint}
+<details>
+<summary>Code Help</summary>
 
 1. Start with a random first node and traverse the graph. Record all nodes being visited. This is the first "island".
-2. Look for a node that has not been visited. If you find such a node it means that this node is not connected to the first "island". Increment the count to record a new island. Start a new traversal from this nodes. 
+2. Look for a node that has not been visited. If you find such a node it means that this node is not connected to the first "island". Increment the count to record a new island. Start a new traversal from this nodes.
 3. Repeat the process until you have visited all the nodes in the graph.
 
-Tip: Use a recursive function to traverse the graph.
+**Tip:** Use a recursive function to traverse the graph.
+</details>
 :::
 
 Drag the blocks below into a plan for counting islands. Click any block to

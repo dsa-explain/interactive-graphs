@@ -541,14 +541,12 @@ viewof graphsSideBySideGraph3 = {
 }
 ```
 
-:::{.callout-note}
-
+::: {.ig-note}
 #### Terminology alert!
 
 We can simply use lists to record the rooms, but we have already encountered the concepts of LIFO and FIFO. We can use thus a stack for the first strategy and a queue for the second one.
 
 <img src="./img/STACK_QUEUE.png" alt="visualization of stack and queue" width="400" style="padding: 10px;">
-
 :::
 
 ### Implement in code!

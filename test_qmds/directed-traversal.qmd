@@ -92,12 +92,10 @@ neighboursViz = mountNeighboursMazeView(document.querySelector("#neighbours-viz"
 
 Now let's find the shortest path itself. 
 
-:::{.panel}
+::: {.ig-qa}
+**Q.** Which algorithm would you use to find the shortest path?
 
-Q - Which algorithm would you use to find the shortest path?
-
-Answer: BFS is perfect for this, because it explores the grid level by level. Nodes in the same level are at the same distance from the start. So if we encounter the target node, we can be sure that we have found the shortest path.
-
+**A.** BFS is perfect for this, because it explores the grid level by level. Nodes in the same level are at the same distance from the start. So if we encounter the target node, we can be sure that we have found the shortest path.
 :::
 
 Assemble the loop body so the rover explores the grid breadth-first: pop the next cell from the queue, stop if it's the target, find its legal neighbours with `get_neighbours`,

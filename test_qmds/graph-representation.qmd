@@ -51,7 +51,7 @@ followed by a box for every neighbour -- appears on the right. Nothing else
 is shown yet, so you can focus on what a single row means before looking at
 the whole structure.
 
-::: {.callout-note}
+::: {.ig-note}
 The elements in the adjacency list are simply that node's **neighbours**!.
 :::
 
