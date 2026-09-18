@@ -2350,9 +2350,9 @@ key_edges = []
 
 /**
  * Solution: 3-colour DFS. bag = active recursion path, visited_nodes =
- * grey∪black, visited_edges = flights walked, key_edges = back-edges to
- * active (grey) nodes — reverse those to break each cycle found.
- * Colours match the directed-cycle viz: white / grey(active) / black.
+ * blue∪black, visited_edges = flights walked, key_edges = back-edges to
+ * active (blue) nodes — reverse those to break each cycle found.
+ * Colours match the directed-cycle viz: white / blue(active) / black.
  */
 export function aroundTheWorldSolutionCode() {
   return `G = ${aroundWorldAdjLiteral()}
@@ -2362,7 +2362,7 @@ bag = []
 
 key_edges = []
 
-WHITE, GREY, BLACK = "white", "grey", "black"
+WHITE, BLUE, BLACK = "white", "blue", "black"
 
 nodes = set(G.keys())
 for nbrs in G.values():
@@ -2370,14 +2370,14 @@ for nbrs in G.values():
 color = {n: WHITE for n in nodes}
 
 def dfs(node):
-    color[node] = GREY
+    color[node] = blue
     bag.append(node)
     visited_nodes.add(node)
 
     for nxt in G.get(node, []):
         edge = (node, nxt)
         visited_edges.add(edge)
-        if color[nxt] == GREY:
+        if color[nxt] == BLUE:
             # Back-edge into the active path — a directed cycle.
             key_edges.append(edge)
         elif color[nxt] == WHITE:
@@ -2392,12 +2392,12 @@ for start in list(G.keys()):
 `;
 }
 
-/** Map textbook / student colour names onto gv-color-* classes (grey → blue). */
+/** Map textbook / student colour names onto gv-color-* classes (blue → blue). */
 function aroundWorldCssColor(raw) {
   const c = String(raw ?? "white").toLowerCase().trim();
   if (c === "black" || c === "complete") return "black";
   if (c === "orange" || c === "cycle") return "orange";
-  if (c === "grey" || c === "gray" || c === "blue" || c === "active") return "blue";
+  if (c === "blue" || c === "gray" || c === "blue" || c === "active") return "blue";
   return "white";
 }
 
@@ -2409,7 +2409,7 @@ function aroundWorldAllWhite(graph) {
 
 /**
  * Prefer an explicit `color` map from the student code; otherwise derive
- * white / grey(active→blue) / black from bag + visited_nodes. When a new
+ * white / blue(active→blue) / black from bag + visited_nodes. When a new
  * key_edge appears, paint the active path orange (same as directed-cycle viz).
  */
 function aroundWorldNodeColors(graph, { colorMap, bag, visited, paintCycle }) {

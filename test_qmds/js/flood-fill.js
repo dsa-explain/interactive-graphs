@@ -68,13 +68,12 @@ export function clonePixelArray(grid = PIXEL_ARRAY) {
 }
 
 export function floodFillStarterCode() {
-  return `def floodFill(pixel_array, start, color):
-    """Fill the connected region of start with color, in place.
+  return `
+  # pixel_array is a 2D list of hex colour strings
+  # start is a tuple of (row, col) (you can select this from the right-hand panel)
+  # color is a hex string (you can select this from the right-hand panel)
 
-    pixel_array: 2D list of hex colour strings
-    start: (row, col)
-    color: hex string to paint with
-    """
+  def floodFill(pixel_array, start, color):
     row, col = start
     original = pixel_array[row][col]
     if original == color:
