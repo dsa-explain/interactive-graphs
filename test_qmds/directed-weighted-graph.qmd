@@ -312,3 +312,81 @@ shortestPathCheck.addEventListener("click", () => {
   }
 });
 ```
+
+## Student exercise: when no shortest path exists
+
+In the directed weighted graph below, the weight on the edge from `B` to `C`
+is left blank for you to determine.
+
+::: {.static-graph-inline}
+<div id="no-shortest-path-exercise-graph"></div>
+:::
+
+```{python}
+#| echo: false
+nspe_nodes = [
+    {"id": "A", "label": "A", "x": 40, "y": 140},
+    {"id": "C", "label": "C", "x": 180, "y": 140},
+    {"id": "D", "label": "D", "x": 310, "y": 50},
+    {"id": "B", "label": "B", "x": 400, "y": 170},
+    {"id": "E", "label": "E", "x": 470, "y": 280},
+]
+nspe_edges = [
+    {"id": "e0", "source": "A", "target": "C", "label": "13"},
+    {"id": "e1", "source": "B", "target": "C", "label": "?"},
+    {"id": "e2", "source": "C", "target": "D", "label": "18"},
+    {"id": "e3", "source": "D", "target": "B", "label": "13"},
+    {"id": "e4", "source": "C", "target": "E", "label": "4"},
+]
+ojs_define(nspe_nodes = nspe_nodes, nspe_edges = nspe_edges)
+```
+
+```{ojs}
+//| echo: false
+//| output: false
+noShortestPathExerciseView = mountStaticGraphView(
+  document.querySelector("#no-shortest-path-exercise-graph"),
+  { nodes: nspe_nodes, edges: nspe_edges },
+  { width: 500, height: 320, directed: true }
+);
+```
+
+::: {.mc-question #no-shortest-path-exercise}
+<label for="bc-weight-answer">For the graph above, state the largest integer weight for the directed edge <strong>(B, C)</strong> that makes this statement true: <strong>A shortest path from A to E does not exist.</strong></label>
+
+<p><em>Note that the edge weight need not be positive.</em></p>
+
+<input id="bc-weight-answer" type="number" step="1" inputmode="numeric" aria-describedby="bc-weight-hint">
+<span id="bc-weight-hint" class="visually-hidden">Enter an integer.</span>
+<button type="button" class="mc-check">Check answer</button>
+<p class="mc-feedback" aria-live="polite"></p>
+:::
+
+```{ojs}
+//| echo: false
+//| output: false
+noShortestPathExercise = document.querySelector("#no-shortest-path-exercise");
+bcWeightAnswer = noShortestPathExercise.querySelector("#bc-weight-answer");
+bcWeightCheck = noShortestPathExercise.querySelector(".mc-check");
+bcWeightFeedback = noShortestPathExercise.querySelector(".mc-feedback");
+
+bcWeightCheck.addEventListener("click", () => {
+  const answer = Number(bcWeightAnswer.value);
+  bcWeightFeedback.className = "mc-feedback";
+
+  if (bcWeightAnswer.value === "" || !Number.isInteger(answer)) {
+    bcWeightFeedback.classList.add("mc-incorrect");
+    bcWeightFeedback.textContent = "Enter an integer weight first.";
+  } else if (answer === -32) {
+    bcWeightFeedback.classList.add("mc-correct");
+    bcWeightFeedback.textContent =
+      "Correct. The cycle C → D → B → C has weight 18 + 13 + (−32) = −1, so it can be repeated to make routes from A to E arbitrarily small.";
+  } else {
+    bcWeightFeedback.classList.add("mc-incorrect");
+    bcWeightFeedback.textContent =
+      answer < -32
+        ? "This creates a negative cycle, but it is not the largest such integer. Try increasing the weight."
+        : "This does not create a negative cycle. Find the total weight of C → D → B → C.";
+  }
+});
+```

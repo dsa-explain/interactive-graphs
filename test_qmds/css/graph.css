@@ -1030,6 +1030,24 @@ h1, h2, h3, .title {
   accent-color: var(--coral);
 }
 
+.mc-question input[type="number"] {
+  display: block;
+  width: min(100%, 12rem);
+  margin: 0.75rem 0 0;
+  padding: 0.45rem 0.6rem;
+  color: var(--ink);
+  background: #fff;
+  border: var(--border-w) solid var(--line);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 1rem;
+}
+
+.mc-question input[type="number"]:focus {
+  outline: 2px solid var(--coral);
+  outline-offset: 2px;
+}
+
 .mc-check {
   margin-top: 0.75rem;
   padding: 0.45rem 0.7rem;
