@@ -31,8 +31,8 @@ ojs_define(sb_default_code = default_python_code)
 ```
 
 ```{=html}
-<div class="panel-grid">
-  <div class="panel">
+<div class="panel-grid panel-grid--sandbox">
+  <div class="panel" style="border: none;">
     <div class="graph-widget__panel" id="python-editor-root">
       <h3>Edit Python graph code</h3>
       <textarea id="python-editor-1" data-role="python-editor" rows="14"></textarea>
@@ -40,14 +40,14 @@ ojs_define(sb_default_code = default_python_code)
         <button data-role="run-code">Run Python</button>
         <button data-role="reset-code" class="secondary">Reset code</button>
         <button data-role="sync-code" class="secondary">Sync graph to code</button>
-        <button data-role="show-json" class="secondary">Show current JSON</button>
+        <!-- <button data-role="show-json" class="secondary">Show current JSON</button> -->
       </div>
-      <pre data-role="json-output" class="graph-widget__json" hidden></pre>
+      <!-- <pre data-role="json-output" class="graph-widget__json" hidden></pre> -->
       <div data-role="status" class="graph-widget__status"></div>
     </div>
   </div>
 
-  <div class="panel">
+  <div class="panel" style="border: none;">
     <div class="panel-title">Sandbox</div>
     <div class="panel">
       <div id="sandbox-graph"></div>

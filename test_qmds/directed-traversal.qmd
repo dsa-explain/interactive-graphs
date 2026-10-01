@@ -32,6 +32,9 @@ import {
   NEIGHBOURS_CODE_OPTIONS,
   BFS_CODE_BLOCKS,
   BFS_CODE_OPTIONS,
+  countShortestPathsStarterCode,
+  countShortestPathsSolutionCode,
+  mountCountShortestPathsViz,
 } from "./js/maze-helpers.js";
 import { mountCodeBlocksView } from "./js/qmd-specific-utils/code-blocks-view.js";
 ```
@@ -135,6 +138,52 @@ bfsViz = mountBfsMazeView(document.querySelector("#bfs-viz"), matrix, {
 ```
 
 ## Task 2
-### How many different paths could your rover have taken?
+### How many "different" shortest paths could your rover have taken?
 
-This time you will write the entire code from scratch. You will recieve the grid G as a 2D matrix. 
+Return the number of different shortest paths from the top-left to the bottom-right cell. If there are no shortest paths, return 0. This time you will write the entire function from scratch. You will receive the grid `G` as a 2D matrix.
+
+::: {.ig-note}
+Use the 2D list <span class="ig-code">ways</span> to count how many shortest paths reach each cell. Those counts appear on the grid as your code runs.
+:::
+
+Type your solution in the editor, then press **Play** to watch the search expand one distance layer at a time, or **Step** to advance a single layer. Every cell highlighted in the same step is the same distance from the start, and the small corner number on a cell is the number of shortest paths that reach it.
+
+::: {.panel-grid}
+::: {.panel}
+<div id="count-paths-editor"></div>
+:::
+::: {.panel}
+<div id="count-paths-viz" class="cb-viz-placeholder"></div>
+:::
+:::
+
+```{ojs}
+//| echo: false
+import { PythonEditorInput } from "./js/qmd-specific-utils/python-editor-input.js";
+```
+
+```{ojs}
+//| echo: false
+countPathsEditor = PythonEditorInput.mountPlayable(
+  document.querySelector("#count-paths-editor"),
+  {
+    heading: "Python",
+    defaultCode: countShortestPathsStarterCode(matrix),
+    solutionCode: countShortestPathsSolutionCode(matrix),
+  }
+)
+```
+
+```{ojs}
+//| echo: false
+countPathsViz = mountCountShortestPathsViz(
+  document.querySelector("#count-paths-viz"),
+  matrix,
+  {
+    start: mazeStart,
+    target: mazeTarget,
+    cellSize: 42,
+    editor: countPathsEditor,
+  }
+)
+```

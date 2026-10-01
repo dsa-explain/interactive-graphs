@@ -112,15 +112,16 @@ adjacentView = mountStaticGraphView(
 );
 ```
 
+::: {.ig-qa}
 ### Exercise: Select the order
 
 Let us explore the same traversal problem from the previous lecture in a different way. You are trapped back in the space station. Each room may have several doors leading to other rooms.This time your aim is to reach the Admin Room.
 
 The graph on the left shows the rooms and paths. From the options, select the correct room order if you were to explore the graph using the two strategies above. 
-
+:::
 #### Strategy 1
 
-1. Explore one path completely. Pick the first door and keep walking through new rooms until you reach a room with no unexplored doors. Then backtrack to the previous room and try another door. Continue until you find Admin.
+1. Explore **one path completely**. Pick the first door and keep walking through new rooms until you reach a room with no unexplored doors. Then backtrack to the previous room and try another door. Continue until you find Admin.
 
 ::: {.static-graph-inline}
 <div id="dfs-quiz"></div>
@@ -128,7 +129,7 @@ The graph on the left shows the rooms and paths. From the options, select the co
 
 #### Strategy 2
 
-2. Explore the rooms in the order we encounter them.
+2. Explore the rooms **in the order we encounter** them.
 
 When we explore a single room, we would encounter its adjacent neighbours first. We would list them in the order we encounter them (but not enter them to see their further rooms). 
 
@@ -445,13 +446,13 @@ mountTraversalQuiz(document.querySelector("#bfs-quiz"), { questions: bfs_quiz_qu
 
 Now that we have an intuition for the two strategies, let us explore how we can implement them in code. How do we record the order? 
 
-For the first strategy -> We keep going "deeper" until we reach the end. We explore the rooms as we encounter them. In other words, we explore the DEPTH first before coming back to the breadth. Thus it is called Depth-First Search (DFS).
+For the first strategy -> We keep going "deeper" until we reach the end. We explore the rooms as we encounter them. In other words, we explore the DEPTH first before coming back to the breadth. Thus it is called **Depth-First Search (DFS)**.
 
-For the second strategy -> We explore the rooms in "layers". We explore the closer ones FIRST. In other words, we explore the BREADTH first before going deeper. Thus it is called Breadth-First Search (BFS).
+For the second strategy -> We explore the rooms in "layers". We explore the closer ones FIRST. In other words, we explore the BREADTH first before going deeper. Thus it is called **Breadth-First Search (BFS)**.
 
 We need to now select the order of rooms we will pick from the bag. 
 
-1. If we want to explore deeper -> we will pick the latest rooms we just visited, i.e. put in the bag LAST. The strategy will be Last-In-First-Out (LIFO).
+1. If we want to explore deeper -> we will pick the latest rooms we just visited, i.e. put in the bag LAST. The strategy will be **Last-In-First-Out (LIFO)**.
 
 ```{ojs}
 //| echo: false
@@ -462,7 +463,7 @@ frameDFS = makeFrameGenerator(dfsFrames, 1100)
 renderViz(frameDFS, treeNodes, d3, html)
 ```
 
-2. If we want to explore breadth -> we will pick the rooms IN THE ORDER we put them in the bag. The strategy will be First-In-First-Out (FIFO).
+2. If we want to explore breadth -> we will pick the rooms IN THE ORDER we put them in the bag. The strategy will be **First-In-First-Out (FIFO)**.
 
 ```{ojs}
 //| echo: false
@@ -473,7 +474,8 @@ frameBFS = makeFrameGenerator(bfsFrames, 1100)
 renderViz(frameBFS, treeNodes, d3, html)
 ```
 
-!! NOTE !!: This strategy still does not determine if we encounter 2 rooms at the same time, i.e. two neighbours, what should be the order. But that does not matter as there can be MULTIPLE DFS or BFS paths at the same time. This strategy ensures we will get ONE of the DFS or BFS paths.
+::: {.ig-note label="Important Note!"}
+This strategy still does not determine if we encounter 2 rooms at the same time, i.e. two neighbours, what should be the order. But that does not matter as there can be **MULTIPLE DFS or BFS paths at the same time**. This strategy ensures we will get **ONE of the DFS or BFS paths**.
 
 E.g.
 ```{ojs}
@@ -540,11 +542,11 @@ viewof graphsSideBySideGraph3 = {
   return container;
 }
 ```
+:::
 
-::: {.ig-note}
-#### Terminology alert!
+::: {.ig-note label="Terminology Alert" collapse="true"}
 
-We can simply use lists to record the rooms, but we have already encountered the concepts of LIFO and FIFO. We can use thus a stack for the first strategy and a queue for the second one.
+We can simply use lists to record the rooms, but we have already encountered the concepts of LIFO and FIFO. Can you guess what we can use instead? We can use thus a stack for the first strategy and a queue for the second one.
 
 <img src="./img/STACK_QUEUE.png" alt="visualization of stack and queue" width="400" style="padding: 10px;">
 :::
@@ -649,10 +651,12 @@ heatCodeViz2 = mountHeatCodeViz(document.querySelector("#heat-code-viz-2"), {
 })
 ```
 
-
-### Exercise: Find BFS and DFS traversal orders!
+::: {.ig-qa}
+### Exercise 2: Find BFS and DFS traversal orders!
 
 For each graph below, the **start node is highlighted** in orange. Try to trace both the BFS (queue) and DFS (stack) traversal orders yourself before selecting an answer — you can click on nodes to mark them as you go.
+
+:::
 
 ::: {.widget-block}
 <div id="traversal-order-quiz"></div>

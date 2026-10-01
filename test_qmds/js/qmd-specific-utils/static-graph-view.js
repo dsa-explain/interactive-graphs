@@ -187,7 +187,9 @@ export function mountStaticGraphView(container, data, options = {}) {
 
   const isTravelingEdge = (link) =>
     currentId != null &&
-    [...neighbours].some((nb) => connects(link, currentId, nb));
+    [...neighbours].some(
+      (nb) => !visited.has(nb) && connects(link, currentId, nb)
+    );
 
   const edgeSel = edgeLayer
     .selectAll("g.gv-edge")
@@ -271,8 +273,9 @@ export function mountStaticGraphView(container, data, options = {}) {
     let cls = "gv-node-circle";
     // Role priority: current > visitedNeighbour > previous/next > start/end > visited
     if (currentId != null && d.id === currentId) cls += " gv-selected";
-    else if (visitedNeighboursHl.has(d.id)) cls += " gv-visited-neighbour";
-    else if (previousId != null && d.id === previousId) cls += " gv-previous";
+    else if (visitedNeighboursHl.has(d.id) || (neighbours.has(d.id) && visited.has(d.id))) {
+      cls += " gv-visited-neighbour";
+    } else if (previousId != null && d.id === previousId) cls += " gv-previous";
     else if (nextId != null && d.id === nextId) cls += " gv-neighbour";
     else if (neighbours.has(d.id)) cls += " gv-neighbour";
     else if (startId != null && d.id === startId) cls += " gv-start";
@@ -299,7 +302,9 @@ export function mountStaticGraphView(container, data, options = {}) {
 
   const roleOf = (d) => {
     if (currentId != null && d.id === currentId) return "current";
-    if (visitedNeighboursHl.has(d.id)) return "visited";
+    if (visitedNeighboursHl.has(d.id) || (neighbours.has(d.id) && visited.has(d.id))) {
+      return "visited";
+    }
     if (previousId != null && d.id === previousId) return "previous";
     if (nextId != null && d.id === nextId) return "next";
     if (neighbours.has(d.id)) return "unvisited";

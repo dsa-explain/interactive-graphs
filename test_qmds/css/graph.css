@@ -40,8 +40,12 @@
   --radius-sm: 6px;
   --radius-md: 10px;
   --border-w: 2px;
-  --border-w-thick: 3px;
+  --border-w-thick: 2.75px;
 }
+
+/* html {
+  overflow-x: clip;
+} */
 
 body {
   font-family: var(--font-body);
@@ -65,6 +69,70 @@ h1, h2, h3, .title {
   font-weight: 700;
   letter-spacing: -0.01em;
 }
+
+/* ---------- page title / subtitle banner ----------
+
+ Quarto leaves 1em + 14px above main and 1.5em column gutters, so the
+   paper banner sat in a frame of page grid. Pull it flush, then extend
+   the fill to the right viewport edge. 
+#quarto-content > main.content {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+#title-block-header.quarto-title-block {
+  position: relative;
+  isolation: isolate;
+  background: var(--paper);
+  border: none;
+  border-bottom: var(--border-w-thick) solid var(--line);
+  border-radius: 0;
+  box-sizing: border-box;
+  margin: 0 -1.5em 1.75rem;
+  padding: 0.85rem 1.5em;
+}
+
+#title-block-header.quarto-title-block::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  bottom: calc(-1 * var(--border-w-thick));
+  left: 100%;
+  width: 100vw;
+  background: var(--paper);
+  border-bottom: var(--border-w-thick) solid var(--line);
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+#title-block-header .quarto-title-breadcrumbs {
+  margin-bottom: 0.65rem;
+}
+
+#title-block-header .quarto-title {
+  margin: 0;
+}
+
+#title-block-header .quarto-title .title {
+  color: var(--ink);
+  margin: 0;
+  line-height: 1.2;
+}
+
+#title-block-header .quarto-title .subtitle {
+  margin: 0.45rem 0 0;
+  padding-top: 0;
+  color: var(--graphite);
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+
+#title-block-header .quarto-title-meta {
+  display: none;
+} */
 
 /* ---------- page layout ---------- */
 
@@ -1350,6 +1418,15 @@ h1, h2, h3, .title {
   background: var(--coral-soft);
 }
 
+.dm-odd-chip {
+  outline: 2px solid var(--coral, #e07a5f);
+  outline-offset: 1px;
+}
+
+.dm-viz-root .ht-anim-panels {
+  grid-template-columns: 1fr 1fr;
+}
+
 .iv-status {
   font-size: 0.82rem;
   color: var(--graphite);
@@ -1382,20 +1459,6 @@ h1, h2, h3, .title {
 .iv-run:disabled {
   opacity: 0.55;
   cursor: wait;
-}
-
-/* quarto callout */
-
-.callout-note,
-.callout-tip {
-  background-color: var(--highlight-box);
-  border-color: var(--line);
-  color: var(--ink);
-}
-
-.callout-note,
-.callout-tip p {
-  color: var(--ink);
 }
 
 /* panels for next and previous */
@@ -2529,6 +2592,23 @@ button.ht-bag-chip.bdo-chip-back {
   font-weight: 700;
   opacity: 0.7;
   font-family: var(--font-mono);
+}
+
+.mz-cell-badge {
+  position: absolute;
+  right: 3px;
+  bottom: 1px;
+  font-size: 0.55rem;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.85;
+  font-family: var(--font-mono);
+  pointer-events: none;
+}
+
+.mz-queue-chip-current {
+  outline: 2px solid var(--coral, #e07a5f);
+  outline-offset: 1px;
 }
 
 .mz-cell-selectable {
@@ -3725,4 +3805,28 @@ button.ht-bag-chip.bdo-chip-back {
 .question-card h3,
 .question-card p:last-child {
   margin: 0;
+}
+
+/* ---------- coding sandbox ---------- */
+
+.panel-grid.panel-grid--sandbox {
+  grid-template-columns: 2fr 3fr; /* editor 2/5, sandbox 3/5 */
+  gap: 1rem;
+  width: 100%;
+}
+
+.panel-grid--sandbox > .panel {
+  min-width: 0; /* lets the grid cell shrink instead of overflowing */
+}
+
+.panel-grid--sandbox #sandbox-graph,
+.panel-grid--sandbox #sandbox-graph svg,
+.panel-grid--sandbox #sandbox-graph canvas {
+  width: 100%;
+}
+
+@media (max-width: 860px) {
+  .panel-grid.panel-grid--sandbox {
+    grid-template-columns: 1fr;
+  }
 }

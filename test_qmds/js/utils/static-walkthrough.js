@@ -31,7 +31,7 @@ export function defaultWalkthroughInfoRows(step = {}) {
       always: true,
     },
     {
-      key: "Possible next",
+      key: "Unvisited nodes",
       values: step.possibleNext ?? [],
       chipClass: "gt-chip-next",
     },

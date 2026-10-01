@@ -45,6 +45,9 @@ website:
           - href: question-bank.qmd
             text: Question Bank
   
+filters:
+  - filters/ig-boxes.lua
+
 format:
   html:
     theme: cosmo

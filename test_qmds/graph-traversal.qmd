@@ -3,8 +3,6 @@ title: "Graph Traversal"
 subtitle: "Moving through a graph"
 ---
 
-## Introduction
-
 Now that we have a graph and a way to represent it, we can start to move through it. When we are doing so, we will create a "Path". Let's take an example of a path from node A to node E. 
 
 ## Walking Through a Traversal
@@ -62,39 +60,41 @@ mountStaticWalkthrough(document.querySelector("#traversal-walkthrough"), {
       description: "We move from A to its neighbour B, which becomes the new current node. We used the edge A—B to do so. Congratulations! We took our first step! But wait, how do we know what path we're taking? We need to **track** our path. So we record both the nodes we visited and the edges we used. We can also track the nodes we **encountered** but didn't visit, like C. But for now, lets just focus on the nodes we visited and the edges we used.",
       node: "B",
       from: "A",
+      possibleNext: ["C"],
       visited: ["A", "B"],
       highlight: { current: "B", previous: "A", visited: ["A", "B"], pathEdges: ["A—B"] }
     },
     {
       title: "Next step",
-      description: "From B we have 2 neighbours: D or the previous node A. Since we already visited A (we have also recorded this) we want to choose a new node and move to D.",
+      description: "From B we have 2 neighbours: D or the previous node A. Since we already visited A (we have also recorded this) we add D to the list of unvisited nodes. We still have C unvisited, but let's choose D as our next node.",
       node: "B",
       from: "A",
       visited: ["A", "B"],
-      possibleNext: ["A","D"],
-      highlight: { current: "B", previous: "A", neighbours: ["D"], visited: ["A", "B"], pathEdges: ["A—B"] }
+      possibleNext: ["C","D"],
+      highlight: { current: "B", previous: "A", neighbours: ["D"], visited: ["A", "B"], pathEdges: ["A—B", "B—D"] }
     },
     {
       title: "Continue Traversing",
-      description: "We take another step, moving to D. Now we can see two new neighbours: F and C. We can choose to move to F or C. Let's choose F.",
+      description: "We take another step, moving to D. Now we can see two new neighbours: C again and F. We can choose to move to F or C. Let's choose F.",
       node: "D",
-      possibleNext: ["F", "C"],
+      possibleNext: ["C","F"],
       visited: ["A", "B", "D"],
       highlight: { current: "D", previous: "B", neighbours: ["F","C"], visited: ["A", "B", "D"], pathEdges: ["A—B", "B—D"] }
     },
     {
       title: "Keep Going",
-      description: "One more step takes us to F. We're getting closer to the end node, and F's neighbour E is now the only possible next move.",
+      description: "One more step takes us to F. From F we see the new node E and add it to the list of unvisited nodes. Now we move to E.",
       node: "F",
-      possibleNext: ["E"],
+      possibleNext: ["C","E"],
       visited: ["A", "B", "D", "F"],
       highlight: { current: "F", previous: "D", neighbours: ["E"], visited: ["A", "B", "D", "F"], pathEdges: ["A—B", "B—D", "D—F"] }
     },
     {
       title: "Reach the End Node",
-      description: "We arrive at E, the end node. The full traversal is now visible: every visited node and every edge used along the way.",
+      description: "We arrive at E, the end node. We still have C unvisited, but we have reached the end node. So we stop the traversal.",
       node: "E",
       nodeLabel: "End node",
+      possibleNext: ["C"],
       visited: ["A", "B", "D", "F", "E"],
       highlight: { end: "E", previous: "F", visited: ["A", "B", "D", "F", "E"], pathEdges: ["A—B", "B—D", "D—F", "F—E"] }
     },
@@ -104,47 +104,54 @@ mountStaticWalkthrough(document.querySelector("#traversal-walkthrough"), {
 
 Now in the above traversal:
 
-1. We made 2 random choices which coincidentally led us to the end node. In real graphs, we do not know how the full graph looks like unless we fully explore the graph. So we need to have system to SELECT THE NEXT NODE.
-2. While we visited B from A, we left out C. After we left A, we lost the knowledge of C's existence. We need to have system to RECORD ALL UNVISITED NODES so we can visit them later.
-3. And we already noted that we need to record all the nodes we DID VISIT.
- 
-Before we do that, lets have a short list of definitions.
+1. We made 2 random choices which coincidentally led us to the end node. In real graphs, we do not know how the full graph looks like unless we fully explore the graph. So we need to have system to **Select the Next Node**.
+2. While we visited B from A, we left out C. After we left A, we lost the knowledge of C's existence. We need to have system to **Record All Unvisited Nodes** so we can visit them later.
+3. And we already noted that we need to record all the nodes we **Did Visit**.
 
-### 1. State
+::: {.ig-note label="Terminology Summary" collapse="true"}
+
+#### 1. State
 
 A state is the node we can be in at any given time.
 
-<example>
+<img src="./img/GRAPH_STATE.png" alt="undirected cycle single edge" width="200" style="padding: 10px;">
 
-### 2. Neighbours
+#### 2. Neighbours
 
 To define neighbours, we have to be at a single state. The other "states" we can visit from the current state are called neighbours.
 
-<example>
+<img src="./img/GRAPH_NEIGHBOR.png" alt="undirected cycle single edge" width="250" style="padding: 10px;">
 
-### 3. Tracking: Nodes we need to visit
+#### 3. Tracking: Nodes we need to visit
 
 Previously we simply tracked the path we were taking when we moved to B from A. We missed exploring C even though we encountered it. So we need a system to actually select next states and keep track of nodes we could have visited. 
 
-The simplest, we can have a "bag" from which we randomly select the next state we will visit. The bag will also help us keep track of nodes we could have visited but didn't.
+The simplest, we can have a "bag" from which we select the next state we will visit. The bag will also help us keep track of nodes we could have visited but didn't.
 
-### 4. Tracking: Nodes we have visited
+<img src="./img/GRAPH_TOVISIT.png" alt="undirected cycle single edge" width="400" style="padding: 10px;">
+
+#### 4. Tracking: Nodes we have visited
 
 This is simply the list of nodes we have visited and the edges we have used. 
 
-Let's do an exercise to identify the essential components of a graph traversal.
+<img src="./img/GRAPH_VISITED.png" alt="undirected cycle single edge" width="400" style="padding: 10px;">
 
-### 5. Picking the Next Node
+#### 5. Picking the Next Node
 
 Once we have a list of unvisited nodes, we need to pick one to visit next. We can do this randomly or based on an algorithm.
 
-## Exercise: Heat Spread
+<img src="./img/GRAPH_SELECTVISIT.png" alt="undirected cycle single edge" width="400" style="padding: 10px;">
+
+:::
+
+::: {.ig-qa}
+### Exercise 1: Heat Spread
 
 You're part of the crew on a large space station. While reading a book in your room, **P**, you start to feel cold, so you go to the **Cafeteria** to turn on the heater. However, you would rather continue reading in the comfort of your own room.
 
 You realize that if the Cafeteria is connected to your room through the station's ventilation system, the warm air will eventually reach your room and you can return. Determine whether the heat can reach room P — or in other words, is there **a** path from the Cafeteria to room P?
 
-Work through the questions below. The map on the left starts with only the heater and your room; more of the station appears as you go. Press **Reveal answer** to uncover each answer and see it highlighted on the graph, bag, and TRACK - HEAT REACHABLE.
+:::
 
 <div id="heat-quiz"></div>
 
@@ -342,18 +349,15 @@ heatQuiz = mountHeatQuiz(document.querySelector("#heat-quiz"), {
 Convert it to code!
 
 ::: {.ig-tip}
+<details>
+<summary>Hint</summary>
 The flow is:
 
 1. initialisation: track and bag the first node: cafeteria
 2. traversal: pick a random node from the bag, add its neighbours to tracking and remove it from the bag
 3. continue to pick nodes from the bag until it is empty OR you encounter the goal node
+</details>
 :::
-
-Drag the 5 steps below into the loop body, in the order they should run.
-The block above the loop is given for free and can't be changed. Press
-**Step** to advance one line at a time, **Play** to run automatically, or
-**Get Solution** if you get stuck — then watch the graph, bag and
-tracking panel react on the right.
 
 ::: {.panel-grid}
 ::: {.panel}
@@ -408,27 +412,23 @@ heatCodeViz = mountHeatCodeViz(document.querySelector("#heat-code-viz"), {
 In the above code, for simplicity, we are not checking if P exists in the neighbours. Thus we are depending on the random choice to pick P from the bag to stop the loop. We can simply add that condition if we wish to make it faster.
 :::
 
-Code exercise:
-
 ::: {.ig-qa}
+
+### Exercise 2: Danger Rooms
+
 **Q.** Oh no! There is a breach in the admin room window and all air is leaking out. The space station is on lockdown. All rooms connected to the admin room vents are dangerous. Can you list out all these rooms?
 
 You will be getting the adjacency list of the graph "G" as input.
-:::
 
-::: {.ig-hint}
-<details>
-<summary>Hint</summary>
+::: {.ig-tip label="Hint" collapse="true"}
 
 You can start traversing from the admin room. This time the stop condition is when the bag is empty.
-</details>
+
 :::
 
-::: {.ig-note}
-Use the variable <span class="ig-code">danger_rooms</span> to track the rooms that are dangerous. This list will be visualised.
-:::
+Note - Use the variable <span class="ig-code">danger_rooms</span> to track the rooms that are dangerous. This list will be visualised on the right.
 
-Type a traversal in the editor, then press **Play** to watch it run, or **Step** to advance one line. The graph highlights rooms in `danger_rooms` in orange as each line of your code runs.
+:::
 
 ::: {.panel-grid}
 ::: {.panel}

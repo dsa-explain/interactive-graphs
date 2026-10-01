@@ -197,3 +197,66 @@ islandsViz = mountIslandsVizView(
   }
 );
 ```
+
+#### Question: Playing with Dominoes
+
+You are given a set of dominoes. Each domino is a pair of numbers. You need to check if the tiles can be placed in a line such that two halves facing each other show the same number. Return `True` if they can form a chain, and `False` otherwise.
+
+Think of each number as a node and each tile as an undirected edge. A chain is then a walk that uses every edge exactly once.
+
+::: {.ig-hint}
+<details>
+<summary>Hint</summary>
+
+1. First check that the graph is connected — every number that appears must be reachable from every other.
+2. Then check the "ends" of the line. Numbers that appear an odd number of times are dead-ends: you can start or finish a chain there, but you cannot pass through. A chain exists only if there are 0 or 2 such numbers. For example, tiles `(1,2)`, `(1,3)`, `(1,4)` have four odd-degree numbers, so they cannot form a single line.
+</details>
+:::
+
+::: {.ig-note}
+Use <span class="ig-code">visited</span> for the numbers your traversal has reached, and <span class="ig-code">degree</span> for how many times each number appears. Both will be visualised.
+:::
+
+Type your solution in the editor, then press **Play** to watch it run, or **Step** to advance one line. The graph on the right is this set of tiles: nodes are numbers, edges are dominoes.
+
+::: {.panel-grid}
+::: {.panel}
+<div id="dominoes-editor"></div>
+:::
+::: {.panel}
+<div id="dominoes-viz" class="cb-viz-placeholder"></div>
+:::
+:::
+
+```{ojs}
+//| echo: false
+import { PythonEditorInput } from "./js/qmd-specific-utils/python-editor-input.js";
+import {
+  DOMINOES,
+  dominoesStarterCode,
+  dominoesSolutionCode,
+  mountDominoesViz,
+} from "./js/dominoes-helpers.js";
+```
+
+```{ojs}
+//| echo: false
+dominoesEditor = PythonEditorInput.mountPlayable(
+  document.querySelector("#dominoes-editor"),
+  {
+    heading: "Python",
+    defaultCode: dominoesStarterCode(DOMINOES),
+    solutionCode: dominoesSolutionCode(DOMINOES),
+  }
+)
+```
+
+```{ojs}
+//| echo: false
+dominoesViz = mountDominoesViz(document.querySelector("#dominoes-viz"), {
+  editor: dominoesEditor,
+  dominoes: DOMINOES,
+  width: 400,
+  height: 260,
+})
+```

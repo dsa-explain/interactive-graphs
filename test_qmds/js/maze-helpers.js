@@ -9,6 +9,9 @@
 //   - mountBfsMazeView          Q2 BFS exercise: run the student's assembled
 //     BFS loop, then play/step through the discovered cells one distance
 //     layer at a time, finishing with the shortest path lit up in green.
+//   - mountCountShortestPathsViz  Task 2 typed exercise: Python editor +
+//     Play/Step through BFS distance layers. Highlights each layer on the
+//     height-map maze and shows per-cell shortest-path counts from `ways`.
 //
 // 0/1 coin maze (Man-Pac) used by traversal-undirected-practice.qmd:
 //   - mountNotebookMazeGrid     cream notebook-style board (1 = floor, 0 = wall).
@@ -20,6 +23,7 @@
 
 import { escapeHtml } from "./utils/dom-utils.js";
 import { getPyodide } from "./utils/pyodide-loader.js";
+import { formatCapturedOutput } from "./utils/py-harness-utils.js";
 import { createPlaybackTimer } from "./utils/frame-playback.js";
 import { renderChipsHtml, renderChipPanelShell } from "./utils/chip-panels.js";
 
@@ -186,11 +190,28 @@ export function mountMazeGrid(container, matrix, options = {}) {
   }
 
   let overrides = new Map();
+  let badges = new Map();
+
+  function syncBadge(el, key) {
+    const text = badges.get(key);
+    let badge = el.querySelector(".mz-cell-badge");
+    if (text == null || text === "") {
+      badge?.remove();
+      return;
+    }
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = "mz-cell-badge";
+      el.appendChild(badge);
+    }
+    badge.textContent = String(text);
+  }
 
   function repaint() {
     cellEls.forEach((el, key) => {
       const [r, c] = key.split(",").map(Number);
       el.dataset.state = resolveCellState(matrix, start, target, overrides, r, c);
+      syncBadge(el, key);
     });
   }
   repaint();
@@ -205,8 +226,14 @@ export function mountMazeGrid(container, matrix, options = {}) {
       overrides = map instanceof Map ? map : new Map(Object.entries(map || {}));
       repaint();
     },
+    /** @param {Map<string, string|number>|Record<string, string|number>} map "r,c" -> badge text */
+    setBadges(map) {
+      badges = map instanceof Map ? map : new Map(Object.entries(map || {}));
+      repaint();
+    },
     clearOverrides() {
       overrides = new Map();
+      badges = new Map();
       repaint();
     },
     getOverrides: () => new Map(overrides),
@@ -825,6 +852,997 @@ export function mountBfsMazeView(container, matrix, options = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// Task 2 — count shortest paths (typed Python editor)
+// ---------------------------------------------------------------------------
+
+function formatMatrixLiteral(matrix) {
+  const inner = (matrix ?? []).map((row) => `    [${row.join(", ")}]`).join(",\n");
+  return `[\n${inner},\n]`;
+}
+
+function referenceShortestPathCount(matrix, start, target) {
+  const rows = matrix.length;
+  const cols = matrix[0]?.length ?? 0;
+  const dist = Array.from({ length: rows }, () => Array(cols).fill(-1));
+  const ways = Array.from({ length: rows }, () => Array(cols).fill(0));
+  const maze = { matrix, rows, cols };
+  dist[start[0]][start[1]] = 0;
+  ways[start[0]][start[1]] = 1;
+  const queue = [start.slice()];
+  while (queue.length) {
+    const [r, c] = queue.shift();
+    for (const [nr, nc] of getNeighbours(maze, r, c)) {
+      if (dist[nr][nc] === -1) {
+        dist[nr][nc] = dist[r][c] + 1;
+        ways[nr][nc] = ways[r][c];
+        queue.push([nr, nc]);
+      } else if (dist[nr][nc] === dist[r][c] + 1) {
+        ways[nr][nc] += ways[r][c];
+      }
+    }
+  }
+  if (dist[target[0]][target[1]] === -1) return 0;
+  return ways[target[0]][target[1]];
+}
+
+function normalizePathCount(value) {
+  if (value == null) return null;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (Array.isArray(value) && value.length) {
+    const last = value[value.length - 1];
+    if (typeof last === "number" && Number.isFinite(last)) return last;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatGridLiteralForPython(matrix) {
+  return formatMatrixLiteral(matrix);
+}
+
+/** Starter code: height-map grid plus an empty count_shortest_paths. */
+export function countShortestPathsStarterCode(matrix) {
+  return `G = ${formatGridLiteralForPython(matrix)}
+
+def count_shortest_paths(grid=G):
+    # Return how many different shortest paths go from the top-left
+    # cell to the bottom-right cell.
+    # Move only to a neighbour at the same height or lower.
+    # Obstacles are -1. Return 0 if there is no path.
+
+    pass
+`;
+}
+
+/** Full replacement used by the editor's Reveal solution button. */
+export function countShortestPathsSolutionCode(matrix) {
+  return `G = ${formatGridLiteralForPython(matrix)}
+
+def count_shortest_paths(grid=G):
+    rows, cols = len(grid), len(grid[0])
+
+    dist = [[-1] * cols for _ in range(rows)]
+    ways = [[0] * cols for _ in range(rows)]
+
+    start = (0, 0)
+    end = (rows - 1, cols - 1)
+
+    dist[0][0] = 0
+    ways[0][0] = 1
+
+    queue = [start]
+    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+    while queue:
+        r, c = queue.pop(0)
+
+        for dr, dc in directions:
+            nr, nc = r + dr, c + dc
+
+            if not (0 <= nr < rows and 0 <= nc < cols):
+                continue
+            if grid[nr][nc] == -1:
+                continue
+            # movement rule: can only move to a cell at the same height or lower
+            if grid[nr][nc] > grid[r][c]:
+                continue
+
+            if dist[nr][nc] == -1:
+                # first time visiting this cell -> new shortest distance
+                dist[nr][nc] = dist[r][c] + 1
+                ways[nr][nc] = ways[r][c]
+                queue.append((nr, nc))
+
+            elif dist[nr][nc] == dist[r][c] + 1:
+                # another shortest path reaching this cell at the same layer
+                ways[nr][nc] += ways[r][c]
+
+    if dist[end[0]][end[1]] == -1:
+        return 0
+
+    return ways[end[0]][end[1]]
+`;
+}
+
+function isSkippableCountPathsLine(src, lineNumber) {
+  if (lineNumber == null) return false;
+  const line = (src.split("\n")[lineNumber - 1] ?? "").trim();
+  return line === "" || line.startsWith("#");
+}
+
+function buildCountPathsHarness(matrix, userSrc) {
+  const srcLit = JSON.stringify(userSrc ?? "");
+  const gridLit = JSON.stringify(matrix);
+  const rows = matrix.length;
+  const cols = matrix[0]?.length ?? 0;
+  const maxEvents = Math.max(800, rows * cols * 80);
+
+  return `
+import json
+import sys
+import io
+import traceback
+from collections import deque
+
+_user_src = ${srcLit}
+_MAX_EVENTS = ${maxEvents}
+_frames = []
+_error = None
+_pending_line = None
+_result = None
+_stdout = io.StringIO()
+_stderr = io.StringIO()
+
+def _as_cell(val):
+    if isinstance(val, (list, tuple)) and len(val) >= 2:
+        try:
+            return [int(val[0]), int(val[1])]
+        except Exception:
+            return None
+    return None
+
+def _as_cells(val):
+    if val is None:
+        return []
+    if isinstance(val, deque):
+        val = list(val)
+    if not isinstance(val, (list, tuple)):
+        return []
+    out = []
+    for item in val:
+        cell = _as_cell(item)
+        if cell is not None:
+            out.append(cell)
+    return out
+
+def _as_grid(val):
+    if not isinstance(val, (list, tuple)) or not val:
+        return None
+    if not all(isinstance(row, (list, tuple)) for row in val):
+        return None
+    out = []
+    for row in val:
+        parsed = []
+        for x in row:
+            if isinstance(x, bool) or not isinstance(x, (int, float)):
+                parsed.append(0)
+            else:
+                parsed.append(int(x))
+        out.append(parsed)
+    return out
+
+def _lookup(loc, glo, names):
+    for name in names:
+        if name in loc:
+            return loc[name]
+        if name in glo:
+            return glo[name]
+    return None
+
+def _snapshot(loc, glo):
+    ways = _as_grid(_lookup(loc, glo, ("ways", "counts", "path_count")))
+    dist = _as_grid(_lookup(loc, glo, ("dist", "distance", "distances")))
+    queue = _as_cells(_lookup(loc, glo, ("queue", "q", "bag", "frontier")))
+    current = _as_cell(_lookup(loc, glo, ("current", "node", "cell")))
+    if current is None:
+        r, c = loc.get("r"), loc.get("c")
+        if isinstance(r, int) and isinstance(c, int):
+            current = [r, c]
+    return ways, dist, queue, current
+
+def _json_result(val):
+    if val is None:
+        return None
+    if isinstance(val, bool):
+        return None
+    if isinstance(val, (int, float)):
+        return int(val)
+    if isinstance(val, (list, tuple)):
+        out = []
+        for x in val:
+            if isinstance(x, bool) or not isinstance(x, (int, float)):
+                out.append(None)
+            else:
+                out.append(int(x))
+        return out
+    return str(val)
+
+def _emit(line, loc, glo, done=False):
+    ways, dist, queue, current = _snapshot(loc, glo)
+    _frames.append({
+        "line": line,
+        "ways": ways,
+        "dist": dist,
+        "queue": queue,
+        "current": current,
+        "done": bool(done),
+        "result": _json_result(_result),
+        "stdout": _stdout.getvalue(),
+        "stderr": _stderr.getvalue(),
+    })
+
+def _tracer(frame, event, arg):
+    global _pending_line, _result
+    if event == "call":
+        return _tracer if frame.f_code.co_filename == "<user>" else None
+    if frame.f_code.co_filename != "<user>":
+        return None
+    if event == "return":
+        if frame.f_code.co_name == "count_shortest_paths":
+            _result = arg
+        if _pending_line is not None:
+            _emit(_pending_line, frame.f_locals, frame.f_globals)
+            _pending_line = None
+        return _tracer
+    if event != "line":
+        return _tracer
+    if len(_frames) >= _MAX_EVENTS:
+        raise RuntimeError("TOO_MANY_ITERS")
+    if _pending_line is not None:
+        _emit(_pending_line, frame.f_locals, frame.f_globals)
+    _pending_line = frame.f_lineno
+    return _tracer
+
+_grid = ${gridLit}
+_old_out, _old_err = sys.stdout, sys.stderr
+_ns = {"G": _grid, "grid": _grid, "__name__": "__main__"}
+try:
+    sys.stdout = _stdout
+    sys.stderr = _stderr
+    _code = compile(_user_src, "<user>", "exec")
+    exec(_code, _ns)
+    fn = _ns.get("count_shortest_paths")
+    if not callable(fn):
+        raise RuntimeError("Define a count_shortest_paths(grid) function.")
+    sys.settrace(_tracer)
+    try:
+        try:
+            _result = fn(_grid)
+        except TypeError:
+            _result = fn()
+    finally:
+        sys.settrace(None)
+    last = _frames[-1] if _frames else None
+    _frames.append({
+        "line": None,
+        "ways": None if last is None else last.get("ways"),
+        "dist": None if last is None else last.get("dist"),
+        "queue": [] if last is None else last.get("queue") or [],
+        "current": None,
+        "done": True,
+        "result": _json_result(_result),
+        "stdout": _stdout.getvalue(),
+        "stderr": _stderr.getvalue(),
+    })
+except RuntimeError as e:
+    if str(e) == "TOO_MANY_ITERS":
+        _error = "TOO_MANY_ITERS"
+        last = _frames[-1] if _frames else None
+        _frames.append({
+            "line": None,
+            "ways": None if last is None else last.get("ways"),
+            "dist": None if last is None else last.get("dist"),
+            "queue": [] if last is None else last.get("queue") or [],
+            "current": None,
+            "done": True,
+            "result": _json_result(_result),
+            "stdout": _stdout.getvalue(),
+            "stderr": _stderr.getvalue(),
+        })
+    else:
+        _error = type(e).__name__ + ": " + str(e)
+        traceback.print_exc(file=_stderr)
+except Exception as e:
+    _error = type(e).__name__ + ": " + str(e)
+    traceback.print_exc(file=_stderr)
+    if _pending_line is not None:
+        _emit(_pending_line, {}, _ns)
+finally:
+    sys.stdout = _old_out
+    sys.stderr = _old_err
+
+json.dumps({
+    "frames": _frames,
+    "error": _error,
+    "result": _json_result(_result),
+    "stdout": _stdout.getvalue(),
+    "stderr": _stderr.getvalue(),
+})
+`.trim();
+}
+
+function sameGrid(a, b) {
+  return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+}
+
+function sameCellList(a, b) {
+  return JSON.stringify(a ?? []) === JSON.stringify(b ?? []);
+}
+
+function eventCurrent(ev) {
+  return Array.isArray(ev?.current) && ev.current.length >= 2 ? ev.current : null;
+}
+
+function cellsAtDistance(dist, d) {
+  const cells = [];
+  if (!Array.isArray(dist) || d == null) return cells;
+  for (let r = 0; r < dist.length; r++) {
+    const row = dist[r] ?? [];
+    for (let c = 0; c < row.length; c++) {
+      if (row[c] === d) cells.push([r, c]);
+    }
+  }
+  return cells;
+}
+
+function cellsBeforeDistance(dist, d) {
+  const cells = [];
+  if (!Array.isArray(dist) || d == null) return cells;
+  for (let r = 0; r < dist.length; r++) {
+    const row = dist[r] ?? [];
+    for (let c = 0; c < row.length; c++) {
+      const v = row[c];
+      if (typeof v === "number" && v >= 0 && v < d) cells.push([r, c]);
+    }
+  }
+  return cells;
+}
+
+function allReachedCells(dist, ways, layerCells, earlierCells) {
+  if (Array.isArray(dist)) {
+    const cells = [];
+    for (let r = 0; r < dist.length; r++) {
+      const row = dist[r] ?? [];
+      for (let c = 0; c < row.length; c++) {
+        if ((row[c] ?? -1) >= 0) cells.push([r, c]);
+      }
+    }
+    if (cells.length) return cells;
+  }
+  if (Array.isArray(ways)) {
+    const cells = [];
+    for (let r = 0; r < ways.length; r++) {
+      const row = ways[r] ?? [];
+      for (let c = 0; c < row.length; c++) {
+        if ((row[c] ?? 0) > 0) cells.push([r, c]);
+      }
+    }
+    if (cells.length) return cells;
+  }
+  return [...(earlierCells ?? []), ...(layerCells ?? [])];
+}
+
+/**
+ * Collapse a line-level Python trace into one snapshot per BFS distance
+ * layer. Prefers dist[current] when the student keeps a distance grid;
+ * otherwise groups pops into waves using the queue length at the start
+ * of each layer.
+ */
+function collectCountPathsLayers(src, rawFrames) {
+  const events = [];
+  let doneEv = null;
+  for (const ev of rawFrames ?? []) {
+    if (ev.done) {
+      doneEv = ev;
+      continue;
+    }
+    if (isSkippableCountPathsLine(src, ev.line)) continue;
+    events.push(ev);
+  }
+
+  const lastByLayer = new Map();
+
+  function note(layer, ev, current) {
+    if (!lastByLayer.has(layer)) lastByLayer.set(layer, { ev, cells: new Map() });
+    const slot = lastByLayer.get(layer);
+    slot.ev = ev;
+    if (current) slot.cells.set(cellKey(current[0], current[1]), current);
+  }
+
+  let usedDist = false;
+  for (const ev of events) {
+    const current = eventCurrent(ev);
+    if (!current || !ev.dist) continue;
+    const d = ev.dist[current[0]]?.[current[1]];
+    if (typeof d !== "number" || d < 0) continue;
+    usedDist = true;
+    note(d, ev, current);
+  }
+
+  if (!usedDist) {
+    lastByLayer.clear();
+    let layer = 0;
+    let remaining = null;
+    let lastKey = null;
+    for (const ev of events) {
+      const current = eventCurrent(ev);
+      if (!current) continue;
+      const key = cellKey(current[0], current[1]);
+      if (lastKey === null || key !== lastKey) {
+        if (remaining === 0) {
+          layer += 1;
+          remaining = null;
+        }
+        if (remaining == null) remaining = (ev.queue?.length ?? 0) + 1;
+        remaining -= 1;
+        lastKey = key;
+      }
+      note(layer, ev, current);
+    }
+  }
+
+  return { lastByLayer, doneEv };
+}
+
+function renderCountPathsQueuePanel(items, current) {
+  const chips = renderChipsHtml(items, {
+    chipClass: "adj-box adj-val nb-chip",
+    classFor: (cell) => (current && sameCell(cell, current) ? " mz-queue-chip-current" : ""),
+    labelOf: (cell) => cellLabel(cell),
+    emptyClass: "adj-empty",
+    emptyText: "queue empty",
+  });
+  return renderChipPanelShell({
+    wrapperClass: "iv-visited",
+    ariaLabel: "Queue",
+    headerClass: "cb-section-label",
+    titleClass: "cb-section-label",
+    title: "Queue",
+    bodyClass: "nb-list mz-list-body",
+    bodyHtml: chips,
+  });
+}
+
+/**
+ * Right-hand viz for the typed shortest-path-count exercise: height-map
+ * maze, per-cell `ways` badges, queue chips, and Play / Pause. Play and
+ * Step advance one BFS distance layer at a time. Locks the Python editor
+ * while playing.
+ *
+ * @param {HTMLElement} container
+ * @param {number[][]} matrix
+ * @param {{
+ *   editor: object,
+ *   start?: [number, number],
+ *   target?: [number, number],
+ *   getCode?: () => string,
+ *   cellSize?: number,
+ *   stepDelayMs?: number,
+ *   skipDelayMs?: number,
+ * }} [options]
+ */
+export function mountCountShortestPathsViz(container, matrix, options = {}) {
+  if (!container) return null;
+
+  const start = options.start ?? [0, 0];
+  const target = options.target ?? [matrix.length - 1, matrix[0].length - 1];
+  const editor = options.editor ?? null;
+  const getCode = options.getCode ?? (() => editor?.getCode?.() ?? "");
+  const stepDelayMs = options.stepDelayMs ?? 700;
+  const skipDelayMs = options.skipDelayMs ?? 160;
+  const expected = referenceShortestPathCount(matrix, start, target);
+
+  container.innerHTML = "";
+  container.classList.remove("cb-viz-placeholder");
+  container.classList.add("mz-panel", "dr-viz-root");
+
+  const heading = document.createElement("div");
+  heading.className = "adj-heading";
+  heading.textContent = "Shortest-path counts";
+  container.appendChild(heading);
+
+  const gridMount = document.createElement("div");
+  container.appendChild(gridMount);
+
+  const grid = mountMazeGrid(gridMount, matrix, {
+    start,
+    target,
+    cellSize: options.cellSize,
+    selectable: false,
+    legend: [
+      { state: CELL_STATE.FRONTIER, label: "current layer" },
+      { state: CELL_STATE.VISITED, label: "earlier layer" },
+      { state: CELL_STATE.PATH, label: "target reached" },
+      { state: CELL_STATE.OBSTACLE, label: "obstacle" },
+    ],
+  });
+
+  const panels = document.createElement("div");
+  panels.className = "ht-anim-panels";
+  container.appendChild(panels);
+
+  const status = document.createElement("div");
+  status.className = "ht-play-status";
+  container.appendChild(status);
+
+  const controls = document.createElement("div");
+  controls.className = "ht-quiz-controls";
+  container.appendChild(controls);
+
+  let frames = [];
+  let frameIndex = -1;
+  const playback = createPlaybackTimer();
+  let compiling = false;
+  let statusOverride = null;
+  let lastOutput = { text: "", isError: false };
+
+  function stopPlayback() {
+    playback.stop();
+  }
+
+  function currentFrame() {
+    if (frameIndex < 0 || frameIndex >= frames.length) return null;
+    return frames[frameIndex];
+  }
+
+  function idleState() {
+    return {
+      line: null,
+      ways: null,
+      dist: null,
+      queue: [],
+      current: null,
+      done: false,
+      result: null,
+      correct: null,
+      unchanged: false,
+      stdout: "",
+      stderr: "",
+      message: "Write count_shortest_paths, then press Play or Step.",
+      layer: null,
+      layerCells: [],
+      earlierCells: [],
+    };
+  }
+
+  function paintCells(overrides, cells, state) {
+    (cells ?? []).forEach((cell) => {
+      if (!cell) return;
+      overrides.set(cellKey(cell[0], cell[1]), state);
+    });
+  }
+
+  function applyGrid(frame) {
+    const overrides = new Map();
+    const badges = new Map();
+    const dist = frame.dist;
+    const ways = frame.ways;
+    const rows = matrix.length;
+    const cols = matrix[0]?.length ?? 0;
+    const layer = frame.layer;
+    const layerMode = layer != null || frame.done;
+
+    if (layerMode) {
+      const earlier = frame.done
+        ? allReachedCells(dist, ways, frame.layerCells, frame.earlierCells)
+        : (dist ? cellsBeforeDistance(dist, layer) : (frame.earlierCells ?? []));
+      const currentLayer = frame.done
+        ? []
+        : (dist ? cellsAtDistance(dist, layer) : (frame.layerCells ?? []));
+      paintCells(overrides, earlier, CELL_STATE.VISITED);
+      paintCells(overrides, currentLayer, CELL_STATE.FRONTIER);
+    } else {
+      if (dist) {
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            if ((dist[r]?.[c] ?? -1) >= 0) {
+              overrides.set(cellKey(r, c), CELL_STATE.VISITED);
+            }
+          }
+        }
+      } else if (ways) {
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            if ((ways[r]?.[c] ?? 0) > 0) {
+              overrides.set(cellKey(r, c), CELL_STATE.VISITED);
+            }
+          }
+        }
+      }
+      (frame.queue ?? []).forEach((cell) => {
+        overrides.set(cellKey(cell[0], cell[1]), CELL_STATE.FRONTIER);
+      });
+      if (frame.current) {
+        overrides.set(cellKey(frame.current[0], frame.current[1]), CELL_STATE.CURRENT);
+      }
+    }
+
+    if (frame.done && (frame.result ?? 0) > 0) {
+      overrides.set(cellKey(target[0], target[1]), CELL_STATE.PATH);
+    }
+
+    if (ways) {
+      const allowed = new Set();
+      if (layerMode && !frame.done) {
+        const visible = dist
+          ? [...cellsBeforeDistance(dist, layer), ...cellsAtDistance(dist, layer)]
+          : [...(frame.earlierCells ?? []), ...(frame.layerCells ?? [])];
+        visible.forEach((cell) => allowed.add(cellKey(cell[0], cell[1])));
+      }
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const n = ways[r]?.[c];
+          if (!(n > 0)) continue;
+          if (allowed.size && !allowed.has(cellKey(r, c))) continue;
+          badges.set(cellKey(r, c), n);
+        }
+      }
+    }
+
+    grid.setOverrides(overrides);
+    grid.setBadges(badges);
+  }
+
+  function render() {
+    const frame = currentFrame() ?? idleState();
+    applyGrid(frame);
+    panels.innerHTML = renderCountPathsQueuePanel(frame.queue ?? [], frame.current);
+
+    if (statusOverride) {
+      status.textContent = statusOverride;
+      status.classList.toggle("ht-play-status-warn", true);
+      status.classList.toggle("ht-play-status-ok", false);
+    } else {
+      status.textContent = frame.message;
+      status.classList.toggle("ht-play-status-warn", frame.correct === false);
+      status.classList.toggle("ht-play-status-ok", frame.correct === true);
+    }
+
+    if (editor) {
+      if (frame.layer != null || frame.line == null) editor.clearLineHighlight?.();
+      else editor.highlightLine(frame.line);
+      const hasFrame = currentFrame() != null;
+      const live = formatCapturedOutput(frame.stdout, frame.stderr);
+      if (hasFrame) {
+        editor.setStdout?.(live, { isError: !!frame.stderr });
+      } else if (lastOutput.text) {
+        editor.setStdout?.(lastOutput.text, { isError: lastOutput.isError });
+      } else {
+        editor.clearStdout?.();
+      }
+    }
+
+    renderControls();
+  }
+
+  function doneMessage(count, correct) {
+    if (count == null) {
+      return "Finished — return the number of shortest paths (an integer).";
+    }
+    if (correct) {
+      return count === 1
+        ? "Congratulations — there is 1 shortest path."
+        : `Congratulations — there are ${count} shortest paths.`;
+    }
+    return "The output doesn't look correct.";
+  }
+
+  function layerMessage(d, layerCells, ways) {
+    const n = layerCells.length;
+    const targetInLayer = layerCells.some((cell) => sameCell(cell, target));
+    const waysAtTarget = targetInLayer ? ways?.[target[0]]?.[target[1]] : null;
+    const layerText = `Layer ${d} — ${n} cell${n === 1 ? "" : "s"} at distance ${d} from the start.`;
+    if (waysAtTarget > 0) {
+      return `${layerText} ${waysAtTarget} shortest path${waysAtTarget === 1 ? "" : "s"} reach the target.`;
+    }
+    return layerText;
+  }
+
+  function frameFromEvent(ev, extras) {
+    const current = extras.current !== undefined ? extras.current : eventCurrent(ev);
+    const queue = Array.isArray(ev.queue) ? ev.queue : [];
+    const ways = ev.ways ?? null;
+    const dist = ev.dist ?? null;
+    return {
+      line: ev.line ?? null,
+      ways,
+      dist,
+      queue,
+      current,
+      done: !!extras.done,
+      result: extras.count,
+      correct: extras.done ? extras.correct : null,
+      unchanged: false,
+      stdout: ev.stdout ?? "",
+      stderr: ev.stderr ?? "",
+      message: extras.message,
+      layer: extras.layer ?? null,
+      layerCells: extras.layerCells ?? [],
+      earlierCells: extras.earlierCells ?? [],
+    };
+  }
+
+  function toVizFrames(src, rawFrames, result) {
+    const count = normalizePathCount(result);
+    const correct = count === expected;
+    const { lastByLayer, doneEv } = collectCountPathsLayers(src, rawFrames);
+    const layerKeys = [...lastByLayer.keys()].sort((a, b) => a - b);
+
+    if (layerKeys.length) {
+      const out = [];
+      const earlierCells = [];
+      for (const d of layerKeys) {
+        const slot = lastByLayer.get(d);
+        const ev = slot.ev;
+        const layerCells = cellsAtDistance(ev.dist, d);
+        const cells = layerCells.length ? layerCells : [...slot.cells.values()];
+        out.push(frameFromEvent(ev, {
+          current: null,
+          done: false,
+          count,
+          correct,
+          layer: d,
+          layerCells: cells,
+          earlierCells: earlierCells.slice(),
+          message: layerMessage(d, cells, ev.ways),
+        }));
+        earlierCells.push(...cells);
+      }
+      if (doneEv) {
+        out.push(frameFromEvent(doneEv, {
+          current: null,
+          done: true,
+          count,
+          correct,
+          layer: layerKeys[layerKeys.length - 1],
+          layerCells: [],
+          earlierCells: earlierCells.slice(),
+          message: doneMessage(count, correct),
+        }));
+      }
+      return out;
+    }
+
+    const out = [];
+    let prev = { ways: null, dist: null, queue: [], current: null };
+    for (const ev of rawFrames ?? []) {
+      if (isSkippableCountPathsLine(src, ev.line) && !ev.done) continue;
+      const current = eventCurrent(ev);
+      const queue = Array.isArray(ev.queue) ? ev.queue : [];
+      const ways = ev.ways ?? null;
+      const dist = ev.dist ?? null;
+      const done = !!ev.done;
+      const unchanged =
+        !done &&
+        sameGrid(ways, prev.ways) &&
+        sameGrid(dist, prev.dist) &&
+        sameCellList(queue, prev.queue) &&
+        sameCellList(current, prev.current);
+      if (unchanged) continue;
+
+      let message = "";
+      if (done) {
+        message = doneMessage(count, correct);
+      } else if (current) {
+        const n = ways?.[current[0]]?.[current[1]];
+        message =
+          n != null
+            ? `At ${cellLabel(current)} — ${n} shortest path${n === 1 ? "" : "s"} so far.`
+            : `At ${cellLabel(current)}.`;
+      } else if (ev.line != null) {
+        message = `Running line ${ev.line}…`;
+      }
+
+      out.push(frameFromEvent(ev, {
+        current,
+        done,
+        count,
+        correct,
+        message,
+      }));
+      prev = { ways, dist, queue, current };
+    }
+    return out;
+  }
+
+  async function compileFrames() {
+    const userSrc = (getCode() || "").trim();
+    if (!userSrc) {
+      statusOverride = "The editor is empty — write count_shortest_paths first.";
+      frames = [];
+      frameIndex = -1;
+      return false;
+    }
+    if (!/\bdef\s+count_shortest_paths\s*\(/.test(userSrc)) {
+      statusOverride = "Define a count_shortest_paths(grid) function.";
+      frames = [];
+      frameIndex = -1;
+      return false;
+    }
+
+    compiling = true;
+    statusOverride = null;
+    status.textContent = "Loading Python runtime…";
+    status.classList.remove("ht-play-status-warn", "ht-play-status-ok");
+    renderControls();
+
+    try {
+      const pyodide = await getPyodide();
+      status.textContent = "Running your code…";
+      const rawJson = await pyodide.runPythonAsync(buildCountPathsHarness(matrix, userSrc));
+      const payload = JSON.parse(typeof rawJson === "string" ? rawJson : String(rawJson));
+      const captured = formatCapturedOutput(payload.stdout, payload.stderr);
+      lastOutput = { text: captured, isError: !!payload?.error };
+
+      if (payload?.error === "TOO_MANY_ITERS") {
+        statusOverride = "Loop ran too long — did you forget to mark cells visited?";
+        frames = toVizFrames(userSrc, payload.frames ?? [], payload.result);
+        frameIndex = frames.length ? 0 : -1;
+        if (!frames.length && captured) editor?.setStdout?.(captured, { isError: true });
+        return frames.length > 0;
+      }
+      if (payload?.error) {
+        statusOverride = "Error running code: " + payload.error;
+        frames = toVizFrames(userSrc, payload.frames ?? [], payload.result);
+        frameIndex = frames.length ? 0 : -1;
+        if (!frames.length) editor?.setStdout?.(captured || payload.error, { isError: true });
+        return frames.length > 0;
+      }
+
+      frames = toVizFrames(userSrc, payload.frames ?? [], payload.result);
+      frameIndex = -1;
+      statusOverride = null;
+      if (!frames.length) {
+        statusOverride = "Nothing to play — add a body to count_shortest_paths.";
+        if (captured) editor?.setStdout?.(captured);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error(err);
+      statusOverride = "Error running code: " + String(err);
+      frames = [];
+      frameIndex = -1;
+      lastOutput = { text: String(err), isError: true };
+      editor?.setStdout?.(String(err), { isError: true });
+      return false;
+    } finally {
+      compiling = false;
+    }
+  }
+
+  function delayForFrame(frame) {
+    return frame?.unchanged ? skipDelayMs : stepDelayMs;
+  }
+
+  async function play() {
+    const atEnd = frames.length > 0 && frameIndex >= frames.length - 1;
+    const needCompile = !frames.length || atEnd || frameIndex < 0;
+    if (needCompile) {
+      editor?.lock();
+      const ok = await compileFrames();
+      if (!ok) {
+        editor?.unlock();
+        render();
+        return;
+      }
+      frameIndex = 0;
+    }
+    editor?.lock();
+    playback.start();
+    render();
+
+    const tick = () => {
+      if (!playback.isPlaying()) return;
+      if (frameIndex >= frames.length - 1) {
+        stopPlayback();
+        render();
+        return;
+      }
+      frameIndex += 1;
+      render();
+      if (playback.isPlaying() && frameIndex < frames.length - 1) {
+        playback.schedule(tick, delayForFrame(frames[frameIndex]));
+      } else {
+        stopPlayback();
+        render();
+      }
+    };
+    playback.schedule(tick, delayForFrame(currentFrame()));
+  }
+
+  function pause() {
+    stopPlayback();
+    render();
+  }
+
+  async function stepForward() {
+    const atEnd = frames.length > 0 && frameIndex >= frames.length - 1;
+    const needCompile = !frames.length || atEnd || frameIndex < 0;
+    if (needCompile) {
+      editor?.lock();
+      const ok = await compileFrames();
+      if (!ok) {
+        editor?.unlock();
+        render();
+        return;
+      }
+      frameIndex = 0;
+      render();
+      return;
+    }
+    editor?.lock();
+    if (frameIndex < frames.length - 1) {
+      frameIndex += 1;
+    }
+    render();
+  }
+
+  function reset() {
+    stopPlayback();
+    frames = [];
+    frameIndex = -1;
+    statusOverride = null;
+    editor?.unlock();
+    editor?.clearLineHighlight?.();
+    render();
+  }
+
+  function renderControls() {
+    controls.innerHTML = "";
+
+    const playBtn = document.createElement("button");
+    playBtn.type = "button";
+    playBtn.className = "ht-nav-btn";
+    playBtn.textContent = compiling ? "Loading…" : playback.isPlaying() ? "Pause" : "Play";
+    playBtn.disabled = compiling;
+    playBtn.onclick = () => {
+      if (playback.isPlaying()) pause();
+      else play();
+    };
+
+    const stepBtn = document.createElement("button");
+    stepBtn.type = "button";
+    stepBtn.className = "ht-nav-btn";
+    stepBtn.textContent = "Step →";
+    stepBtn.disabled = compiling;
+    stepBtn.onclick = () => {
+      stopPlayback();
+      stepForward();
+    };
+
+    const resetBtn = document.createElement("button");
+    resetBtn.type = "button";
+    resetBtn.className = "ht-nav-btn ht-nav-btn-ghost";
+    resetBtn.textContent = "Reset";
+    resetBtn.onclick = () => reset();
+
+    controls.append(playBtn, stepBtn, resetBtn);
+  }
+
+  render();
+  getPyodide().catch(() => {});
+
+  return {
+    play,
+    pause,
+    step: stepForward,
+    reset,
+    destroy: () => stopPlayback(),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Man-Pac 0/1 coin maze (notebook formatting)
 // Used by traversal-undirected-practice.qmd. 1 = coin / walkable, 0 = wall.
 // ---------------------------------------------------------------------------
@@ -1204,17 +2222,17 @@ function manpacLoopBlocks(popFromFront) {
       code:
         "neighbours = get_neighbours(node)\n" +
         "for n in neighbours:\n" +
-        "    tracking[n] = tracking[node] + 1",
-      label: "find unvisited neighbours and record each one's distance from start",
+        "    tracking[n] = min(tracking[node] + 1, tracking.get(n, float('inf')))",
+      label: "find unvisited neighbours and record each one's min distance from start",
     },
     {
       id: "check_goal",
       code:
-        "if node == target or target in neighbours:\n" +
+        "if node == target:\n" +
         "    goal_reached = True\n" +
-        "    path_distance = tracking[target]\n" +
+        "    path_distance = tracking[node]\n" +
         "    break",
-      label: "if we popped the target or just found it next door, record the distance and stop",
+      label: "if we popped the target, record the distance and stop",
     },
     { id: "bag_neighbours", code: "bag += neighbours", label: "add the neighbours to the bag" },
   ];
@@ -1260,17 +2278,17 @@ export const MANPAC_DFS_REC_CODE_BLOCKS = [
     code:
       "neighbours = get_neighbours(node)\n" +
       "for n in neighbours:\n" +
-      "    tracking[n] = tracking[node] + 1",
+      "    tracking[n] = min(tracking[node] + 1, tracking.get(n, float('inf')))",
     label: "find unvisited neighbours and record each one's distance from start",
   },
   {
     id: "check_goal",
     code:
-      "if node == target or target in neighbours:\n" +
+      "if node == target:\n" +
       "    goal_reached = True\n" +
-      "    path_distance = tracking[target]\n" +
+      "    path_distance = tracking[node]\n" +
       "    return",
-    label: "if this cell is the target or we just found it next door, record the distance and return",
+    label: "if this cell is the target, record the distance and return",
   },
   {
     id: "recurse",
