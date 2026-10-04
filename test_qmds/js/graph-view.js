@@ -103,13 +103,15 @@ function openPromptModal({
 /**
  * @param {import("./graph-engine.js").GraphEngine} engine
  * @param {HTMLElement} container
- * @param {{width?: number, height?: number, showToolbar?: boolean, caption?: string, highlightNeighbours?: boolean}} options
+ * @param {{width?: number, height?: number, showToolbar?: boolean, caption?: string, liveCaption?: boolean, highlightNeighbours?: boolean, onNodeClick?: (id: string, event: Event) => void, toolbarEnd?: HTMLElement[]}} options
+ * @returns {{setCaption: (text: string, kind?: string) => void, captionEl: HTMLElement|null}}
  */
 export function mountGraphView(engine, container, options = {}) {
   const width = options.width ?? 520;
   const height = options.height ?? 440;
   const showToolbar = options.showToolbar ?? true;
   const highlightNeighbours = options.highlightNeighbours ?? false;
+  const onNodeClick = options.onNodeClick;
 
   container.innerHTML = "";
   container.classList.add("gv-root");
@@ -227,6 +229,14 @@ export function mountGraphView(engine, container, options = {}) {
     statusEl.className = "gv-status";
     toolbar.appendChild(statusEl);
 
+    const toolbarEnd = options.toolbarEnd ?? [];
+    if (toolbarEnd.length) {
+      const end = document.createElement("div");
+      end.className = "gv-toolbar-end";
+      toolbarEnd.forEach((el) => end.appendChild(el));
+      toolbar.appendChild(end);
+    }
+
     container.appendChild(toolbar);
 
     function mkButton(text, ariaLabel, onClick) {
@@ -325,11 +335,13 @@ export function mountGraphView(engine, container, options = {}) {
     }, 1500);
   }
 
-  if (options.caption) {
-    const cap = document.createElement("div");
-    cap.className = "gv-caption";
-    cap.textContent = options.caption;
-    container.appendChild(cap);
+  let captionEl = null;
+  if (options.caption != null || options.liveCaption) {
+    captionEl = document.createElement("div");
+    captionEl.className = "gv-caption";
+    captionEl.setAttribute("role", "status");
+    captionEl.textContent = options.caption ?? "";
+    container.appendChild(captionEl);
   }
 
   // ---------- canvas ----------
@@ -414,8 +426,8 @@ export function mountGraphView(engine, container, options = {}) {
           id: n.id,
           label: n.label,
           degree,
-          x: width / 2 + 80 * Math.cos(angle) + (Math.random() - 0.5) * 20,
-          y: height / 2 + 80 * Math.sin(angle) + (Math.random() - 0.5) * 20,
+          x: n.x ?? width / 2 + 80 * Math.cos(angle) + (Math.random() - 0.5) * 20,
+          y: n.y ?? height / 2 + 80 * Math.sin(angle) + (Math.random() - 0.5) * 20,
         });
       }
     });
@@ -490,6 +502,7 @@ export function mountGraphView(engine, container, options = {}) {
   function drawNodes(snapshot) {
     const neighbourIds = neighbourIdSet(snapshot);
     const visited = snapshot.viz?.visited ?? new Set();
+    const frontier = snapshot.viz?.frontier ?? new Set();
     const currentNode = snapshot.viz?.currentNode ?? null;
     const currentNeighbor = snapshot.viz?.currentNeighbor ?? null;
     const sel = nodeLayer.selectAll("g.gv-node").data([...simNodes.values()], (d) => d.id);
@@ -504,10 +517,19 @@ export function mountGraphView(engine, container, options = {}) {
     merged
       .select("circle")
       .attr("class", (d) => {
+        const color = snapshot.viz?.nodeColors?.get?.(d.id);
+        if (color) {
+          let cls = `gv-node-circle gv-color-${color}`;
+          if (currentNode != null && d.id === currentNode) cls += " gv-color-focus";
+          else if (currentNeighbor != null && d.id === currentNeighbor) cls += " gv-color-focus";
+          if (addEdgeMode && pendingEdgeSource === d.id) cls += " gv-pending";
+          return cls;
+        }
         let cls = "gv-node-circle";
         if (currentNode != null && d.id === currentNode) cls += " gv-selected";
         else if (currentNeighbor != null && d.id === currentNeighbor) cls += " gv-neighbour";
         else if (isSelected(snapshot, "node", d.id)) cls += " gv-selected";
+        else if (frontier.has(d.id)) cls += " gv-neighbour";
         else if (neighbourIds.has(d.id)) cls += " gv-neighbour";
         if (visited.has(d.id)) cls += " gv-visited";
         if (addEdgeMode && pendingEdgeSource === d.id) cls += " gv-pending";
@@ -552,6 +574,9 @@ export function mountGraphView(engine, container, options = {}) {
           updateStatus();
         });
         return;
+      }
+      if (typeof onNodeClick === "function") {
+        onNodeClick(d.id, event);
       }
       engine.select("node", d.id);
     });
@@ -614,4 +639,14 @@ export function mountGraphView(engine, container, options = {}) {
     }
     return d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
   }
+
+  return {
+    captionEl,
+    setCaption(text, kind) {
+      if (!captionEl) return;
+      captionEl.textContent = text ?? "";
+      captionEl.className = "gv-caption";
+      if (kind) captionEl.classList.add(`gv-caption-${kind}`);
+    },
+  };
 }
