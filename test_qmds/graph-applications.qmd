@@ -1,0 +1,83 @@
+---
+title: "Graph Applications"
+subtitle: "Real life uses of graphs and graph algorithms"
+---
+
+So far, we have learned a lot about graphs and graphs algorithms on paper. It is helpful to understand them in the context of the real world as well. On this page, we will go over some real life applications of graphs. At the end, you will get the chance to try some real-world graph problems.
+
+## Graph of prerequisites at the University of British Columbia
+Consider this very simple graph that shows some Computer Science courses at UBC and their prerequisites. Courses can be represented as nodes, with a directed edge from a prerequisite to a course that depends on it. 
+
+In the graph below, `110` and `121` have no prerequisites. Course `110` is a prerequisite for `210`, `221`, and `213`, while `121` is a prerequisite for `221` and `213`. This means that to take `221` or `213`, students have to have taken both `110` and `121`.
+
+::: {.static-graph-inline}
+<div id="prerequisite-graph"></div>
+:::
+```{python}
+#| echo: false
+prerequisite_nodes = [
+    {"id": "110", "label": "110", "x": 180, "y": 250},
+    {"id": "121", "label": "121", "x": 470, "y": 250},
+    {"id": "210", "label": "210", "x": 90, "y": 55},
+    {"id": "221", "label": "221", "x": 280, "y": 55},
+    {"id": "213", "label": "213", "x": 470, "y": 55},
+]
+prerequisite_edges = [
+    {"id": "e0", "source": "110", "target": "210", "label": ""},
+    {"id": "e1", "source": "110", "target": "221", "label": ""},
+    {"id": "e2", "source": "110", "target": "213", "label": ""},
+    {"id": "e3", "source": "121", "target": "221", "label": ""},
+    {"id": "e4", "source": "121", "target": "213", "label": ""},
+]
+ojs_define(prerequisite_nodes = prerequisite_nodes, prerequisite_edges = prerequisite_edges)
+```
+```{ojs}
+//| echo: false
+import { mountStaticGraphView } from "./js/static-graph-view.js";
+prerequisiteView = mountStaticGraphView(
+  document.querySelector("#prerequisite-graph"),
+  { nodes: prerequisite_nodes, edges: prerequisite_edges },
+  { width: 560, height: 300, directed: true }
+);
+```
+
+Of course, this is a very simplified version of the prerequisite structure at UBC. In reality, there are many more complexities to consider, such as co-requisites or courses where multiple prerequisites can be considered. If you would like to see the more complete graph created by the Department of Computer Science at UBC, you can find it [here](https://www.cs.ubc.ca/prerequisite-rules).
+
+## Student exercise: Build your own graph
+
+Consider a telecommunications company. They have a grid of cell towers and want to examine the connectivity of their network. Specifically, they would like a way to quickly calculate the speed of transmission between any two towers. How would we go about building a graph to represent this network?
+
+Let's start with the nodes.
+
+::: {.mc-question #tower-nodes-question}
+<fieldset>
+  <legend>What should each node in the graph represent?</legend>
+  <label><input type="radio" name="tower-nodes-answer" value="towers"> A cell tower</label>
+  <label><input type="radio" name="tower-nodes-answer" value="connections"> A connection between two towers</label>
+  <label><input type="radio" name="tower-nodes-answer" value="signals"> A signal sent through the network</label>
+  <button type="button" class="mc-check">Check answer</button>
+  <p class="mc-feedback" aria-live="polite"></p>
+</fieldset>
+:::
+
+```{ojs}
+//| echo: false
+//| output: false
+towerNodesQuestion = document.querySelector("#tower-nodes-question");
+towerNodesFeedback = towerNodesQuestion.querySelector(".mc-feedback");
+towerNodesQuestion.querySelector(".mc-check").addEventListener("click", () => {
+  const selected = towerNodesQuestion.querySelector('input[name="tower-nodes-answer"]:checked');
+  towerNodesFeedback.className = "mc-feedback";
+
+  if (!selected) {
+    towerNodesFeedback.classList.add("mc-incorrect");
+    towerNodesFeedback.textContent = "Choose an answer first.";
+  } else if (selected.value === "towers") {
+    towerNodesFeedback.classList.add("mc-correct");
+    towerNodesFeedback.textContent = "Correct. Each cell tower is a location in the network, so it is represented by a node.";
+  } else {
+    towerNodesFeedback.classList.add("mc-incorrect");
+    towerNodesFeedback.textContent = "Not quite. A node represents a location in the network. Think about what is located at each point in the grid.";
+  }
+});
+```

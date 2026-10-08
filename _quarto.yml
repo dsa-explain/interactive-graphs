@@ -26,6 +26,8 @@ website:
         text: Graph Connectivity
       - href: test_qmds/directed-weighted-graph.qmd
         text: Directed and Weighted Graph
+      - href: test_qmds/graph-applications.qmd
+        text: Graph Applications
 format:
   html:
     theme: cosmo

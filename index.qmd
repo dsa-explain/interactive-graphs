@@ -8,3 +8,4 @@ subtitle: "An interactive tour of graphs and the ways we represent them"
 - **[Graph Representation](graph-representation.qmd)** -- Two different ways to representgraphs: watch a graph turn into rows of `[key]: [neighbour] [neighbour]` boxes, starting with a single row before seeing the whole list or the same graph as a grid of 0s and 1s, again starting with a single row before the full N x N matrix.
 - **[Coding Sandbox](test_qmds/coding_sandbox.qmd)** -- write Python in a Pyodide-powered editor and watch the graph redraw instantly.
 - **[Directed and Weighted Graph](directed-weighted-graph.qmd)** -- Learn how direction and edge weights change graph interpretation.
+- **[Graph Applications](graph-applications.qmd)** -- Learn how graphs are used in real-world applications.
