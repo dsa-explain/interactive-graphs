@@ -7,7 +7,7 @@ project:
     - test_qmds/*.qmd
 
 website:
-  title: "Graph Structures Explorer"
+  title: "dsa-explain: Graph Structures Explorer"
   sidebar:
     style: "docked"
     search: true

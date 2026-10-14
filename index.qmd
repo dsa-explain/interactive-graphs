@@ -1,5 +1,5 @@
 ---
-title: "Graph Structures Lab"
+title: "dsa-explain: Graph Structures Lab"
 subtitle: "An interactive tour of graphs and the ways we represent them"
 ---
 
