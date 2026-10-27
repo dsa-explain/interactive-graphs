@@ -41,7 +41,7 @@ prerequisiteView = mountStaticGraphView(
 );
 ```
 
-Of course, this is a very simplified version of the prerequisite structure at UBC. In reality, there are many more complexities to consider, such as co-requisites or courses where multiple prerequisites can be considered. If you would like to see the more complete graph created by the Department of Computer Science at UBC, you can find it [here](https://www.cs.ubc.ca/prerequisite-rules).
+Of course, this is a very simplified version of the prerequisite structure at UBC. In reality, there are many more complexities to consider, such as co-requisites or courses where multiple prerequisite paths can be considered. If you would like to see the more complete graph created by the Department of Computer Science at UBC, you can find it [here](https://www.cs.ubc.ca/prerequisite-rules).
 
 ## Student exercise: Build your own graph
 
@@ -81,3 +81,116 @@ towerNodesQuestion.querySelector(".mc-check").addEventListener("click", () => {
   }
 });
 ```
+
+Next, the edge labels. Suppose you connect appropriate pairs of vertices with edges. Each edge may have a label or weight. Which option below is the most natural choice of information stored on each edge?
+
+::: {.mc-question #tower-edges-question}
+<fieldset>
+  <legend>What should each edge label represent?</legend>
+  <label><input type="radio" name="tower-edges-answer" value="tower-name"> Name of a cell tower</label>
+  <label><input type="radio" name="tower-edges-answer" value="tower-pair"> The names of the pair of cell towers connected by the edge</label>
+  <label><input type="radio" name="tower-edges-answer" value="speed"> Speed of travel between two connected towers</label>
+  <label><input type="radio" name="tower-edges-answer" value="names-and-speed"> The names of the connected cell towers and the speed of travel between them</label>
+  <button type="button" class="mc-check">Check answer</button>
+  <p class="mc-feedback" aria-live="polite"></p>
+</fieldset>
+:::
+
+```{ojs}
+//| echo: false
+//| output: false
+towerEdgesQuestion = document.querySelector("#tower-edges-question");
+towerEdgesFeedback = towerEdgesQuestion.querySelector(".mc-feedback");
+towerEdgesQuestion.querySelector(".mc-check").addEventListener("click", () => {
+  const selected = towerEdgesQuestion.querySelector('input[name="tower-edges-answer"]:checked');
+  towerEdgesFeedback.className = "mc-feedback";
+
+  if (!selected) {
+    towerEdgesFeedback.classList.add("mc-incorrect");
+    towerEdgesFeedback.textContent = "Choose an answer first.";
+  } else if (selected.value === "speed") {
+    towerEdgesFeedback.classList.add("mc-correct");
+    towerEdgesFeedback.textContent = "Correct. The edge weight can represent the speed of travel between the connected towers.";
+  } else {
+    towerEdgesFeedback.classList.add("mc-incorrect");
+    towerEdgesFeedback.textContent = "Not quite. The edge already shows which towers are connected.";
+  }
+});
+```
+
+Next, we decide the shape of the graph. Should it be a directed or undirected graph?
+
+::: {.mc-question #tower-direction-question}
+<fieldset>
+  <legend>Which type of graph should represent the connections between cell towers?</legend>
+  <label><input type="radio" name="tower-direction-answer" value="directed"> A directed graph</label>
+  <label><input type="radio" name="tower-direction-answer" value="undirected"> An undirected graph</label>
+  <button type="button" class="mc-check">Check answer</button>
+  <p class="mc-feedback" aria-live="polite"></p>
+</fieldset>
+:::
+
+```{ojs}
+//| echo: false
+//| output: false
+towerDirectionQuestion = document.querySelector("#tower-direction-question");
+towerDirectionFeedback = towerDirectionQuestion.querySelector(".mc-feedback");
+towerDirectionQuestion.querySelector(".mc-check").addEventListener("click", () => {
+  const selected = towerDirectionQuestion.querySelector('input[name="tower-direction-answer"]:checked');
+  towerDirectionFeedback.className = "mc-feedback";
+
+  if (!selected) {
+    towerDirectionFeedback.classList.add("mc-incorrect");
+    towerDirectionFeedback.textContent = "Choose an answer first.";
+  } else {
+    towerDirectionFeedback.classList.add("mc-correct");
+    towerDirectionFeedback.textContent = "Correct! Both answers are actually correct, this will depend on the specific decision of the company.";
+  }
+});
+```
+You will notice that both of the choices above are actually correct. This will depend on the set up of the telecommunications company. If the company has a network where signals can only travel in one direction, then a directed graph is appropriate. If signals can travel in both directions, then an undirected graph is appropriate. It could also be the case that travel in either direction do not happen at the same speed, in which case a directed graph with different weights for each direction would be the better choice.
+
+In our case, we wll assume that the network is undirected, and that the speed of travel between two towers is the same in either direction.
+
+Next, visualize the graph we have designed. 
+* The graph is *n* verticies
+* There are no self-loops (no edges from a vertex to itself)
+* There is at most one edge between any pair of verticies
+* The graph is connected (there is a path between any two verticies)
+
+As a function of *n*, what is the minimum possible number of edges in this graph? (Read the symbol "~" as "proportional to".)
+
+::: {.mc-question #tower-min-edges-question}
+<fieldset>
+  <legend>What is the minimum number of edges, as a function of <em>n</em>?</legend>
+  <label><input type="radio" name="tower-min-edges-answer" value="linear"> ~ n</label>
+  <label><input type="radio" name="tower-min-edges-answer" value="quadratic"> ~ n<sup>2</sup></label>
+  <label><input type="radio" name="tower-min-edges-answer" value="exponential"> ~ 2<sup>n</sup></label>
+  <label><input type="radio" name="tower-min-edges-answer" value="logarithmic"> log n</label>
+  <button type="button" class="mc-check">Check answer</button>
+  <p class="mc-feedback" aria-live="polite"></p>
+</fieldset>
+:::
+
+```{ojs}
+//| echo: false
+//| output: false
+towerMinEdgesQuestion = document.querySelector("#tower-min-edges-question");
+towerMinEdgesFeedback = towerMinEdgesQuestion.querySelector(".mc-feedback");
+towerMinEdgesQuestion.querySelector(".mc-check").addEventListener("click", () => {
+  const selected = towerMinEdgesQuestion.querySelector('input[name="tower-min-edges-answer"]:checked');
+  towerMinEdgesFeedback.className = "mc-feedback";
+
+  if (!selected) {
+    towerMinEdgesFeedback.classList.add("mc-incorrect");
+    towerMinEdgesFeedback.textContent = "Choose an answer first.";
+  } else if (selected.value === "linear") {
+    towerMinEdgesFeedback.classList.add("mc-correct");
+    towerMinEdgesFeedback.textContent = "Correct. A connected graph needs at least n − 1 edges, which grows proportionally to n.";
+  } else {
+    towerMinEdgesFeedback.classList.add("mc-incorrect");
+    towerMinEdgesFeedback.textContent = "Not quite. A connected graph can be built with n − 1 edges, which grows proportionally to n.";
+  }
+});
+```
+
